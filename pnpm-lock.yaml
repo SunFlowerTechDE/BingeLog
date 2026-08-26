@@ -38,6 +38,9 @@ importers:
       '@binge-log/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@binge-log/poster':
+        specifier: workspace:*
+        version: link:../../packages/poster
       '@supabase/ssr':
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.112.4)
@@ -127,6 +130,15 @@ importers:
       '@types/pg-copy-streams':
         specifier: ^1.2.5
         version: 1.2.5
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/poster:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.0
+        version: 22.20.1
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

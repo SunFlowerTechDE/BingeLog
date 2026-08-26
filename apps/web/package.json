@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@binge-log/db": "workspace:*",
+    "@binge-log/poster": "workspace:*",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.58.0",
     "date-fns": "^4.1.0",

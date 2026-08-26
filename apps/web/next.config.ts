@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const config: NextConfig = {
   reactStrictMode: true,
   // @binge-log/db ships TypeScript source, not a build artefact.
-  transpilePackages: ['@binge-log/db'],
+  transpilePackages: ['@binge-log/db', '@binge-log/poster'],
   typedRoutes: true,
   images: {
     // TheTVDB artwork (ADR-002). Procedural cards are served from our own
