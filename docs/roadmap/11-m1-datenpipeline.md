@@ -42,19 +42,19 @@ SELECT DISTINCT ?sub WHERE { ?sub wdt:P279* wd:Q11424 . }
 
 Pro Film-Entity zu extrahieren:
 
-| Feld | Property | Zielspalte |
-|---|---|---|
-| Originaltitel | P1476 | `title_original` |
-| Label `de` | Label | `title_de` |
-| Label `en` | Label | `title_en` |
-| Erscheinungsdatum | P577 | `release_year` |
-| Laufzeit | P2047 | `runtime_min` |
-| Regie | P57 | `film_credits` role=director |
-| Besetzung | P161 | `film_credits` role=cast |
-| Drehbuch | P58 | `film_credits` role=writer |
-| Genre | P136 | `film_genres` |
-| IMDb-ID | P345 | `imdb_id` |
-| Sitelinks | `sitelinks` | `sitelink_count` |
+| Feld              | Property    | Zielspalte                   |
+| ----------------- | ----------- | ---------------------------- |
+| Originaltitel     | P1476       | `title_original`             |
+| Label `de`        | Label       | `title_de`                   |
+| Label `en`        | Label       | `title_en`                   |
+| Erscheinungsdatum | P577        | `release_year`               |
+| Laufzeit          | P2047       | `runtime_min`                |
+| Regie             | P57         | `film_credits` role=director |
+| Besetzung         | P161        | `film_credits` role=cast     |
+| Drehbuch          | P58         | `film_credits` role=writer   |
+| Genre             | P136        | `film_genres`                |
+| IMDb-ID           | P345        | `imdb_id`                    |
+| Sitelinks         | `sitelinks` | `sitelink_count`             |
 
 Hinweise:
 
@@ -100,7 +100,12 @@ Für Filme, die nicht im Katalog sind (Neuzugänge, Longtail):
 
 - [ ] `select count(*) from films` liegt in der erwarteten Größenordnung
 - [ ] Stichprobe von 20 Filmen aus `01-decisions.md` ist vorhanden und
-      korrekt befüllt, inklusive Tarkowskis Solaris (Q188473, tt0069293)
+      korrekt befüllt, inklusive Tarkowskis Solaris (**Q125772**, tt0069293)
+
+      > Korrektur: hier stand Q188473. Das ist das Genre "Actionfilm",
+          > nicht der Film. Die richtige ID zu tt0069293 ist Q125772,
+          > gegengeprüft über `wdt:P345`.
+
 - [ ] Der Import ist wiederholbar ausführbar, ohne Duplikate zu erzeugen
 - [ ] Laufzeit des Vollimports ist dokumentiert
 
