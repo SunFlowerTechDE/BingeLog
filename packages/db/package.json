@@ -18,7 +18,7 @@
     "push": "set -a && . ./.env && set +a && supabase db push",
     "diff": "supabase db diff",
     "types": "set -a && . ./.env && set +a && supabase gen types typescript --project-id \"$SUPABASE_PROJECT_REF\" --schema public > src/types.generated.ts",
-    "test:rls": "node --env-file=.env --experimental-strip-types --test tests/*.test.ts",
+    "test:rls": "node --env-file=.env --experimental-strip-types --test --test-concurrency=1 tests/*.test.ts",
     "test": "pnpm test:schema",
     "verify": "node --env-file=.env --experimental-strip-types scripts/verify.ts",
     "test:schema": "node --experimental-strip-types --test tests/schema/*.test.ts"

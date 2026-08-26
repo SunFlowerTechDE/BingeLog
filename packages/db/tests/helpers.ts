@@ -70,11 +70,19 @@ export async function deleteTestUser(user: TestUser): Promise<void> {
   await admin.auth.admin.deleteUser(user.id);
 }
 
+/**
+ * Distinguishes one test run from another. Deriving the IMDb id from the
+ * film id looked fine but took the leading digits of the epoch, which are
+ * identical for every film created in the same era — so every fixture
+ * collided on the unique index after the first one.
+ */
+const RUN_PREFIX = String(Math.floor(Math.random() * 9000) + 1000);
+
 /** Inserts a catalog film via the service role, the pipeline's only path in. */
 export async function createTestFilm(wikidataId: string): Promise<void> {
   const { error } = await admin.from('films').insert({
     wikidata_id: wikidataId,
-    imdb_id: `tt${wikidataId.replace(/\D/g, '').slice(0, 7).padStart(7, '0')}`,
+    imdb_id: `tt${RUN_PREFIX}${String(userCounter++).padStart(5, '0')}`,
     title_original: 'RLS Fixture',
     title_de: 'RLS-Vorrichtung',
     release_year: 2000,
@@ -88,5 +96,5 @@ export async function deleteTestFilm(wikidataId: string): Promise<void> {
 }
 
 export function uniqueFilmId(): string {
-  return `Q-rls-${String(Date.now())}-${String(userCounter++)}`;
+  return `Q9${RUN_PREFIX}${String(userCounter++).padStart(5, '0')}`;
 }

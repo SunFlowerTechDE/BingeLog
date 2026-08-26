@@ -34,15 +34,26 @@ const EXPECTED_FACETS = [
   'pacing',
 ];
 
+/**
+ * pg_class.relname and pg_policies.policyname are of type `name`, and
+ * node-postgres hands `name[]` back as a raw string rather than an array.
+ * The queries cast to text so this stays an array; the guard keeps a
+ * future slip from surfacing as "join is not a function".
+ */
 function list(row: Record<string, unknown> | undefined, key: string): string[] {
-  return (row?.[key] ?? []) as string[];
+  const value = row?.[key];
+  if (Array.isArray(value)) return value as string[];
+  if (typeof value === 'string') {
+    return value.replace(/^\{|\}$/g, '').split(',').filter((entry) => entry !== '');
+  }
+  return [];
 }
 
 const CHECKS: Check[] = [
   {
     name: 'every table in public has RLS enabled',
     sql: `
-      select coalesce(array_agg(c.relname order by c.relname), '{}') as offenders
+      select coalesce(array_agg(c.relname::text order by c.relname), '{}') as offenders
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity`,
@@ -67,7 +78,7 @@ const CHECKS: Check[] = [
   {
     name: 'no policy on thread_messages grants anon anything',
     sql: `
-      select coalesce(array_agg(policyname), '{}') as offenders
+      select coalesce(array_agg(policyname::text), '{}') as offenders
       from pg_policies
       where schemaname = 'public' and tablename = 'thread_messages' and 'anon' = any(roles)`,
     verdict: (row) => {
