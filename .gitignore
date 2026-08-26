@@ -48,8 +48,12 @@ packages/pipeline/data/
 *.nt.bz2
 
 # --- Supabase ---
+# Ein Muster mit Schraegstrich ist am Repo-Wurzelverzeichnis verankert, also
+# haette `supabase/.temp/` nur ein Verzeichnis ganz oben erfasst, nicht das
+# in packages/db. Deshalb explizit ueberall.
 .supabase/
-supabase/.temp/
+**/supabase/.temp/
+**/supabase/.branches/
 
 # --- macOS ---
 .DS_Store

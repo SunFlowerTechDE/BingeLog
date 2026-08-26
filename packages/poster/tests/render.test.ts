@@ -9,6 +9,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { renderPosterSVG } from '../src/render.ts';
+import { posterVersion } from '../src/version.ts';
 import { PALETTES } from '../src/palette.ts';
 import { hash32, seededRandom } from '../src/hash.ts';
 import { fitTitle, measure, tokenize, wrap } from '../src/text.ts';
@@ -245,5 +246,28 @@ describe('missing metadata', () => {
     const last = meta.at(-1);
     assert.ok(last);
     assert.ok(Number(last[1]) + measure(last[3] ?? '', Number(last[2])) <= WIDTH, 'stays on the card');
+  });
+});
+
+describe('the cache version token', () => {
+  it('is stable for the same timestamp', () => {
+    const stamp = '2026-08-26T15:00:00.334+00:00';
+    assert.equal(posterVersion(stamp), posterVersion(stamp));
+  });
+
+  it('changes when the film changes', () => {
+    assert.notEqual(
+      posterVersion('2026-08-26T15:00:00.334+00:00'),
+      posterVersion('2026-08-26T15:00:00.335+00:00'),
+    );
+  });
+
+  it('does not lose the milliseconds the way Date.parse on a Date does', () => {
+    // The bug this replaced: one side parsed the JSON string and kept the
+    // milliseconds, the other parsed a Date object and dropped them, so
+    // the tokens never matched and immutable was never granted.
+    const withMillis = '2026-08-26T15:00:00.334+00:00';
+    const withoutMillis = '2026-08-26T15:00:00.000+00:00';
+    assert.notEqual(posterVersion(withMillis), posterVersion(withoutMillis));
   });
 });

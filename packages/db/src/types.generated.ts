@@ -1,31 +1,573 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * PLACEHOLDER — replaced by `pnpm db:types` once the Supabase project is
- * linked. Do not edit by hand; edit the migrations instead.
- *
- *   pnpm --filter @binge-log/db types
- *
- * The shape is deliberately permissive rather than precise. A placeholder
- * that claims to know the schema makes supabase-js narrow query results
- * to something that is not true, which then shows up as bogus lint
- * findings about impossible null checks. Unknown is the honest answer
- * until the real types are generated.
- */
-export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface UnknownTable {
-  Row: Record<string, any>;
-  Insert: Record<string, any>;
-  Update: Record<string, any>;
-  Relationships: [];
-}
-
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.17"
+  }
   public: {
-    Tables: Record<string, UnknownTable>;
-    Views: Record<string, UnknownTable>;
-    Functions: Record<string, { Args: Record<string, unknown>; Returns: unknown }>;
-    Enums: Record<string, string>;
-    CompositeTypes: Record<string, Record<string, unknown>>;
-  };
+    Tables: {
+      diary_entries: {
+        Row: {
+          created_at: string
+          film_id: string
+          id: string
+          is_private: boolean
+          is_rewatch: boolean
+          rating: number | null
+          review: string | null
+          updated_at: string
+          user_id: string
+          watched_on: string | null
+        }
+        Insert: {
+          created_at?: string
+          film_id: string
+          id?: string
+          is_private?: boolean
+          is_rewatch?: boolean
+          rating?: number | null
+          review?: string | null
+          updated_at?: string
+          user_id: string
+          watched_on?: string | null
+        }
+        Update: {
+          created_at?: string
+          film_id?: string
+          id?: string
+          is_private?: boolean
+          is_rewatch?: boolean
+          rating?: number | null
+          review?: string | null
+          updated_at?: string
+          user_id?: string
+          watched_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diary_entries_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "diary_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entry_facet_ratings: {
+        Row: {
+          entry_id: string
+          facet: Database["public"]["Enums"]["facet_kind"]
+          score: number
+        }
+        Insert: {
+          entry_id: string
+          facet: Database["public"]["Enums"]["facet_kind"]
+          score: number
+        }
+        Update: {
+          entry_id?: string
+          facet?: Database["public"]["Enums"]["facet_kind"]
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entry_facet_ratings_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "diary_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      film_credits: {
+        Row: {
+          film_id: string
+          ord: number | null
+          person_id: string
+          role: string
+        }
+        Insert: {
+          film_id: string
+          ord?: number | null
+          person_id: string
+          role: string
+        }
+        Update: {
+          film_id?: string
+          ord?: number | null
+          person_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "film_credits_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "film_credits_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["wikidata_id"]
+          },
+        ]
+      }
+      film_genres: {
+        Row: {
+          film_id: string
+          genre_id: string
+        }
+        Insert: {
+          film_id: string
+          genre_id: string
+        }
+        Update: {
+          film_id?: string
+          genre_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "film_genres_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "film_genres_genre_id_fkey"
+            columns: ["genre_id"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["wikidata_id"]
+          },
+        ]
+      }
+      film_threads: {
+        Row: {
+          film_id: string
+          is_active: boolean
+          is_locked: boolean
+          last_activity_at: string | null
+          message_count: number
+          viewer_count: number
+        }
+        Insert: {
+          film_id: string
+          is_active?: boolean
+          is_locked?: boolean
+          last_activity_at?: string | null
+          message_count?: number
+          viewer_count?: number
+        }
+        Update: {
+          film_id?: string
+          is_active?: boolean
+          is_locked?: boolean
+          last_activity_at?: string | null
+          message_count?: number
+          viewer_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "film_threads_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: true
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+        ]
+      }
+      films: {
+        Row: {
+          imdb_id: string | null
+          poster_source: string | null
+          poster_url: string | null
+          release_year: number | null
+          runtime_min: number | null
+          sitelink_count: number
+          synopsis_de: string | null
+          title_de: string | null
+          title_en: string | null
+          title_original: string
+          tvdb_id: number | null
+          updated_at: string
+          wikidata_id: string
+        }
+        Insert: {
+          imdb_id?: string | null
+          poster_source?: string | null
+          poster_url?: string | null
+          release_year?: number | null
+          runtime_min?: number | null
+          sitelink_count?: number
+          synopsis_de?: string | null
+          title_de?: string | null
+          title_en?: string | null
+          title_original: string
+          tvdb_id?: number | null
+          updated_at?: string
+          wikidata_id: string
+        }
+        Update: {
+          imdb_id?: string | null
+          poster_source?: string | null
+          poster_url?: string | null
+          release_year?: number | null
+          runtime_min?: number | null
+          sitelink_count?: number
+          synopsis_de?: string | null
+          title_de?: string | null
+          title_en?: string | null
+          title_original?: string
+          tvdb_id?: number | null
+          updated_at?: string
+          wikidata_id?: string
+        }
+        Relationships: []
+      }
+      genres: {
+        Row: {
+          label_de: string | null
+          label_en: string | null
+          wikidata_id: string
+        }
+        Insert: {
+          label_de?: string | null
+          label_en?: string | null
+          wikidata_id: string
+        }
+        Update: {
+          label_de?: string | null
+          label_en?: string | null
+          wikidata_id?: string
+        }
+        Relationships: []
+      }
+      people: {
+        Row: {
+          name: string
+          sitelink_count: number
+          wikidata_id: string
+        }
+        Insert: {
+          name: string
+          sitelink_count?: number
+          wikidata_id: string
+        }
+        Update: {
+          name?: string
+          sitelink_count?: number
+          wikidata_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      thread_messages: {
+        Row: {
+          body: string
+          created_at: string
+          edited_at: string | null
+          film_id: string
+          id: string
+          is_removed: boolean
+          parent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          edited_at?: string | null
+          film_id: string
+          id?: string
+          is_removed?: boolean
+          parent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          edited_at?: string | null
+          film_id?: string
+          id?: string
+          is_removed?: boolean
+          parent_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_messages_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "thread_messages_parent_id_film_id_fkey"
+            columns: ["parent_id", "film_id"]
+            isOneToOne: false
+            referencedRelation: "thread_messages"
+            referencedColumns: ["id", "film_id"]
+          },
+          {
+            foreignKeyName: "thread_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlist: {
+        Row: {
+          added_at: string
+          film_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          film_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          film_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "watchlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      film_facet_averages: {
+        Row: {
+          avg_score: number | null
+          facet: Database["public"]["Enums"]["facet_kind"] | null
+          film_id: string | null
+          vote_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diary_entries_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+        ]
+      }
+    }
+    Functions: {
+      film_search_text: {
+        Args: { title_de: string; title_en: string; title_original: string }
+        Returns: string
+      }
+      refresh_film_facet_averages: { Args: never; Returns: undefined }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+    }
+    Enums: {
+      facet_kind:
+        | "acting"
+        | "story"
+        | "directing"
+        | "cinematography"
+        | "sound"
+        | "production_design"
+        | "pacing"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      facet_kind: [
+        "acting",
+        "story",
+        "directing",
+        "cinematography",
+        "sound",
+        "production_design",
+        "pacing",
+      ],
+    },
+  },
+} as const

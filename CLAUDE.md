@@ -56,10 +56,16 @@ Der ESLint-Config bricht den Build, wenn er in `apps/web` auftaucht.
 
 M0 (Fundament) — siehe `docs/roadmap/10-m0-fundament.md`
 
-Stand: Schema, RLS und Tests stehen und laufen. `pnpm test` startet ein
-lokales Postgres, spielt alle Migrationen ein und prüft die Policies —
-39 Tests, grün. Offen ist allein das Supabase-Projekt (EU, Frankfurt):
-`pnpm db:push`, `pnpm db:types`, `pnpm test:rls`, `pnpm db:verify`.
+M0 ist abgeschlossen. Das Supabase-Projekt läuft in Frankfurt
+(eu-central-1), alle Migrationen sind eingespielt, die Typen sind aus dem
+Schema generiert und eingecheckt.
+
+- `pnpm test` — lokales Postgres, alle Migrationen, Policies: 108 Tests
+- `pnpm test:rls` — dieselben Zusicherungen über PostgREST: 33 Tests
+- `pnpm db:verify` — 9 Schemaprüfungen gegen das Projekt
+
+Das Spoiler-Gate ist auf beiden Wegen belegt. Nächster Schritt ist M2.2
+(TheTVDB) oder M3, je nachdem wann der API-Key vorliegt.
 
 Wenn du eine Policy oder einen Trigger anfasst, gehört ein Test in
 `packages/db/tests/schema/rls.test.ts` dazu. Eine Policy ohne Test ist

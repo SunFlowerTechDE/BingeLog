@@ -1,23 +1,6 @@
-import { renderPosterSVG } from '@binge-log/poster';
+import { posterVersion, renderPosterSVG } from '@binge-log/poster';
 
 import { createClient } from '@/lib/supabase/server';
-
-/**
- * Shapes of the two rows this route reads. They are written out here
- * rather than inferred because the generated Supabase types are still a
- * placeholder; once `pnpm db:types` has run they come from the schema.
- */
-interface FilmRow {
-  wikidata_id: string;
-  title_de: string | null;
-  title_original: string;
-  release_year: number | null;
-  updated_at: string;
-}
-
-interface DirectorCredit {
-  person_id: string;
-}
 
 /**
  * M2 2.1 — serves the procedural card.
@@ -41,21 +24,19 @@ export async function GET(
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const { data: film, error } = await supabase
     .from('films')
     .select('wikidata_id, title_de, title_original, release_year, updated_at')
     .eq('wikidata_id', wikidataId)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error || !film) {
     return new Response('Not found', { status: 404 });
   }
 
-  const film: FilmRow = data;
-
-  // Two queries rather than an embedded join: PostgREST can resolve the
-  // relationship, but expressing it in TypeScript needs the generated
-  // schema, and the card is cached anyway.
+  // Two queries rather than one embedded join. The join would work, but
+  // the card is cached for a year and the director is one small lookup,
+  // so the simpler shape wins over the saved round trip.
   const { data: credit } = await supabase
     .from('film_credits')
     .select('person_id')
@@ -65,17 +46,15 @@ export async function GET(
     .limit(1)
     .maybeSingle();
 
-  const directorCredit: DirectorCredit | null = credit;
   let director: string | null = null;
 
-  if (directorCredit) {
+  if (credit) {
     const { data: person } = await supabase
       .from('people')
       .select('name')
-      .eq('wikidata_id', directorCredit.person_id)
+      .eq('wikidata_id', credit.person_id)
       .maybeSingle();
-    const personRow: { name: string } | null = person;
-    director = personRow?.name ?? null;
+    director = person?.name ?? null;
   }
 
   const svg = renderPosterSVG({
@@ -87,10 +66,10 @@ export async function GET(
 
   // `immutable` is only honest when the URL changes with the content, so
   // it is granted to requests that carry the film's version and withheld
-  // from those that do not. The app links with ?v=<updated_at>; a bare
-  // URL still works, it just revalidates.
-  const version = new URL(request.url).searchParams.get('v');
-  const isVersioned = version === String(Date.parse(film.updated_at));
+  // from those that do not. The app links with ?v=posterVersion(updated_at);
+  // a bare URL still works, it just revalidates.
+  const version = posterVersion(film.updated_at);
+  const isVersioned = new URL(request.url).searchParams.get('v') === version;
 
   return new Response(svg, {
     headers: {
@@ -98,7 +77,7 @@ export async function GET(
       'Cache-Control': isVersioned
         ? 'public, max-age=31536000, immutable'
         : 'public, max-age=3600, stale-while-revalidate=86400',
-      ETag: `"${film.wikidata_id}-${String(Date.parse(film.updated_at))}"`,
+      ETag: `"${film.wikidata_id}-${version}"`,
     },
   });
 }
