@@ -1,0 +1,38 @@
+@import 'tailwindcss';
+
+/*
+ * Dark base theme. Posters read better on it and it suits the occasion
+ * (02-product.md, Gestaltung). Tokens follow the shadcn/ui contract so
+ * components can be dropped in from M3 without retrofitting.
+ */
+@theme {
+  --color-background: oklch(0.16 0.006 265);
+  --color-foreground: oklch(0.95 0.004 265);
+  --color-card: oklch(0.2 0.008 265);
+  --color-card-foreground: oklch(0.95 0.004 265);
+  --color-muted: oklch(0.26 0.008 265);
+  --color-muted-foreground: oklch(0.68 0.01 265);
+  --color-border: oklch(0.3 0.01 265);
+  --color-input: oklch(0.3 0.01 265);
+  --color-primary: oklch(0.82 0.14 84);
+  --color-primary-foreground: oklch(0.18 0.02 84);
+  --color-destructive: oklch(0.62 0.2 25);
+  --color-ring: oklch(0.82 0.14 84);
+
+  --radius: 0.5rem;
+
+  /* Reference tile width for the grid, 120 to 150 px (02-product.md). */
+  --spacing-tile: 8.25rem;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+}

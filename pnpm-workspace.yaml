@@ -1,0 +1,12 @@
+packages:
+  - 'apps/web'
+  - 'packages/*'
+
+# embedded-postgres ships its shared libraries with symlinks that pnpm
+# strips from the tarball; its own postinstall rehydrates them. Without
+# this the local schema harness cannot start Postgres.
+onlyBuiltDependencies:
+  - '@embedded-postgres/darwin-arm64'
+  - '@embedded-postgres/darwin-x64'
+  - '@embedded-postgres/linux-arm64'
+  - '@embedded-postgres/linux-x64'

@@ -39,8 +39,28 @@ diskutiert. Läuft eine Umsetzung gegen eine ADR, ist die Umsetzung falsch.
 - Sicherheitsregeln werden in der Datenbank durchgesetzt, nicht im Client
 - TypeScript strict, `noUncheckedIndexedAccess` aktiv
 
+## Repo-Layout
+
+```
+apps/web            Next.js 16
+apps/ios            Xcode-Projekt (ab M5)
+packages/db         Migrationen, RLS-Tests, generierte Typen
+packages/pipeline   Wikidata-Import, TheTVDB-Batch (offline, Standalone)
+docs/roadmap        die Roadmap-Dateien
+```
+
+Der Service-Role-Key existiert ausschliesslich in `packages/pipeline`.
+Der ESLint-Config bricht den Build, wenn er in `apps/web` auftaucht.
+
 ## Aktueller Meilenstein
 
-<!-- Hier den aktiven Meilenstein eintragen, z. B.: M0 (Fundament) -->
+M0 (Fundament) — siehe `docs/roadmap/10-m0-fundament.md`
 
-M0 — siehe `docs/roadmap/10-m0-fundament.md`
+Stand: Schema, RLS und Tests stehen und laufen. `pnpm test` startet ein
+lokales Postgres, spielt alle Migrationen ein und prüft die Policies —
+39 Tests, grün. Offen ist allein das Supabase-Projekt (EU, Frankfurt):
+`pnpm db:push`, `pnpm db:types`, `pnpm test:rls`, `pnpm db:verify`.
+
+Wenn du eine Policy oder einen Trigger anfasst, gehört ein Test in
+`packages/db/tests/schema/rls.test.ts` dazu. Eine Policy ohne Test ist
+eine Behauptung.

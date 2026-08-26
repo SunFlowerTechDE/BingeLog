@@ -1,0 +1,35 @@
+{
+  "name": "@binge-log/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.generated.ts",
+    "./testing": "./tests/schema/harness.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "link": "supabase link --project-ref $SUPABASE_PROJECT_REF",
+    "push": "supabase db push",
+    "diff": "supabase db diff",
+    "types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public > src/types.generated.ts",
+    "test:rls": "node --env-file=.env --experimental-strip-types --test tests/*.test.ts",
+    "test": "pnpm test:schema",
+    "verify": "supabase db execute --file scripts/verify.sql",
+    "test:schema": "node --experimental-strip-types --test tests/schema/*.test.ts"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.58.0",
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.23.1",
+    "embedded-postgres": "18.4.0-beta.17",
+    "pg": "^8.23.0",
+    "supabase": "^2.40.7",
+    "typescript": "^5.9.2"
+  }
+}

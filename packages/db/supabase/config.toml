@@ -1,0 +1,37 @@
+# Supabase CLI configuration for @binge-log/db.
+#
+# Development runs against the hosted project in the EU region
+# (Frankfurt), not against a local Docker stack (M0 0.2). The [db] and
+# [api] blocks below only matter if someone runs `supabase start`.
+
+project_id = "binge-log"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+schema_paths = []
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[studio]
+enabled = true
+port = 54323

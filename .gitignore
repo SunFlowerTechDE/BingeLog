@@ -26,7 +26,10 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 .swiftpm/
-Packages/
+# Swift Package Manager checkouts. Anchored to the iOS app: git on macOS
+# matches ignore rules case-insensitively, and a bare `Packages/` here
+# silently swallowed the entire `packages/` workspace.
+/apps/ios/**/Packages/
 *.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 
 # --- Python (pipeline) ---
