@@ -71,8 +71,14 @@ liegt vor, und der Artwork-Batch läuft. Die Lizenzprüfung steht in
 `docs/legal/thetvdb-lizenz.md` — Kurzfassung: **Bilder werden verlinkt,
 nie gespiegelt.**
 
-Offen ist der Wikidata-Volldump (M1 1.1). Der Katalog ist noch leer.
-Nächster Schritt ist M3.
+Der Katalog enthält 59 Filme — die meistverlinkten plus die Filme, die
+die Such-Testfälle brauchen, samt ihrer Beinahe-Treffer. Der Volldump
+(M1 1.1) ist bewusst zurückgestellt; die Messungen dazu stehen in
+`docs/roadmap/11-m1-datenpipeline.md`.
+
+Laufend ist M3. Die Suche (3.2) steht: das Ranking ist eine
+Postgres-Funktion, die fünf Pflicht-Testfälle sind grün und laufen gegen
+lokales Postgres, also ohne Projekt.
 
 Wenn du eine Policy oder einen Trigger anfasst, gehört ein Test in
 `packages/db/tests/schema/rls.test.ts` dazu. Eine Policy ohne Test ist

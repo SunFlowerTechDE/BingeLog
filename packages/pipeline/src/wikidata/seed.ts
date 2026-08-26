@@ -150,3 +150,79 @@ export async function seedCatalog(db: Client, options: SeedOptions = {}): Promis
     genreLinks: loadedGenreLinks,
   };
 }
+
+/**
+ * Imports a known set of films by id, with everything they reference.
+ *
+ * The same three phases as seedCatalog — films, then people and genres,
+ * then the links — but over a list the caller already has. This is what
+ * lazy creation runs when a search misses (M1 1.5), and what fills the
+ * catalog with a deliberate set for testing.
+ */
+export async function importFilmsByIds(
+  db: Client,
+  filmIds: string[],
+  options: FetchOptions = {},
+): Promise<SeedResult> {
+  await createStagingTables(db);
+
+  const stats = emptyStats();
+  const credits: ExtractedCredit[] = [];
+  const genreLinks: ExtractedGenre[] = [];
+  const referenced = new Set<string>();
+
+  const entities = await fetchEntities(filmIds, options);
+
+  // extractFilm returns null for anything that is not a film, checked
+  // against the full subclass closure. That is what lets a caller hand
+  // over search results without pre-filtering them.
+  const extracted = entities.map((entity) => extractFilm(entity)).filter((r) => r !== null);
+
+  for (const result of extracted) {
+    countFilm(stats, result.film);
+    credits.push(...result.credits);
+    genreLinks.push(...result.genres);
+    for (const credit of result.credits) referenced.add(credit.personId);
+    for (const genre of result.genres) referenced.add(genre.genreId);
+  }
+
+  stats.filmsLoaded += await loadFilms(
+    db,
+    extracted.map((result) => result.film),
+  );
+
+  const genreIds = new Set(genreLinks.map((link) => link.genreId));
+  const named = (await fetchEntities([...referenced], options))
+    .map((entity) => extractNamedEntity(entity))
+    .filter((entity) => entity !== null);
+
+  const people = await loadPeople(
+    db,
+    named
+      .filter((entity) => !genreIds.has(entity.wikidataId))
+      .map((entity) => ({
+        wikidataId: entity.wikidataId,
+        name: entity.name,
+        sitelinkCount: entity.sitelinkCount,
+      })),
+  );
+
+  const genres = await loadGenres(
+    db,
+    named
+      .filter((entity) => genreIds.has(entity.wikidataId))
+      .map((entity) => ({
+        wikidataId: entity.wikidataId,
+        labelDe: entity.nameDe,
+        labelEn: entity.nameEn,
+      })),
+  );
+
+  return {
+    ...stats,
+    people,
+    genres,
+    credits: await loadCredits(db, credits),
+    genreLinks: await loadFilmGenres(db, genreLinks),
+  };
+}
