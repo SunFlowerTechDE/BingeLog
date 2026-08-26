@@ -1,0 +1,61 @@
+# --- Node / Next.js ---
+node_modules/
+.pnpm-store/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+.turbo/
+coverage/
+.eslintcache
+
+# --- Environment ---
+.env
+.env.*
+!.env.example
+
+# --- Swift / Xcode ---
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+.swiftpm/
+Packages/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# --- Python (pipeline) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# --- Pipeline data dumps (gross, nie eingecheckt) ---
+packages/pipeline/data/
+*.json.gz
+*.jsonl
+*.nt.bz2
+
+# --- Supabase ---
+.supabase/
+supabase/.temp/
+
+# --- macOS ---
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# --- Editor ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
