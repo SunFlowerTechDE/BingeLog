@@ -1,0 +1,144 @@
+'use server';
+
+import { redirect } from 'next/navigation';
+import type { Route } from 'next';
+import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
+
+import { createClient } from '@/lib/supabase/server';
+
+/**
+ * M3 3.1 — sign-up, sign-in and choosing a username.
+ *
+ * All of it runs on the server. The client never holds a token and never
+ * decides whether something is allowed; it renders what comes back.
+ */
+
+export interface FormState {
+  /** Says what to do, not what went wrong (02-product.md, Tonalität). */
+  error?: string;
+  message?: string;
+}
+
+/**
+ * FormData.get returns a string or a File. Stringifying a File yields
+ * '[object File]', which would sail through a length check and land in
+ * the database, so anything that is not a string is treated as absent.
+ */
+function readField(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === 'string' ? value : '';
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MIN_PASSWORD_LENGTH = 8;
+
+function readCredentials(formData: FormData): { email: string; password: string } | string {
+  const email = readField(formData, 'email').trim().toLowerCase();
+  const password = readField(formData, 'password');
+
+  if (!EMAIL_PATTERN.test(email)) return 'Gib eine gültige E-Mail-Adresse ein.';
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Das Passwort braucht mindestens ${String(MIN_PASSWORD_LENGTH)} Zeichen.`;
+  }
+
+  return { email, password };
+}
+
+export async function signUp(_previous: FormState, formData: FormData): Promise<FormState> {
+  const credentials = readCredentials(formData);
+  if (typeof credentials === 'string') return { error: credentials };
+
+  const supabase = await createClient();
+
+  // Where the link in the confirmation mail should land. Derived from the
+  // request rather than configured, so the same code works on localhost,
+  // on a preview deployment and in production.
+  const requestHeaders = await headers();
+  const host = requestHeaders.get('host') ?? 'localhost:3000';
+  const protocol = host.startsWith('localhost') ? 'http' : 'https';
+
+  const { error } = await supabase.auth.signUp({
+    ...credentials,
+    options: { emailRedirectTo: `${protocol}://${host}/auth/bestaetigen` },
+  });
+
+  if (error) {
+    // The user gets a message that does not say whether the address is
+    // already registered — telling a stranger which addresses have
+    // accounts answers a question nobody asked. The reason still has to
+    // go somewhere, or a broken sign-up looks the same as a duplicate.
+    console.error('signUp failed:', error.message);
+    return { error: 'Das hat nicht geklappt. Versuch es noch einmal.' };
+  }
+
+  // No session yet: the account exists but is unconfirmed until the link
+  // in the mail is followed.
+  redirect(`/registrieren/pruefe-postfach?an=${encodeURIComponent(credentials.email)}`);
+}
+
+export async function signIn(_previous: FormState, formData: FormData): Promise<FormState> {
+  const credentials = readCredentials(formData);
+  if (typeof credentials === 'string') return { error: credentials };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword(credentials);
+
+  if (error) {
+    console.error('signIn failed:', error.message);
+    return { error: 'E-Mail oder Passwort stimmt nicht.' };
+  }
+
+  // The target comes from a query parameter, so it is a runtime string
+  // that typedRoutes cannot know. The guard is what matters: a single
+  // leading slash and no protocol-relative form, so it cannot become an
+  // open redirect to another host.
+  const target = readField(formData, 'weiter');
+  const safe =
+    target.startsWith('/') && !target.startsWith('//') ? (target as Route) : ('/' as Route);
+  redirect(safe);
+}
+
+export async function signOut(): Promise<never> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  revalidatePath('/', 'layout');
+  redirect('/');
+}
+
+export async function chooseUsername(
+  _previous: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const username = readField(formData, 'username').trim().toLowerCase();
+
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+    return {
+      error: 'Drei bis zwanzig Zeichen, nur Kleinbuchstaben, Ziffern und Unterstrich.',
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect('/anmelden');
+
+  const { error } = await supabase.from('profiles').insert({ id: user.id, username });
+
+  if (error) {
+    // Taken and reserved are one answer on purpose. The user's next move
+    // is the same either way, and distinguishing them would confirm which
+    // names have accounts behind them.
+    if (error.message.includes('username_reserved') || error.code === '23505') {
+      return { error: 'Der Name ist nicht frei. Nimm einen anderen.' };
+    }
+
+    console.error('chooseUsername failed:', error.message);
+    return { error: 'Das hat nicht geklappt. Versuch es noch einmal.' };
+  }
+
+  revalidatePath('/', 'layout');
+  redirect('/');
+}

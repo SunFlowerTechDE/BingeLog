@@ -306,6 +306,126 @@ export type Database = {
         }
         Relationships: []
       }
+      reserved_usernames: {
+        Row: {
+          reason: string
+          username: string
+        }
+        Insert: {
+          reason: string
+          username: string
+        }
+        Update: {
+          reason?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      staging_credits: {
+        Row: {
+          film_id: string | null
+          ord: number | null
+          person_id: string | null
+          role: string | null
+        }
+        Insert: {
+          film_id?: string | null
+          ord?: number | null
+          person_id?: string | null
+          role?: string | null
+        }
+        Update: {
+          film_id?: string | null
+          ord?: number | null
+          person_id?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      staging_film_genres: {
+        Row: {
+          film_id: string | null
+          genre_id: string | null
+        }
+        Insert: {
+          film_id?: string | null
+          genre_id?: string | null
+        }
+        Update: {
+          film_id?: string | null
+          genre_id?: string | null
+        }
+        Relationships: []
+      }
+      staging_films: {
+        Row: {
+          imdb_id: string | null
+          release_year: number | null
+          runtime_min: number | null
+          sitelink_count: number | null
+          title_de: string | null
+          title_en: string | null
+          title_original: string | null
+          wikidata_id: string
+        }
+        Insert: {
+          imdb_id?: string | null
+          release_year?: number | null
+          runtime_min?: number | null
+          sitelink_count?: number | null
+          title_de?: string | null
+          title_en?: string | null
+          title_original?: string | null
+          wikidata_id: string
+        }
+        Update: {
+          imdb_id?: string | null
+          release_year?: number | null
+          runtime_min?: number | null
+          sitelink_count?: number | null
+          title_de?: string | null
+          title_en?: string | null
+          title_original?: string | null
+          wikidata_id?: string
+        }
+        Relationships: []
+      }
+      staging_genres: {
+        Row: {
+          label_de: string | null
+          label_en: string | null
+          wikidata_id: string
+        }
+        Insert: {
+          label_de?: string | null
+          label_en?: string | null
+          wikidata_id: string
+        }
+        Update: {
+          label_de?: string | null
+          label_en?: string | null
+          wikidata_id?: string
+        }
+        Relationships: []
+      }
+      staging_people: {
+        Row: {
+          name: string | null
+          sitelink_count: number | null
+          wikidata_id: string
+        }
+        Insert: {
+          name?: string | null
+          sitelink_count?: number | null
+          wikidata_id: string
+        }
+        Update: {
+          name?: string | null
+          sitelink_count?: number | null
+          wikidata_id?: string
+        }
+        Relationships: []
+      }
       thread_messages: {
         Row: {
           body: string
@@ -420,8 +540,25 @@ export type Database = {
         Returns: string
       }
       refresh_film_facet_averages: { Args: never; Returns: undefined }
+      search_films: {
+        Args: { max_results?: number; query: string }
+        Returns: {
+          director: string
+          poster_source: string
+          poster_url: string
+          release_year: number
+          runtime_min: number
+          score: number
+          sitelink_count: number
+          title_de: string
+          title_en: string
+          title_original: string
+          wikidata_id: string
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      username_available: { Args: { candidate: string }; Returns: boolean }
     }
     Enums: {
       facet_kind:

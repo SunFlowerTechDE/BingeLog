@@ -1,14 +1,67 @@
-export default function HomePage() {
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col justify-center gap-4 px-6">
-      <h1 className="text-3xl font-semibold tracking-tight">BingeLog</h1>
-      <p className="text-muted-foreground text-balance">
-        Trag ein, was du gesehen hast. Bewerte es. Red darüber mit Leuten, die den Film
-        auch gesehen haben.
-      </p>
+import { Suspense } from 'react';
+
+import { createClient } from '@/lib/supabase/server';
+import { FilmTile, type TileFilm } from '@/components/film-tile';
+import { SearchInput } from '@/components/search-input';
+
+async function Results({ query }: { query: string }) {
+  if (query.trim().length < 2) {
+    return (
       <p className="text-muted-foreground text-sm">
-        Das Fundament steht. Suche, Filmdetail und Bewertung kommen mit M3.
+        Tipp einen Titel. Ab zwei Zeichen wird gesucht.
       </p>
+    );
+  }
+
+  const supabase = await createClient();
+
+  // Ranking lives in the database, not here (M3 3.2, Fallstricke).
+  const { data, error } = await supabase.rpc('search_films', {
+    query,
+    max_results: 40,
+  });
+
+  if (error) {
+    console.error('search_films failed:', error.message);
+    return <p className="text-destructive text-sm">Die Suche antwortet gerade nicht.</p>;
+  }
+
+  const films = data as unknown as TileFilm[];
+
+  if (films.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        Nichts gefunden. Prüf die Schreibweise oder such nach dem Originaltitel.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-6">
+      {films.map((film) => (
+        <FilmTile key={film.wikidata_id} film={film} />
+      ))}
+    </div>
+  );
+}
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const query = q ?? '';
+
+  return (
+    <main className="mx-auto flex max-w-5xl flex-col gap-7 px-5 py-8">
+      <Suspense fallback={null}>
+        <SearchInput />
+      </Suspense>
+
+      <Suspense key={query} fallback={<p className="text-muted-foreground text-sm">Sucht…</p>}>
+        <Results query={query} />
+      </Suspense>
     </main>
   );
 }
