@@ -14,13 +14,13 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "link": "supabase link --project-ref $SUPABASE_PROJECT_REF",
-    "push": "supabase db push",
+    "link": "set -a && . ./.env && set +a && supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
+    "push": "set -a && . ./.env && set +a && supabase db push",
     "diff": "supabase db diff",
-    "types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public > src/types.generated.ts",
+    "types": "set -a && . ./.env && set +a && supabase gen types typescript --project-id \"$SUPABASE_PROJECT_REF\" --schema public > src/types.generated.ts",
     "test:rls": "node --env-file=.env --experimental-strip-types --test tests/*.test.ts",
     "test": "pnpm test:schema",
-    "verify": "supabase db execute --file scripts/verify.sql",
+    "verify": "node --env-file=.env --experimental-strip-types scripts/verify.ts",
     "test:schema": "node --experimental-strip-types --test tests/schema/*.test.ts"
   },
   "devDependencies": {
