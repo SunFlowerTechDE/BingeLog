@@ -64,8 +64,15 @@ Schema generiert und eingecheckt.
 - `pnpm test:rls` — dieselben Zusicherungen über PostgREST: 33 Tests
 - `pnpm db:verify` — 9 Schemaprüfungen gegen das Projekt
 
-Das Spoiler-Gate ist auf beiden Wegen belegt. Nächster Schritt ist M2.2
-(TheTVDB) oder M3, je nachdem wann der API-Key vorliegt.
+Das Spoiler-Gate ist auf beiden Wegen belegt.
+
+M2 ist ebenfalls durch. Die prozedurale Karte steht, der TheTVDB-Key
+liegt vor, und der Artwork-Batch läuft. Die Lizenzprüfung steht in
+`docs/legal/thetvdb-lizenz.md` — Kurzfassung: **Bilder werden verlinkt,
+nie gespiegelt.**
+
+Offen ist der Wikidata-Volldump (M1 1.1). Der Katalog ist noch leer.
+Nächster Schritt ist M3.
 
 Wenn du eine Policy oder einen Trigger anfasst, gehört ein Test in
 `packages/db/tests/schema/rls.test.ts` dazu. Eine Policy ohne Test ist

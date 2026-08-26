@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "import:wikidata": "node --experimental-strip-types --env-file=.env src/wikidata/import.ts",
-    "artwork:tvdb": "node --experimental-strip-types --env-file=.env src/tvdb/batch.ts",
+    "artwork:tvdb": "node --experimental-strip-types --env-file=.env src/tvdb/run.ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "subclasses": "node scripts/fetch-film-subclasses.mjs"
   },

@@ -96,10 +96,20 @@ startet parallel zu M1.
 
 ### Vor dem Caching klären
 
-- [ ] **Caching-Klausel in den TheTVDB-Lizenzbedingungen lesen**, bevor
-      Bilder lokal gespeichert werden. TMDB verlangt Löschung bei
-      Lizenzende, TheTVDB formuliert das anders. Das Ergebnis dieser
-      Prüfung hier dokumentieren.
+- [x] **Caching-Klausel in den TheTVDB-Lizenzbedingungen lesen**, bevor
+      Bilder lokal gespeichert werden. Geprüft am 26.08.2026, Ergebnis in
+      [`docs/legal/thetvdb-lizenz.md`](../legal/thetvdb-lizenz.md).
+
+      Kurzfassung: TheTVDB formuliert es nicht anders als TMDB, sondern
+      **gar nicht** — zu Caching und zu Löschung bei Lizenzende steht
+      dort nichts. Untersagt ist dagegen ausdrücklich die Weitergabe
+      („distribute […] the Data"), und die Bildrechte werden von der
+      API-Lizenz **nicht** mitgeliefert.
+
+      Daraus folgt: **Bilder werden verlinkt, nicht gespiegelt.**
+      `films.poster_url` zeigt auf `artworks.thetvdb.com`. Damit entfällt
+      die Weitergabefrage, das Löschproblem und der 200-GB-Fallstrick
+      unten in einem.
 - [ ] Attribution im Impressum und auf Filmdetailseiten umsetzen
 
 ### Sprachvarianten
