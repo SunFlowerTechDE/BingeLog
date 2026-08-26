@@ -6,14 +6,15 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src",
-    "import:wikidata": "node --experimental-strip-types --env-file=.env src/wikidata/import.ts",
+    "lint": "eslint src tests",
     "artwork:tvdb": "node --experimental-strip-types --env-file=.env src/tvdb/run.ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "subclasses": "node scripts/fetch-film-subclasses.mjs"
+    "subclasses": "node scripts/fetch-film-subclasses.mjs",
+    "catalog:seed": "node --experimental-strip-types --env-file=.env src/wikidata/run-seed.ts"
   },
   "dependencies": {
     "@binge-log/db": "workspace:*",
+    "@binge-log/poster": "workspace:*",
     "@supabase/supabase-js": "^2.58.0",
     "pg": "^8.23.0",
     "pg-copy-streams": "^7.0.0"

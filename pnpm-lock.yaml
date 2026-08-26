@@ -111,6 +111,9 @@ importers:
       '@binge-log/db':
         specifier: workspace:*
         version: link:../db
+      '@binge-log/poster':
+        specifier: workspace:*
+        version: link:../poster
       '@supabase/supabase-js':
         specifier: ^2.58.0
         version: 2.112.4

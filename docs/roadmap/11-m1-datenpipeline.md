@@ -20,6 +20,29 @@ Der SPARQL-Endpoint wird nur für zwei Dinge genutzt: Lazy Creation
 einzelner fehlender Filme zur Laufzeit (Aufgabe 1.5) und Stichproben
 während der Entwicklung.
 
+### Nachgemessen am 26.08.2026
+
+Der Versuch, den Dump durch API-Abfragen zu ersetzen, ist an drei Stellen
+gescheitert. Die Zahlen stehen hier, damit der Umweg nicht noch einmal
+genommen wird:
+
+| Weg | Ergebnis |
+|---|---|
+| SPARQL mit `wdt:P31/wdt:P279* wd:Q11424` | 502 nach 12 s |
+| SPARQL mit der statischen Klassenliste als `VALUES` | funktioniert bis etwa 50 Sitelinks, darunter 504 |
+| SPARQL mit Bereichsfilter `FILTER(?s >= a && ?s <= b)` | 500/502/504, jeder Bereich |
+| Volltextsuche `haswbstatement:P31=Q11424` | kennt alle 348.737 Filme, blättert aber nur 10.000 tief |
+
+**Brauchbar bleibt:** der Kopf der Verteilung per SPARQL, ein exakter
+Sitelink-Wert pro Abfrage, mit der Klassenliste als `VALUES` statt als
+Pfad. Damit sind rund 1.000 bis 2.000 Filme erreichbar — genug für die
+Entwicklung von M3, nicht genug für den Betrieb.
+
+Zwei Verbesserungen sind daraus geblieben und stehen in `src/wikidata/api.ts`:
+Die Klassenliste wird per POST als `VALUES` übergeben statt als
+Pfadabfrage, und die Titelsuche der Lazy Creation läuft über den
+Suchindex statt über SPARQL.
+
 ---
 
 ## Aufgaben

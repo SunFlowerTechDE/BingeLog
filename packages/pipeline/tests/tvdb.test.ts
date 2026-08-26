@@ -45,7 +45,7 @@ function stubTvdb(options: StubOptions = {}) {
     const imdbId = href.split('/').at(-1) ?? '';
 
     if (expireFirstToken && init?.headers && 'Authorization' in (init.headers as object)) {
-      const auth = (init.headers as Record<string, string>)['Authorization'];
+      const auth = (init.headers as Record<string, string>).Authorization;
       if (auth === 'Bearer token-1') {
         return new Response('expired', { status: 401, statusText: 'Unauthorized' });
       }
@@ -64,7 +64,7 @@ function stubTvdb(options: StubOptions = {}) {
   return { fetchImpl, calls, loginCount: () => logins };
 }
 
-const NO_WAIT = { minIntervalMs: 0, sleep: async () => {} };
+const NO_WAIT = { minIntervalMs: 0, sleep: async (): Promise<void> => undefined };
 
 // ---------------------------------------------------------------------------
 

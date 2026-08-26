@@ -45,6 +45,14 @@ export default tseslint.config(
       // behaviour anyway, not types.
       '@typescript-eslint/no-unnecessary-condition': 'off',
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      // Test doubles stand in for async APIs without doing async work,
+      // and a no-op is often exactly the behaviour under test — a sleep
+      // that does not sleep, a handler that does nothing.
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-empty-function': 'off',
+      // Stubs receive fetch's `string | URL | Request` but are only ever
+      // handed strings.
+      '@typescript-eslint/no-base-to-string': 'off',
       '@typescript-eslint/no-floating-promises': [
         'error',
         {
