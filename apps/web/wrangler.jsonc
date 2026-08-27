@@ -9,6 +9,13 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  // Beide Werte sind oeffentlich: sie landen ohnehin im Client-Bundle.
+  // Der Secret Key hat hier nichts zu suchen und wuerde vom
+  // ESLint-Config des Web-Workspaces auch abgelehnt.
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm"
+  },
   "observability": {
     "enabled": true
   }
