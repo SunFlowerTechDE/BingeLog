@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 
 import { createClient } from '@/lib/supabase/server';
-import { FilmTile, type TileFilm } from '@/components/film-tile';
+import { type TileFilm } from '@/components/film-tile';
 import { SearchInput } from '@/components/search-input';
 import { LazySearch } from '@/components/lazy-search';
 
@@ -29,16 +29,10 @@ async function Results({ query }: { query: string }) {
 
   const films = data as unknown as TileFilm[];
 
-  // M3 3.2: a search that finds nothing may reach past the catalog.
-  if (films.length === 0) return <LazySearch term={query} />;
-
-  return (
-    <div className="flex flex-wrap gap-x-4 gap-y-6">
-      {films.map((film) => (
-        <FilmTile key={film.wikidata_id} film={film} />
-      ))}
-    </div>
-  );
+  // M3 3.2: a search that finds nothing may reach past the catalog. The
+  // list is handed to the same client component that offers to create the
+  // film, so it stays mounted when the answer changes underneath it.
+  return <LazySearch term={query} films={films} />;
 }
 
 export default async function HomePage({

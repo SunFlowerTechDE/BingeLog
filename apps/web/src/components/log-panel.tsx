@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 
 import { RatingInput } from '@/components/rating-input';
 import {
@@ -42,13 +42,27 @@ export function LogPanel({
   ownFacets: Partial<Record<string, number>>;
 }) {
   const [open, setOpen] = useState(false);
-  const [facetsOpen, setFacetsOpen] = useState(
-    Object.keys(ownFacets).length > 0,
-  );
+  const [facetsOpen, setFacetsOpen] = useState(Object.keys(ownFacets).length > 0);
   const [state, action] = useActionState<EntryResult, FormData>(saveEntry, {});
   // Tapping a popcorn and deleting an entry both go straight to the
   // server without a form, so their answer needs somewhere to land.
   const [problem, setProblem] = useState<string | undefined>(undefined);
+  const [confirmation, setConfirmation] = useState<string | undefined>(undefined);
+
+  // A save that changed nothing on screen was indistinguishable from a
+  // click that never arrived. Closing the form is the clearest sign that
+  // something happened; the note says what.
+  useEffect(() => {
+    if (!state.saved) return;
+    setOpen(false);
+    setConfirmation('Gespeichert');
+    const timer = setTimeout(() => {
+      setConfirmation(undefined);
+    }, 4000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [state]);
 
   return (
     <section className="border-border flex flex-col gap-3 border-t pt-5">
@@ -69,6 +83,7 @@ export function LogPanel({
       </div>
 
       <ActionNote message={problem} />
+      <ActionNote message={confirmation} tone="info" />
 
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <button
@@ -116,8 +131,7 @@ export function LogPanel({
               type="date"
               name="watchedOn"
               defaultValue={entry?.watched_on ?? ''}
-              className="border-border bg-card focus:ring-ring w-48 rounded-md border px-3 py-2
-                         text-base outline-none focus:ring-2"
+              className="border-border bg-card focus:ring-ring w-48 rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
             />
           </label>
 
@@ -127,8 +141,7 @@ export function LogPanel({
               name="review"
               rows={4}
               defaultValue={entry?.review ?? ''}
-              className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2
-                         text-base outline-none focus:ring-2"
+              className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
             />
           </label>
 
@@ -150,8 +163,7 @@ export function LogPanel({
                 setFacetsOpen(!facetsOpen);
               }}
               aria-expanded={facetsOpen}
-              className="text-muted-foreground hover:text-foreground self-start text-sm
-                         underline underline-offset-4"
+              className="text-muted-foreground hover:text-foreground self-start text-sm underline underline-offset-4"
             >
               {facetsOpen ? 'Detailliert bewerten zuklappen' : 'Detailliert bewerten'}
             </button>
@@ -175,15 +187,15 @@ export function LogPanel({
             ) : null}
           </div>
 
-          <ActionNote message={state.error} />
-
-          <button
-            type="submit"
-            className="bg-primary text-primary-foreground self-start rounded-md px-4 py-2
-                       text-sm font-semibold"
-          >
-            Speichern
-          </button>
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              type="submit"
+              className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-semibold"
+            >
+              Speichern
+            </button>
+            <ActionNote message={state.error} />
+          </div>
         </form>
       ) : null}
     </section>

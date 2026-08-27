@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import { fetchMissingFilm, type CreatedFilm } from '@/lib/search-actions';
 import { ActionNote } from '@/components/action-note';
 import { CardBuild } from '@/components/card-build';
+import { FilmTile, type TileFilm } from '@/components/film-tile';
 
 /**
  * Offered when a search finds nothing, and the small ceremony that
@@ -20,8 +21,13 @@ import { CardBuild } from '@/components/card-build';
  * The card is then built in the open. It takes a few seconds either way
  * while Wikidata answers, and showing the work turns waiting into
  * watching something you caused.
+ *
+ * It owns the result list too, rather than being rendered only when that
+ * list is empty. Every server action makes Next render the route again,
+ * so the moment the film existed this component was replaced by the
+ * grid — and the overlay went with it, before it had shown anything.
  */
-export function LazySearch({ term }: { term: string }) {
+export function LazySearch({ term, films }: { term: string; films: TileFilm[] }) {
   const router = useRouter();
   const [note, setNote] = useState<string | undefined>(undefined);
   const [building, setBuilding] = useState<CreatedFilm | null>(null);
@@ -49,32 +55,41 @@ export function LazySearch({ term }: { term: string }) {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <p className="text-muted-foreground text-sm">
-        Nichts im Katalog. Wenn es den Film bei Wikidata gibt, kannst du ihn hier anlegen —
-        danach steht er für alle bereit.
-      </p>
+      {films.length > 0 ? (
+        <div className="flex flex-wrap gap-x-4 gap-y-6">
+          {films.map((film) => (
+            <FilmTile key={film.wikidata_id} film={film} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Nichts im Katalog. Wenn es den Film bei Wikidata gibt, kannst du ihn hier anlegen — danach
+          steht er für alle bereit.
+        </p>
+      )}
 
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
-          setNote(undefined);
-          startTransition(async () => {
-            const result = await fetchMissingFilm(term);
-            if (result.error ?? !result.films?.length) {
-              setNote(result.error ?? 'Nichts gefunden.');
-              return;
-            }
-            // Only the first is built on screen; the rest are in the list
-            // once the overlay closes.
-            setBuilding(result.films[0] ?? null);
-          });
-        }}
-        className="border-border hover:bg-card rounded-md border px-3 py-1.5 text-sm
-                   disabled:opacity-60"
-      >
-        {pending ? 'Sucht bei Wikidata' : 'Film anlegen'}
-      </button>
+      {films.length === 0 ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            setNote(undefined);
+            startTransition(async () => {
+              const result = await fetchMissingFilm(term);
+              if (result.error ?? !result.films?.length) {
+                setNote(result.error ?? 'Nichts gefunden.');
+                return;
+              }
+              // Only the first is built on screen; the rest are in the list
+              // once the overlay closes.
+              setBuilding(result.films[0] ?? null);
+            });
+          }}
+          className="border-border hover:bg-card rounded-md border px-3 py-1.5 text-sm disabled:opacity-60"
+        >
+          {pending ? 'Sucht bei Wikidata' : 'Film anlegen'}
+        </button>
+      ) : null}
 
       <ActionNote message={note} />
 
@@ -84,16 +99,12 @@ export function LazySearch({ term }: { term: string }) {
           aria-modal="true"
           aria-label="Film wird angelegt"
           onClick={finish}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-7
-                     bg-black/55 px-6 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-7 bg-black/55 px-6 backdrop-blur-md"
         >
           <p className="text-center text-lg font-semibold tracking-tight">
             {building.title}
             {building.releaseYear ? (
-              <span className="text-muted-foreground font-normal">
-                {' '}
-                ({building.releaseYear})
-              </span>
+              <span className="text-muted-foreground font-normal"> ({building.releaseYear})</span>
             ) : null}
           </p>
 
@@ -104,6 +115,7 @@ export function LazySearch({ term }: { term: string }) {
               releaseYear: building.releaseYear,
               director: building.director,
             }}
+            posterUrl={building.posterUrl}
             onDone={finish}
           />
         </div>

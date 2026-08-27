@@ -11,6 +11,9 @@ export default tseslint.config(
       '**/build/**',
       'apps/ios/**',
       '**/*.generated.ts',
+      // Deno, not Node: jsr:/https: imports and no tsconfig, so the
+      // type-aware rules have no project to resolve them against.
+      'packages/db/supabase/functions/**',
     ],
   },
   js.configs.recommended,

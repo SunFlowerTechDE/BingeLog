@@ -34,6 +34,17 @@ export function RatingInput({
   size?: number;
 }) {
   const [current, setCurrent] = useState<number>(value ?? 0);
+
+  // A save elsewhere on the page revalidates the route and hands down a
+  // new value, but state survives the re-render, so the row kept showing
+  // the old rating next to a "Gespeichert" note. Adjust during render
+  // rather than in an effect, so no empty row is ever painted.
+  const [seenValue, setSeenValue] = useState<number | null>(value);
+
+  if (seenValue !== value) {
+    setSeenValue(value);
+    setCurrent(value ?? 0);
+  }
   // Which bucket the pointer is on, not what the preview should be. The
   // preview is derived from it, so it cannot survive the rating changing
   // underneath it — storing the computed value left a stale number on
@@ -89,15 +100,16 @@ export function RatingInput({
         aria-valuemin={0}
         aria-valuemax={RATING_MAX}
         aria-valuenow={current}
-        aria-valuetext={current === 0 ? 'keine Bewertung' : `${formatRating(current)} von 5 Popcorn`}
+        aria-valuetext={
+          current === 0 ? 'keine Bewertung' : `${formatRating(current)} von 5 Popcorn`
+        }
         aria-busy={pending}
         onKeyDown={onKeyDown}
         onMouseLeave={() => {
           setHovered(null);
           setPreviewArmed(true);
         }}
-        className="focus-visible:ring-ring inline-flex gap-0.5 rounded outline-none
-                   focus-visible:ring-2"
+        className="focus-visible:ring-ring inline-flex gap-0.5 rounded outline-none focus-visible:ring-2"
       >
         {[1, 2, 3, 4, 5].map((bucket) => (
           <button

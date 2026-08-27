@@ -23,6 +23,8 @@ import { FACET_KINDS } from '@binge-log/db';
 
 export interface EntryResult {
   error?: string;
+  /** Set on a save that went through, so the panel can say so. */
+  saved?: boolean;
 }
 
 const RATING_MIN = 1;
@@ -170,7 +172,10 @@ export async function saveEntry(_previous: EntryResult, formData: FormData): Pro
 
   revalidatePath(`/film/${filmId}`);
   revalidatePath('/tagebuch');
-  return {};
+  // Saying so matters as much as doing it: the form used to close on
+  // nothing and leave no sign, which is indistinguishable from a click
+  // that never registered.
+  return { saved: true };
 }
 
 export async function deleteEntry(entryId: string, filmId: string): Promise<EntryResult> {

@@ -17,6 +17,8 @@ export interface CreatedFilm {
   title: string;
   releaseYear: number | null;
   director: string | null;
+  /** Set when TheTVDB had one. The card is then shown, not built. */
+  posterUrl: string | null;
 }
 
 export interface LazyResult {
@@ -66,7 +68,7 @@ export async function fetchMissingFilm(term: string): Promise<LazyResult> {
 
   const { data: rows } = await supabase
     .from('films')
-    .select('wikidata_id, title_de, title_original, release_year')
+    .select('wikidata_id, title_de, title_original, release_year, poster_source, poster_url')
     .in('wikidata_id', ids);
 
   const { data: credits } = await supabase
@@ -91,6 +93,7 @@ export async function fetchMissingFilm(term: string): Promise<LazyResult> {
     title: row.title_de ?? row.title_original,
     releaseYear: row.release_year,
     director: directorFor.get(row.wikidata_id) ?? null,
+    posterUrl: row.poster_source === 'tvdb' ? row.poster_url : null,
   }));
 
   // Deliberately no revalidatePath here. Refreshing the route would

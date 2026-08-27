@@ -19,11 +19,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 import { extractFilm, extractNamedEntity } from '../_shared/wikidata/extract.ts';
-import {
-  fetchEntities,
-  findFilmIdByImdbId,
-  findFilmIdsByTitle,
-} from '../_shared/wikidata/api.ts';
+import { fetchEntities, findFilmIdByImdbId, findFilmIdsByTitle } from '../_shared/wikidata/api.ts';
 import { createTvdbClient } from '../_shared/tvdb/client.ts';
 
 /** Enough to answer one search; more would be stockpiling on a whim. */
@@ -127,10 +123,9 @@ Deno.serve(async (request: Request) => {
 
   const credits = extracted.flatMap((e) => e.credits);
   const genreLinks = extracted.flatMap((e) => e.genres);
-  const referenced = [...new Set([
-    ...credits.map((c) => c.personId),
-    ...genreLinks.map((g) => g.genreId),
-  ])];
+  const referenced = [
+    ...new Set([...credits.map((c) => c.personId), ...genreLinks.map((g) => g.genreId)]),
+  ];
 
   if (referenced.length > 0) {
     const named = (await fetchEntities(referenced))
@@ -191,7 +186,23 @@ Deno.serve(async (request: Request) => {
   if (tvdbKey) {
     const tvdb = createTvdbClient({ apiKey: tvdbKey, pin: Deno.env.get('TVDB_PIN') ?? undefined });
 
+    // A film the catalog already carries artwork for is not asked about
+    // again. The upsert above keeps the stored poster either way, so a
+    // second lookup could only produce the same answer at TheTVDB's cost.
+    const { data: existing } = await supabase
+      .from('films')
+      .select('wikidata_id')
+      .eq('poster_source', 'tvdb')
+      .in(
+        'wikidata_id',
+        extracted.map((e) => e.film.wikidataId),
+      );
+
+    const settled = new Set((existing ?? []).map((row) => row.wikidata_id));
+
     for (const entry of extracted) {
+      if (settled.has(entry.film.wikidataId)) continue;
+
       if (!entry.film.imdbId) {
         // No id means no bridge, ever. The procedural card is the answer,
         // not a waiting room.
