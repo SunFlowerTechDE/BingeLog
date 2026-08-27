@@ -27,7 +27,49 @@ berauer@spio-fsk.de
 
 Formular: https://www.fsk.de/blog/portfolio-items/fsk-api-freigaben/
 
-## Entwurf
+## Für das Angebotsformular
+
+Das Formular auf der FSK-Seite fragt nach Name, E-Mail, Telefon und einer
+kurzen Beschreibung des Verwendungszwecks. In dieses eine Feld gehört
+alles, wonach sich der Preis richtet: Umfang, Abfragemuster, Erlöslage.
+
+```
+BingeLog ist ein Filmtagebuch für den deutschsprachigen Raum:
+Nutzerinnen und Nutzer tragen gesehene Filme ein, bewerten sie und
+schreiben Rezensionen. Die Seite ist noch nicht öffentlich, ein Start
+ist für dieses Jahr geplant, Erlöse gibt es bislang keine.
+
+Ich möchte auf jeder Filmseite die FSK-Freigabe anzeigen, also die
+Altersstufe und je nach Vorgabe die Zusatzhinweise. Der Abgleich liefe
+über die IMDb-ID, die in meinem Datenbestand ohnehin der Schlüssel ist.
+
+Zum Umfang: Der Katalog umfasst derzeit rund 150 Filme und soll
+mittelfristig auf einige zehntausend wachsen. Abgefragt würde einmal je
+Film beim Aufnehmen in den Katalog, danach aus dem eigenen Bestand,
+dazu ein regelmäßiger Abgleich auf geänderte Freigaben. Es entstünde
+also keine Abfrage je Seitenaufruf.
+
+Über ein Angebot sowie Spezifikation und Demo-Zugang würde ich mich
+freuen.
+```
+
+Falls das Feld knapper ausfällt:
+
+```
+Filmtagebuch für den deutschsprachigen Raum, noch nicht gestartet und
+ohne Erlöse. Ich möchte auf jeder Filmseite die FSK-Freigabe anzeigen,
+Abgleich über die IMDb-ID. Katalog derzeit rund 150 Filme, mittelfristig
+einige zehntausend. Abfrage einmal je Film beim Aufnehmen, danach aus
+dem eigenen Bestand, plus regelmäßiger Abgleich auf Änderungen. Über ein
+Angebot und einen Demo-Zugang würde ich mich freuen.
+```
+
+**Warum das Abfragemuster hineingehört:** Wer nicht dazusagt, dass
+zwischengespeichert wird, bekommt ein Angebot für Abfragen je
+Seitenaufruf kalkuliert. Das ist um Größenordnungen teurer und trifft
+nicht zu.
+
+## Entwurf für eine Mail
 
 **Betreff:** `Anfrage FSK-API — Filmtagebuch für den deutschsprachigen Raum`
 
