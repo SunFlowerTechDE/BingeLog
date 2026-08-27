@@ -16,6 +16,7 @@
  *   - pg_cron is absent, so the facet refresh is not scheduled. The
  *     migration handles that and verify.sql check 8 catches it in prod.
  */
+import { createServer } from 'node:net';
 import { readdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -91,6 +92,33 @@ export interface Harness {
   stop: () => Promise<void>;
 }
 
+/**
+ * A port the operating system says is free right now.
+ *
+ * Deriving one from the process id looked fine and was not: node --test
+ * runs each file in its own process, every file starts its own cluster,
+ * and two pids that agree modulo the range collide. That produced a test
+ * run that failed once and passed on the retry, which is the worst kind.
+ */
+async function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (address === null || typeof address === 'string') {
+        server.close();
+        reject(new Error('could not determine a free port'));
+        return;
+      }
+      const { port } = address;
+      server.close(() => {
+        resolve(port);
+      });
+    });
+  });
+}
+
 export async function startHarness(): Promise<Harness> {
   const databaseDir = path.join(
     tmpdir(),
@@ -101,7 +129,7 @@ export async function startHarness(): Promise<Harness> {
     databaseDir,
     user: 'postgres',
     password: 'postgres',
-    port: 55432 + (process.pid % 500),
+    port: await freePort(),
     persistent: false,
   });
 

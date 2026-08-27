@@ -8,7 +8,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { renderPosterSVG } from '../src/render.ts';
+import { renderPosterSVG, posterLayers } from '../src/render.ts';
 import { posterVersion } from '../src/version.ts';
 import { PALETTES } from '../src/palette.ts';
 import { hash32, seededRandom } from '../src/hash.ts';
@@ -269,5 +269,44 @@ describe('the cache version token', () => {
     const withMillis = '2026-08-26T15:00:00.334+00:00';
     const withoutMillis = '2026-08-26T15:00:00.000+00:00';
     assert.notEqual(posterVersion(withMillis), posterVersion(withoutMillis));
+  });
+});
+
+describe('the card taken apart', () => {
+  it('composes back into exactly the same card', () => {
+    // The layers exist so an animation can reveal them one at a time.
+    // If assembling them by hand drifted from renderPosterSVG, the built
+    // card would differ from the one the grid shows afterwards.
+    for (const film of SAMPLE_FILMS) {
+      const layers = posterLayers(film);
+      const rebuilt =
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${String(layers.width)} ${String(layers.height)}" ` +
+        `width="${String(layers.width)}" height="${String(layers.height)}" role="img" ` +
+        `aria-label="${film.title.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')}">` +
+        `<defs>${layers.defs}</defs>` +
+        layers.background +
+        layers.pattern +
+        `<g font-family="${layers.fontFamily}">${layers.titleLines.join('')}${layers.rule}${layers.meta}</g>` +
+        `</svg>`;
+
+      assert.equal(rebuilt, renderPosterSVG(film), `mismatch for ${film.title}`);
+    }
+  });
+
+  it('hands over the layers in the order the card is built', () => {
+    const layers = posterLayers(SAMPLE_FILMS[0] ?? { wikidataId: 'Q1', title: 'Test' });
+
+    // Ground first, type last. An animation that follows this shows how
+    // the card is made rather than decorating it.
+    assert.match(layers.background, /^<rect/);
+    assert.match(layers.pattern, /clip-path/);
+    assert.ok(layers.titleLines.length > 0);
+    assert.match(layers.rule, /^<rect/);
+  });
+
+  it('carries the palette, so a caller can tint the frame it draws', () => {
+    const layers = posterLayers({ wikidataId: 'Q125772', title: 'Solaris' });
+    assert.match(layers.palette.background, /^#[0-9a-f]{6}$/);
+    assert.match(layers.palette.title, /^#[0-9a-f]{6}$/);
   });
 });

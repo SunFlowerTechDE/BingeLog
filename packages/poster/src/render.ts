@@ -99,7 +99,34 @@ function renderPattern(seed: number, palette: PosterPalette): string {
   return `<g clip-path="url(#frame)">${rings.join('')}</g>`;
 }
 
-export function renderPosterSVG(film: PosterInput): string {
+/**
+ * The card taken apart.
+ *
+ * Same geometry, same palette, same order — just handed over in pieces
+ * so a caller can reveal them one at a time. The build order is not a
+ * presentation choice: it is how the card is actually composed, ground
+ * first and type last, and an animation that follows it shows what is
+ * happening rather than decorating it.
+ */
+export interface PosterLayers {
+  width: number;
+  height: number;
+  palette: PosterPalette;
+  /** clipPath the pattern needs. */
+  defs: string;
+  background: string;
+  pattern: string;
+  /** One string per line of the title, in reading order. */
+  titleLines: string[];
+  rule: string;
+  meta: string;
+  /** Font stack the text layers expect on their group. */
+  fontFamily: string;
+  /** True when the title had to be cut to fit. */
+  truncated: boolean;
+}
+
+export function posterLayers(film: PosterInput): PosterLayers {
   const seed = hash32(film.wikidataId);
   const palette = pick(PALETTES, seed);
 
@@ -123,20 +150,18 @@ export function renderPosterSVG(film: PosterInput): string {
   // one line across the grid regardless of how many rows it needs.
   const titleTop = titleBottom - title.lines.length * title.lineHeight;
 
-  const titleLines = title.lines
-    .map((line, index) => {
-      const y = titleTop + (index + 0.78) * title.lineHeight;
-      const attributes = [
-        `x="${String(MARGIN)}"`,
-        `y="${String(Math.round(y))}"`,
-        `font-size="${String(title.fontSize)}"`,
-        'font-weight="700"',
-        'letter-spacing="-0.015em"',
-        `fill="${palette.title}"`,
-      ].join(' ');
-      return `<text ${attributes}>${escapeXml(line)}</text>`;
-    })
-    .join('');
+  const titleLines = title.lines.map((line, index) => {
+    const y = titleTop + (index + 0.78) * title.lineHeight;
+    const attributes = [
+      `x="${String(MARGIN)}"`,
+      `y="${String(Math.round(y))}"`,
+      `font-size="${String(title.fontSize)}"`,
+      'font-weight="700"',
+      'letter-spacing="-0.015em"',
+      `fill="${palette.title}"`,
+    ].join(' ');
+    return `<text ${attributes}>${escapeXml(line)}</text>`;
+  });
 
   const year = film.releaseYear ? String(film.releaseYear) : '';
   const director = film.director?.trim() ?? '';
@@ -175,19 +200,34 @@ export function renderPosterSVG(film: PosterInput): string {
     }
   }
 
-  // A single rule anchors the metadata to the title block.
-  const rule =
-    `<rect x="${String(MARGIN)}" y="${String(footTop - 2)}" width="${String(Math.round(CONTENT_WIDTH * 0.22))}" ` +
-    `height="2" fill="${palette.secondary}" opacity="0.55"/>`;
+  return {
+    width: WIDTH,
+    height: HEIGHT,
+    palette,
+    defs: `<clipPath id="frame"><rect width="${String(WIDTH)}" height="${String(HEIGHT)}"/></clipPath>`,
+    background: `<rect width="${String(WIDTH)}" height="${String(HEIGHT)}" fill="${palette.background}"/>`,
+    pattern: renderPattern(seed, palette),
+    titleLines,
+    rule:
+      `<rect x="${String(MARGIN)}" y="${String(footTop - 2)}" width="${String(Math.round(CONTENT_WIDTH * 0.22))}" ` +
+      `height="2" fill="${palette.secondary}" opacity="0.55"/>`,
+    meta: metaParts.join(''),
+    fontFamily: FONT_STACK,
+    truncated: title.truncated,
+  };
+}
+
+export function renderPosterSVG(film: PosterInput): string {
+  const layers = posterLayers(film);
 
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${String(WIDTH)} ${String(HEIGHT)}" ` +
-    `width="${String(WIDTH)}" height="${String(HEIGHT)}" role="img" ` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${String(layers.width)} ${String(layers.height)}" ` +
+    `width="${String(layers.width)}" height="${String(layers.height)}" role="img" ` +
     `aria-label="${escapeXml(film.title)}">` +
-    `<defs><clipPath id="frame"><rect width="${String(WIDTH)}" height="${String(HEIGHT)}"/></clipPath></defs>` +
-    `<rect width="${String(WIDTH)}" height="${String(HEIGHT)}" fill="${palette.background}"/>` +
-    renderPattern(seed, palette) +
-    `<g font-family="${FONT_STACK}">${titleLines}${rule}${metaParts.join('')}</g>` +
+    `<defs>${layers.defs}</defs>` +
+    layers.background +
+    layers.pattern +
+    `<g font-family="${layers.fontFamily}">${layers.titleLines.join('')}${layers.rule}${layers.meta}</g>` +
     `</svg>`
   );
 }
