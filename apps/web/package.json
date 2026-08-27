@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint app src",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@binge-log/db": "workspace:*",
@@ -22,11 +25,13 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.3",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^22.15.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "tailwindcss": "^4.1.13",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "wrangler": "^4.126.0"
   }
 }

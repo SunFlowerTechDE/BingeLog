@@ -66,3 +66,8 @@ packages/pipeline/data/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# wrangler local secrets
+.dev.vars
+.open-next/
+.wrangler/

@@ -82,16 +82,61 @@ Deployments, Backups und Überwachung an dir hängen. Bei Teilzeitarbeit
 neben einem Hauptjob ist das keine Kleinigkeit, sondern eine
 wiederkehrende Verpflichtung.
 
-## Empfehlung
+## Erprobt am 27.08.2026
 
-**Cloudflare Workers**, zunächst kostenlos, bei Bedarf 5 $. Es hält das
-Budget der Roadmap, ist von Anfang an kommerziell zulässig und
-verursacht keinen Wartungsaufwand.
+Der Adapter wurde nicht angenommen, sondern ausprobiert. Die App läuft
+lokal auf `workerd`, dem Laufzeitsystem, das Cloudflare auch in Produktion
+benutzt:
 
-Der Adapter ist vor der Entscheidung an einem Deployment zu erproben.
-Zeigt sich dort ein Problem, ist **Hetzner** die Rückfallposition — nicht
-Vercel, weil dessen Preis das Budget dauerhaft verschiebt.
+| Geprüft | Ergebnis |
+|---|---|
+| Build über `@opennextjs/cloudflare` | läuft durch |
+| Startseite und Suche | 200, Treffer aus Supabase korrekt sortiert |
+| Filmdetail | Originaltitel kyrillisch, Attribution vorhanden |
+| Prozedurale Karte | SVG mit korrekten Cache-Headern |
+| Geschützte Route ohne Session | 307 auf `/anmelden?weiter=…` |
 
-**Was jetzt zu tun ist: nichts.** Die Entscheidung wird gebraucht, wenn
-M3 steht. Am Code ändert sie nichts, und keine der Varianten verlangt
-eine Festlegung im Voraus.
+Die Middleware, die die Session erneuert, funktioniert also — trotz der
+Build-Warnung, dass Node.js-Middleware auf Cloudflare experimentell sei.
+Das ist die Stelle, die man im Auge behalten muss, wenn ein Update von
+OpenNext oder Next.js ansteht.
+
+### Die Grenze, die zuerst greift, ist nicht der Traffic
+
+| Grenze | Free | Paid | BingeLog heute |
+|---|---|---|---|
+| Worker-Größe komprimiert | 3 MB | 10 MB | **2,60 MB** |
+| Anfragen pro Tag | 100.000 | 10 Mio./Monat | weit darunter |
+| CPU-Zeit pro Aufruf | 10 ms | 5 min | Wartezeit zählt nicht mit |
+
+Gemessen mit `wrangler deploy --dry-run`: 11.692 KiB roh, **2.664 KiB
+komprimiert**. Das sind 87 Prozent der kostenlosen Grenze, bei einer App
+mit fünf Seiten.
+
+**Daraus folgt:** Die kostenlose Stufe trägt den aktuellen Stand, aber
+voraussichtlich nicht bis zum Launch. Tagebuch, Facetten, Listen, Feed
+und Diskussion kommen noch dazu. Der Wechsel auf 5 $ wird eher durch die
+Bundle-Größe ausgelöst als durch Nutzerzahlen — und ist ein Klick im
+Dashboard, keine Migration.
+
+## Entscheidung
+
+**Cloudflare Workers**, zunächst die kostenlose Stufe. Getroffen am
+27.08.2026, nachdem der Adapter erprobt war.
+
+Begründung: Es hält das Budget der Roadmap, ist von Anfang an kommerziell
+zulässig, verursacht keinen Wartungsaufwand, und die App läuft
+nachweislich darauf.
+
+**Rückfallposition ist Hetzner**, nicht Vercel — dessen 20 $ verschieben
+das Infrastrukturbudget dauerhaft um mehr als die Hälfte, für eine
+Leistung, die diese App nicht braucht.
+
+### Was das im Alltag heißt
+
+- `pnpm --filter @binge-log/web cf:build` baut das Worker-Bundle
+- `cf:preview` fährt es lokal auf `workerd`
+- `cf:deploy` veröffentlicht, sobald ein Cloudflare-Konto besteht
+- `bingelog.eu` bleibt bei INWX registriert, die Nameserver zeigen auf
+  Cloudflare — das verlangt eine Umstellung bei INWX, sonst kann keine
+  eigene Domain auf den Worker zeigen

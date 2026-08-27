@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bingelog-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-01",
+  // Next.js needs Node built-ins; without this the Worker cannot even boot.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
