@@ -71,7 +71,6 @@ export function LogPanel({
   entry: OwnEntry | null;
   ownFacets: Partial<Record<string, number>>;
 }) {
-  const [open, setOpen] = useState(false);
   const [facetsOpen, setFacetsOpen] = useState(Object.keys(ownFacets).length > 0);
   const [state, action] = useActionState<EntryResult, FormData>(saveEntry, {});
   // Tapping a popcorn and deleting an entry both go straight to the
@@ -88,7 +87,6 @@ export function LogPanel({
   // something happened; the note says what.
   useEffect(() => {
     if (!state.saved) return;
-    setOpen(false);
     setConfirmation('Gespeichert');
     const timer = setTimeout(() => {
       setConfirmation(undefined);
@@ -99,76 +97,58 @@ export function LogPanel({
   }, [state]);
 
   return (
-    <section className="border-border flex flex-col gap-3 border-t pt-5">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <span className="text-muted-foreground text-xs">Deine Bewertung</span>
-        <RatingInput
-          value={entry?.rating ?? null}
-          onSelect={async (rating) => {
-            setProblem(undefined);
-            // Clicking the last popcorn away is how a rating is taken
-            // back, so zero means remove the entry rather than store a
-            // rating the schema does not allow.
-            const result = rating === 0 ? await unrateFilm(filmId) : await rateFilm(filmId, rating);
-            setProblem(result.error);
-            return result;
-          }}
-        />
-      </div>
+    <section className="border-border bg-card/40 flex flex-col gap-5 rounded-lg border p-5">
+      <form action={action} className="flex flex-col gap-5">
+        <input type="hidden" name="filmId" value={filmId} />
+        {entry ? <input type="hidden" name="entryId" value={entry.id} /> : null}
 
-      <ActionNote message={problem} />
-      <ActionNote message={confirmation} tone="info" />
-
-      <div className="flex flex-wrap items-center gap-4 text-sm">
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(!open);
-          }}
-          aria-expanded={open}
-          className="text-muted-foreground hover:text-foreground underline underline-offset-4"
-        >
-          {open ? 'Details zuklappen' : 'Details eintragen'}
-        </button>
-
-        {entry ? (
-          <form
-            action={async () => {
-              setProblem(undefined);
-              const result = await deleteEntry(entry.id, filmId);
-              setProblem(result.error);
-            }}
-          >
-            <button
-              type="submit"
-              className="text-muted-foreground hover:text-destructive underline underline-offset-4"
-            >
-              Eintrag löschen
-            </button>
-          </form>
-        ) : null}
-      </div>
-
-      {open ? (
-        <form action={action} className="flex max-w-lg flex-col gap-4 pt-1">
-          <input type="hidden" name="filmId" value={filmId} />
-          {entry ? <input type="hidden" name="entryId" value={entry.id} /> : null}
-
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Bewertung</span>
-            <RatingInput value={entry?.rating ?? null} size={26} />
+        {/* Bewertung und Rezension nebeneinander: das eine sind zwei
+            Taps, das andere ein Absatz. Die Bewertung ist schon
+            gespeichert, bevor der Knopf beruehrt wird — sie steht hier
+            nicht als erster Schritt eines Formulars, sondern als das,
+            was sie ist (ADR-009). */}
+        <div className="flex flex-col gap-5 lg:flex-row lg:gap-8">
+          <div className="flex shrink-0 flex-col gap-2 lg:w-52">
+            <span className="text-sm font-medium">Deine Bewertung</span>
+            <RatingInput
+              value={entry?.rating ?? null}
+              size={26}
+              onSelect={async (rating) => {
+                setProblem(undefined);
+                // Clicking the last popcorn away is how a rating is taken
+                // back, so zero means remove the entry rather than store a
+                // rating the schema does not allow.
+                const result =
+                  rating === 0 ? await unrateFilm(filmId) : await rateFilm(filmId, rating);
+                setProblem(result.error);
+                return result;
+              }}
+            />
+            <ActionNote message={problem} />
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <label className="flex min-w-0 flex-1 flex-col gap-2">
+            <span className="text-sm font-medium">Deine Rezension</span>
+            <textarea
+              name="review"
+              rows={4}
+              defaultValue={entry?.review ?? ''}
+              className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
+            />
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+          <div className="flex flex-col gap-2">
             <span className="text-sm font-medium">Gesehen am</span>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <input
                 type="date"
                 name="watchedOn"
                 defaultValue={entry?.watched_on ?? ''}
                 disabled={today}
                 aria-label="Datum"
-                className="border-border bg-card focus:ring-ring w-48 rounded-md border px-3 py-2 text-base outline-none focus:ring-2 disabled:opacity-40"
+                className="border-border bg-card focus:ring-ring w-44 rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 disabled:opacity-40"
               />
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -183,16 +163,6 @@ export function LogPanel({
               </label>
             </div>
           </div>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Notiz</span>
-            <textarea
-              name="review"
-              rows={4}
-              defaultValue={entry?.review ?? ''}
-              className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
-            />
-          </label>
 
           <fieldset className="flex flex-col gap-2">
             <legend className="text-sm font-medium">Wer sieht den Eintrag</legend>
@@ -220,54 +190,68 @@ export function LogPanel({
                 </label>
               ))}
             </div>
-            {/* Ein Schalter mit Folgen muss die Folgen nennen. Dass die
-                eigene Stimme aus dem Schnitt faellt, stand vorher
-                nirgends. */}
-            <p aria-live="polite" className="text-muted-foreground text-xs">
-              {VISIBILITIES.find((step) => step.value === visibility)?.hint}
-            </p>
           </fieldset>
 
-          <div className="border-border flex flex-col gap-3 border-t pt-4">
-            <button
-              type="button"
-              onClick={() => {
-                setFacetsOpen(!facetsOpen);
-              }}
-              aria-expanded={facetsOpen}
-              className="text-muted-foreground hover:text-foreground self-start text-sm underline underline-offset-4"
-            >
-              {facetsOpen ? 'Detailliert bewerten zuklappen' : 'Detailliert bewerten'}
-            </button>
-
-            {facetsOpen ? (
-              <div className="flex flex-col gap-2.5">
-                <p className="text-muted-foreground text-xs">
-                  Alles freiwillig. Was du auslässt, bleibt leer.
-                </p>
-                {FACET_KINDS.map((facet) => (
-                  <div key={facet} className="flex items-center justify-between gap-4">
-                    <span className="text-sm">{FACET_LABELS_DE[facet]}</span>
-                    <RatingInput
-                      name={`facet.${facet}`}
-                      value={ownFacets[facet] ?? null}
-                      size={20}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="ml-auto flex items-center gap-4">
+            <ActionNote message={state.error} />
+            <ActionNote message={confirmation} tone="info" />
             <button
               type="submit"
               className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-semibold"
             >
-              Speichern
+              Rezension speichern
             </button>
-            <ActionNote message={state.error} />
           </div>
+        </div>
+
+        {/* Ein Schalter mit Folgen muss die Folgen nennen. Dass die
+            eigene Stimme aus dem Schnitt faellt, stand vorher nirgends. */}
+        <p aria-live="polite" className="text-muted-foreground -mt-2 text-xs">
+          {VISIBILITIES.find((step) => step.value === visibility)?.hint}
+        </p>
+
+        <div className="border-border flex flex-col gap-3 border-t pt-4">
+          <button
+            type="button"
+            onClick={() => {
+              setFacetsOpen(!facetsOpen);
+            }}
+            aria-expanded={facetsOpen}
+            className="text-muted-foreground hover:text-foreground self-start text-sm underline underline-offset-4"
+          >
+            {facetsOpen ? 'Einzeln bewerten zuklappen' : 'Einzeln bewerten'}
+          </button>
+
+          {facetsOpen ? (
+            <div className="grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+              <p className="text-muted-foreground text-xs sm:col-span-2">
+                Alles freiwillig. Was du auslässt, bleibt leer.
+              </p>
+              {FACET_KINDS.map((facet) => (
+                <div key={facet} className="flex items-center justify-between gap-4">
+                  <span className="text-sm">{FACET_LABELS_DE[facet]}</span>
+                  <RatingInput name={`facet.${facet}`} value={ownFacets[facet] ?? null} size={20} />
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </form>
+
+      {entry ? (
+        <form
+          action={async () => {
+            setProblem(undefined);
+            const result = await deleteEntry(entry.id, filmId);
+            setProblem(result.error);
+          }}
+        >
+          <button
+            type="submit"
+            className="text-muted-foreground hover:text-destructive text-sm underline underline-offset-4"
+          >
+            Eintrag löschen
+          </button>
         </form>
       ) : null}
     </section>

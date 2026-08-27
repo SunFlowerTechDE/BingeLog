@@ -6,9 +6,10 @@ import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { LogPanel, type OwnEntry } from '@/components/log-panel';
 import { WatchlistButton } from '@/components/watchlist-button';
-import { formatWatchedOn } from '@/lib/dates';
+import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
-import { FACET_KINDS, FACET_LABELS_DE } from '@binge-log/db';
+import { CastList } from '@/components/cast-list';
+import { FacetPanel, type FacetAverage } from '@/components/facet-panel';
 
 /**
  * M3 3.3 — the film detail page.
@@ -16,7 +17,10 @@ import { FACET_KINDS, FACET_LABELS_DE } from '@binge-log/db';
  * Deliberately without a synopsis. Wikidata carries no prose, and pulling
  * the Wikipedia text over the sitelink would be CC BY-SA and would drag
  * ShareAlike across the whole page. That is a decision to take on
- * purpose, not to slide into (M3 3.3).
+ * purpose, not to slide into (M3 3.3). Trailer and FSK badge are absent
+ * for the same reason: no source that is free, complete and clean at
+ * once. The layout leaves no hole where they would go — a block that is
+ * empty on every film is not a placeholder, it is a defect.
  */
 
 interface FilmDetail {
@@ -86,7 +90,18 @@ export default async function FilmPage({
       .filter((name): name is string => Boolean(name));
 
   const directors = byRole('director');
-  const cast = byRole('cast').slice(0, 12);
+  const cast = byRole('cast');
+
+  const { data: genreRows } = await supabase
+    .from('film_genres')
+    .select('genres(label_de, label_en)')
+    .eq('film_id', wikidataId);
+
+  // Deutsch, wo Wikidata es fuehrt; sonst lieber das englische Wort als
+  // eine Luecke, denn ein Genre ohne Namen ist kein Genre.
+  const genres = (genreRows ?? [])
+    .map((row) => row.genres.label_de ?? row.genres.label_en)
+    .filter((name): name is string => Boolean(name));
 
   const viewer = await getViewer();
 
@@ -121,14 +136,32 @@ export default async function FilmPage({
     onWatchlist = watched !== null;
   }
 
+  const { data: summaryRows } = await supabase.rpc('film_rating_summary', {
+    film: wikidataId,
+  });
+  const verdict = summaryRows?.[0];
+
+  const { data: facetRows } = await supabase
+    .from('film_facet_averages')
+    .select('facet, avg_score, vote_count')
+    .eq('film_id', wikidataId);
+
+  const facetAverages = (facetRows ?? []) as FacetAverage[];
+  // Die Zweispaltigkeit haengt daran, dass es auch zwei Dinge gibt.
+  // Sonst steht die Rezensionskarte in der schmaleren Spalte und rechts
+  // daneben nichts.
+  const hasFacets =
+    facetAverages.length > 0 || Object.values(ownFacets).some((score) => score !== undefined);
+
   const title = film.title_de ?? film.title_original;
   const showsOriginal = film.title_de !== null && film.title_de !== film.title_original;
   const hasArtwork = film.poster_source === 'tvdb' && film.poster_url;
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-8 px-5 py-8 sm:flex-row sm:gap-10">
-      <div className="w-[180px] shrink-0 sm:w-[220px]">
-        <div className="bg-card aspect-[2/3] overflow-hidden rounded">
+    <main className="mx-auto flex max-w-6xl flex-col gap-8 px-5 py-8 lg:flex-row lg:gap-8">
+      {/* Linke Schiene: das Plakat und was unveraenderlich zum Film gehoert. */}
+      <aside className="flex w-full shrink-0 flex-col gap-4 lg:w-[260px]">
+        <div className="bg-card aspect-[2/3] overflow-hidden rounded-lg">
           {/* A plain img on purpose: next/image would proxy and cache the
               artwork, and linking rather than mirroring is what the licence
               check settled (docs/legal/thetvdb-lizenz.md). */}
@@ -142,7 +175,7 @@ export default async function FilmPage({
         {hasArtwork ? (
           // Attribution is a licence obligation, not a courtesy, and it
           // has to be a direct link visible to the end user.
-          <p className="text-muted-foreground mt-2 text-[11px]">
+          <p className="text-muted-foreground text-[11px]">
             Plakat von{' '}
             <a
               href="https://thetvdb.com"
@@ -154,17 +187,8 @@ export default async function FilmPage({
             </a>
           </p>
         ) : null}
-      </div>
 
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-          {showsOriginal ? (
-            <p className="text-muted-foreground text-base">{film.title_original}</p>
-          ) : null}
-        </div>
-
-        <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+        <dl className="border-border bg-card/40 flex flex-col gap-3 rounded-lg border p-4 text-sm">
           {film.release_year ? (
             <div>
               <dt className="text-muted-foreground text-xs">Jahr</dt>
@@ -183,26 +207,81 @@ export default async function FilmPage({
               <dd>{directors.join(', ')}</dd>
             </div>
           ) : null}
+          {genres.length > 0 ? (
+            <div className="flex flex-col gap-1.5">
+              <dt className="text-muted-foreground text-xs">Genre</dt>
+              <dd className="flex flex-wrap gap-1.5">
+                {genres.map((genre) => (
+                  <span
+                    key={genre}
+                    className="border-border rounded-full border px-2.5 py-0.5 text-xs"
+                  >
+                    {genre}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          ) : null}
         </dl>
 
-        {cast.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            <h2 className="text-muted-foreground text-xs">Besetzung</h2>
-            <p className="text-sm leading-relaxed">{cast.join(' · ')}</p>
-          </div>
-        ) : null}
+        {viewer ? <WatchlistButton filmId={wikidataId} initiallyOn={onWatchlist} /> : null}
+      </aside>
 
-        <CommunityVerdict wikidataId={wikidataId} />
+      <div className="flex min-w-0 flex-1 flex-col gap-6">
+        {/* Kopf: Titel links, die beiden Zahlen rechts. */}
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+            {showsOriginal ? (
+              <p className="text-muted-foreground text-base">{film.title_original}</p>
+            ) : null}
+            <p className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              {film.release_year ? <span>{film.release_year}</span> : null}
+              {film.runtime_min ? <span>{film.runtime_min} Minuten</span> : null}
+              {directors.length > 0 ? <span>{directors.join(', ')}</span> : null}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 gap-8">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-muted-foreground text-xs">Ø Bewertung</span>
+              {verdict?.votes ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <PopcornRating rating={verdict.average} size={20} />
+                    <span className="text-lg font-semibold tabular-nums">
+                      {formatRating(verdict.average)}
+                    </span>
+                  </div>
+                  <span className="text-muted-foreground text-xs">
+                    {verdict.votes === 1 ? '1 Bewertung' : `${String(verdict.votes)} Bewertungen`}
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground text-sm">noch keine</span>
+              )}
+            </div>
+
+            {viewer && ownEntry?.rating ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-muted-foreground text-xs">Deine Bewertung</span>
+                <div className="flex items-center gap-2">
+                  <PopcornRating rating={ownEntry.rating} size={20} />
+                  <span className="text-lg font-semibold tabular-nums">
+                    {formatRating(ownEntry.rating)}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </header>
+
+        {cast.length > 0 ? <CastList names={cast} /> : null}
 
         {viewer ? (
-          <>
-            <LogPanel filmId={wikidataId} entry={ownEntry} ownFacets={ownFacets} />
-            <div>
-              <WatchlistButton filmId={wikidataId} initiallyOn={onWatchlist} />
-            </div>
-          </>
+          <LogPanel filmId={wikidataId} entry={ownEntry} ownFacets={ownFacets} />
         ) : (
-          <section className="border-border border-t pt-5">
+          <section className="border-border bg-card/40 rounded-lg border p-5">
             <p className="text-muted-foreground text-sm">
               <Link href="/anmelden" className="text-foreground underline underline-offset-4">
                 Melde dich an
@@ -212,7 +291,17 @@ export default async function FilmPage({
           </section>
         )}
 
-        <Reviews wikidataId={wikidataId} page={page} />
+        {/* Facetten und fremde Rezensionen nebeneinander: das eine ist
+            eine Zahlenreihe, das andere Fliesstext. Untereinander gibt
+            das eine sehr lange, sehr schmale Spalte. */}
+        {hasFacets ? (
+          <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
+            <FacetPanel averages={facetAverages} own={ownFacets} />
+            <Reviews wikidataId={wikidataId} page={page} />
+          </div>
+        ) : (
+          <Reviews wikidataId={wikidataId} page={page} />
+        )}
       </div>
     </main>
   );
@@ -247,6 +336,7 @@ async function Reviews({ wikidataId, page }: { wikidataId: string; page: number 
     review: string;
     watched_on: string | null;
     is_rewatch: boolean;
+    created_at: string;
     profiles: { username: string } | null;
   }[];
 
@@ -256,23 +346,28 @@ async function Reviews({ wikidataId, page }: { wikidataId: string; page: number 
   const reviews = rows.slice(0, REVIEWS_PER_PAGE);
 
   return (
-    <section className="border-border flex flex-col gap-5 border-t pt-5">
-      <h2 className="text-muted-foreground text-xs">Was andere geschrieben haben</h2>
+    <section className="border-border bg-card/40 flex flex-col gap-4 rounded-lg border p-5">
+      <h2 className="text-base font-semibold tracking-tight">Neueste Bewertungen</h2>
 
-      <ol className="flex flex-col gap-5">
+      <ol className="flex flex-col gap-4">
         {reviews.map((entry) => {
           const watched = formatWatchedOn(entry.watched_on);
           return (
             <li key={entry.id} className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 <span className="font-medium">{entry.profiles?.username ?? 'jemand'}</span>
-                {entry.rating === null ? null : <PopcornRating rating={entry.rating} size={18} />}
-                {watched ? <span className="text-muted-foreground">{watched}</span> : null}
+                {entry.rating === null ? null : <PopcornRating rating={entry.rating} size={16} />}
                 {entry.is_rewatch ? (
                   <span className="text-muted-foreground">Wiedersehen</span>
                 ) : null}
+                {/* Gesehen am und geschrieben vor: das eine ist der
+                    Abend, das andere die Frische der Meinung. */}
+                <span className="text-muted-foreground ml-auto">{formatAge(entry.created_at)}</span>
               </div>
               <p className="whitespace-pre-line text-sm leading-relaxed">{entry.review}</p>
+              {watched ? (
+                <span className="text-muted-foreground text-xs">gesehen am {watched}</span>
+              ) : null}
             </li>
           );
         })}
@@ -297,79 +392,6 @@ async function Reviews({ wikidataId, page }: { wikidataId: string; page: number 
             </Link>
           ) : null}
         </div>
-      ) : null}
-    </section>
-  );
-}
-
-/**
- * The community verdict: the star average with its count, and the facet
- * averages beneath it.
- *
- * Facets appear only from five ratings on. "Schauspiel 2,0 (1 Stimme)"
- * is misleading and invites brigading (M3, Fallstricke), which is why the
- * threshold lives in the materialized view rather than in this component.
- */
-async function CommunityVerdict({ wikidataId }: { wikidataId: string }) {
-  const supabase = await createClient();
-
-  const { data: summary } = await supabase.rpc('film_rating_summary', { film: wikidataId });
-  const verdict = summary?.[0];
-
-  const { data: facetRows } = await supabase
-    .from('film_facet_averages')
-    .select('facet, avg_score, vote_count')
-    .eq('film_id', wikidataId);
-
-  const facets = new Map((facetRows ?? []).map((row) => [row.facet, row]));
-
-  if (!verdict?.votes) {
-    return (
-      <section className="border-border border-t pt-5">
-        <p className="text-muted-foreground text-sm">Noch nicht bewertet.</p>
-      </section>
-    );
-  }
-
-  // numeric comes back as a JSON number, so no conversion is needed.
-  const average = verdict.average;
-
-  return (
-    <section className="border-border flex flex-col gap-4 border-t pt-5">
-      <div className="flex items-center gap-3">
-        <PopcornRating rating={average} size={22} />
-        <span className="text-sm font-medium tabular-nums">{formatRating(average)}</span>
-        <span className="text-muted-foreground text-sm">
-          {verdict.votes === 1 ? '1 Bewertung' : `${String(verdict.votes)} Bewertungen`}
-        </span>
-      </div>
-
-      {facets.size > 0 ? (
-        <dl className="flex max-w-md flex-col gap-1.5">
-          {FACET_KINDS.filter((facet) => facets.has(facet)).map((facet) => {
-            const row = facets.get(facet);
-            const score = row?.avg_score ?? 0;
-            return (
-              <div key={facet} className="flex items-center gap-3 text-sm">
-                <dt className="text-muted-foreground w-44 shrink-0 text-xs">
-                  {FACET_LABELS_DE[facet]}
-                </dt>
-                <dd className="flex flex-1 items-center gap-2">
-                  <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
-                    <span
-                      className="bg-primary block h-full rounded-full"
-                      style={{ width: `${String((score / 10) * 100)}%` }}
-                    />
-                  </span>
-                  <span className="w-8 text-right text-xs tabular-nums">{formatRating(score)}</span>
-                  <span className="text-muted-foreground w-8 text-right text-xs tabular-nums">
-                    {String(row?.vote_count ?? 0)}
-                  </span>
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
       ) : null}
     </section>
   );
