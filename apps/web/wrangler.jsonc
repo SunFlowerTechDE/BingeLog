@@ -1,5 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Zwei Worker, nicht einer mit zwei Adressen.
+  //
+  // Der Standard ist die Testumgebung: `cf:deploy` ohne weiteres Zutun
+  // geht auf workers.dev und nie auf bingelog.eu. Die Hauptseite braucht
+  // den ausdruecklichen Griff zu `cf:deploy:prod`. Wer sich vertippt,
+  // veroeffentlicht auf dem Testserver — nicht umgekehrt.
+  //
+  // Dass der unbenannte Worker die Testumgebung ist und die Hauptseite
+  // den Zusatz traegt, ist bewusst so herum: die Adresse
+  // bingelog-web.binge-log-web.workers.dev leitet sich aus dem Namen ab,
+  // und genau die ist die eingespielte Arbeitsadresse.
   "name": "bingelog-web",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-08-01",
@@ -16,19 +28,40 @@
     "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm"
   },
-  // Ohne diese Bindung nimmt Cloudflare die Anfrage fuer die Domain zwar
-  // an, sucht dann aber einen Ursprungsserver, den es nicht gibt: 521.
-  // Cloudflare legt die DNS-Eintraege dazu selbst an und weigert sich,
-  // solange eigene Eintraege fuer den Namen bestehen.
-  "routes": [
-    { "pattern": "bingelog.eu", "custom_domain": true },
-    { "pattern": "www.bingelog.eu", "custom_domain": true }
-  ],
-  // Die workers.dev-Adresse bleibt an. Sobald "routes" gesetzt ist,
-  // schaltet Wrangler sie sonst stillschweigend ab, und dann ist die
-  // Adresse weg, unter der die Seite bis dahin erreichbar war.
+  // Die Testumgebung haengt an keiner Domain.
   "workers_dev": true,
   "observability": {
     "enabled": true
+  },
+
+  "env": {
+    "production": {
+      "name": "bingelog-web-prod",
+      "assets": {
+        "directory": ".open-next/assets",
+        "binding": "ASSETS"
+      },
+      // Ohne diese Bindung nimmt Cloudflare die Anfrage fuer die Domain
+      // zwar an, sucht dann aber einen Ursprungsserver, den es nicht
+      // gibt: 521. Cloudflare legt die DNS-Eintraege selbst an und
+      // weigert sich, solange eigene Eintraege fuer den Namen bestehen.
+      "routes": [
+        { "pattern": "bingelog.eu", "custom_domain": true },
+        { "pattern": "www.bingelog.eu", "custom_domain": true }
+      ],
+      // Kein workers.dev fuer die Hauptseite: sie ist unter ihrer Domain
+      // erreichbar und sonst nirgends.
+      "workers_dev": false,
+      // Umgebungen erben `vars` nicht, sie muessen hier wiederholt
+      // stehen. Fehlen sie, startet der Worker und faellt erst beim
+      // ersten Zugriff auf Supabase um.
+      "vars": {
+        "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm"
+      },
+      "observability": {
+        "enabled": true
+      }
+    }
   }
 }

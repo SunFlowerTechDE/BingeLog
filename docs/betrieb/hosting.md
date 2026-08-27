@@ -177,3 +177,42 @@ Ein zweiter, harmloser: unmittelbar nach dem Loeschen meldet der eigene
 Rechner die Namen noch als nicht aufloesbar, weil er sich das negative
 Ergebnis gemerkt hat. `dig` sieht sie laengst, `curl` noch nicht. Kein
 Grund, an der Umstellung zu zweifeln.
+
+## Teststand und Hauptseite
+
+Seit dem 28.08.2026 sind es **zwei Worker**, nicht einer mit zwei
+Adressen. Vorher hing beides am selben Worker, und jeder Deploy ging
+gleichzeitig auf die Arbeitsadresse und auf die Hauptseite.
+
+|            | Worker              | Adresse                                  |
+| ---------- | ------------------- | ---------------------------------------- |
+| Teststand  | `bingelog-web`      | `bingelog-web.binge-log-web.workers.dev` |
+| Hauptseite | `bingelog-web-prod` | `bingelog.eu`, `www.bingelog.eu`         |
+
+```
+pnpm --filter @binge-log/web cf:build         # einmal bauen
+pnpm --filter @binge-log/web cf:deploy        # auf den Teststand
+pnpm --filter @binge-log/web cf:deploy:prod   # auf die Hauptseite
+```
+
+Der Standardbefehl trifft den Teststand. Die Hauptseite verlangt den
+ausdruecklichen Griff zu `cf:deploy:prod`. Wer sich vertippt oder das
+Ziel vergisst, veroeffentlicht auf dem Teststand — nicht umgekehrt.
+
+Dass der unbenannte Worker der Teststand ist und die Hauptseite den
+Zusatz `-prod` traegt, ist bewusst so herum: `workers.dev` leitet die
+Adresse aus dem Worker-Namen ab, und `bingelog-web.binge-log-web.
+workers.dev` ist die eingespielte Arbeitsadresse.
+
+Nachgeprueft, nicht angenommen: mit einer Markierung im Suchfeld
+veroeffentlicht, danach stand sie auf dem Teststand und nicht auf der
+Hauptseite.
+
+**Beide Worker sprechen mit derselben Supabase-Datenbank.** Ein Test auf
+dem Teststand schreibt in dieselben Tabellen, aus denen die Hauptseite
+liest. Getrennt sind die Staende des Codes, nicht die Daten. Wer das
+auch trennen will, braucht ein zweites Supabase-Projekt.
+
+`vars` werden von Umgebungen **nicht geerbt**. Sie stehen deshalb zweimal
+in der Wrangler-Datei. Fehlen sie in der Umgebung, startet der Worker und
+faellt erst beim ersten Zugriff auf Supabase um.
