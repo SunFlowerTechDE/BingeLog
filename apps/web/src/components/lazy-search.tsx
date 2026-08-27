@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 
 import { fetchMissingFilm, type CreatedFilm } from '@/lib/search-actions';
 import { ActionNote } from '@/components/action-note';
-import { CardBuild } from '@/components/card-build';
+import { CardBuild, type BuildPhase } from '@/components/card-build';
 import { FilmTile, type TileFilm } from '@/components/film-tile';
 
 /**
@@ -31,10 +31,14 @@ export function LazySearch({ term, films }: { term: string; films: TileFilm[] })
   const router = useRouter();
   const [note, setNote] = useState<string | undefined>(undefined);
   const [building, setBuilding] = useState<CreatedFilm | null>(null);
+  // The backdrop is the first and last beat of the ceremony, so it is
+  // driven by the same clock as the card rather than being simply on.
+  const [phase, setPhase] = useState<BuildPhase | null>(null);
   const [pending, startTransition] = useTransition();
 
   const finish = useCallback(() => {
     setBuilding(null);
+    setPhase(null);
     // The catalog changed underneath the result list that is still on
     // screen behind the overlay.
     router.refresh();
@@ -52,6 +56,9 @@ export function LazySearch({ term, films }: { term: string; films: TileFilm[] })
       window.removeEventListener('keydown', onKey);
     };
   }, [building, finish]);
+
+  // Clear before the first beat and again once the last one starts.
+  const dimmed = phase !== null && phase !== 'restore' && phase !== 'done';
 
   return (
     <div className="flex flex-col items-start gap-3">
@@ -99,9 +106,24 @@ export function LazySearch({ term, films }: { term: string; films: TileFilm[] })
           aria-modal="true"
           aria-label="Film wird angelegt"
           onClick={finish}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-7 bg-black/55 px-6 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-7 px-6"
+          style={{
+            // Two seconds down at the start, two seconds back at the end.
+            backgroundColor: dimmed ? 'rgba(0,0,0,0.62)' : 'rgba(0,0,0,0)',
+            backdropFilter: dimmed ? 'blur(14px)' : 'blur(0px)',
+            WebkitBackdropFilter: dimmed ? 'blur(14px)' : 'blur(0px)',
+            transition:
+              'background-color 2000ms ease-in-out, backdrop-filter 2000ms ease-in-out,' +
+              ' -webkit-backdrop-filter 2000ms ease-in-out',
+          }}
         >
-          <p className="text-center text-lg font-semibold tracking-tight">
+          <p
+            className="text-center text-lg font-semibold tracking-tight"
+            style={{
+              opacity: phase && phase !== 'dim' ? 1 : 0,
+              transition: 'opacity 700ms ease-out',
+            }}
+          >
             {building.title}
             {building.releaseYear ? (
               <span className="text-muted-foreground font-normal"> ({building.releaseYear})</span>
@@ -116,6 +138,7 @@ export function LazySearch({ term, films }: { term: string; films: TileFilm[] })
               director: building.director,
             }}
             posterUrl={building.posterUrl}
+            onPhase={setPhase}
             onDone={finish}
           />
         </div>
