@@ -1,7 +1,12 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/session';
+import { LogPanel, type OwnEntry } from '@/components/log-panel';
+import { Stars, formatRating } from '@/components/stars';
+import { FACET_KINDS, FACET_LABELS_DE } from '@binge-log/db';
 
 /**
  * M3 3.3 — the film detail page.
@@ -77,6 +82,30 @@ export default async function FilmPage({
   const directors = byRole('director');
   const cast = byRole('cast').slice(0, 12);
 
+  const viewer = await getViewer();
+
+  // The viewer's latest entry for this film, and the facets attached to
+  // it. RLS decides what comes back; neither query filters by owner
+  // beyond what the policies already enforce.
+  let ownEntry: OwnEntry | null = null;
+  let ownFacets: Partial<Record<string, number>> = {};
+
+  if (viewer) {
+    const { data: entry } = await supabase
+      .from('diary_entries')
+      .select('id, rating, watched_on, review, is_rewatch, is_private')
+      .eq('user_id', viewer.id)
+      .eq('film_id', wikidataId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    ownEntry = entry;
+
+    const { data: facets } = await supabase.rpc('my_facet_ratings', { film: wikidataId });
+    ownFacets = Object.fromEntries((facets ?? []).map((row) => [row.facet, row.score]));
+  }
+
   const title = film.title_de ?? film.title_original;
   const showsOriginal = film.title_de !== null && film.title_de !== film.title_original;
   const hasArtwork = film.poster_source === 'tvdb' && film.poster_url;
@@ -148,8 +177,98 @@ export default async function FilmPage({
           </div>
         ) : null}
 
-        <p className="text-muted-foreground text-sm">Bewerten und eintragen kommt als Nächstes.</p>
+        <CommunityVerdict wikidataId={wikidataId} />
+
+        {viewer ? (
+          <LogPanel filmId={wikidataId} entry={ownEntry} ownFacets={ownFacets} />
+        ) : (
+          <section className="border-border border-t pt-5">
+            <p className="text-muted-foreground text-sm">
+              <Link href="/anmelden" className="text-foreground underline underline-offset-4">
+                Melde dich an
+              </Link>
+              , um den Film einzutragen und zu bewerten.
+            </p>
+          </section>
+        )}
       </div>
     </main>
+  );
+}
+
+/**
+ * The community verdict: the star average with its count, and the facet
+ * averages beneath it.
+ *
+ * Facets appear only from five ratings on. "Schauspiel 2,0 (1 Stimme)"
+ * is misleading and invites brigading (M3, Fallstricke), which is why the
+ * threshold lives in the materialized view rather than in this component.
+ */
+async function CommunityVerdict({ wikidataId }: { wikidataId: string }) {
+  const supabase = await createClient();
+
+  const { data: summary } = await supabase.rpc('film_rating_summary', { film: wikidataId });
+  const verdict = summary?.[0];
+
+  const { data: facetRows } = await supabase
+    .from('film_facet_averages')
+    .select('facet, avg_score, vote_count')
+    .eq('film_id', wikidataId);
+
+  const facets = new Map(
+    (facetRows ?? []).map((row) => [row.facet, row]),
+  );
+
+  if (!verdict?.votes) {
+    return (
+      <section className="border-border border-t pt-5">
+        <p className="text-muted-foreground text-sm">Noch nicht bewertet.</p>
+      </section>
+    );
+  }
+
+  // numeric comes back as a JSON number, so no conversion is needed.
+  const average = verdict.average;
+
+  return (
+    <section className="border-border flex flex-col gap-4 border-t pt-5">
+      <div className="flex items-center gap-3">
+        <Stars rating={average} size={18} />
+        <span className="text-sm font-medium tabular-nums">{formatRating(average)}</span>
+        <span className="text-muted-foreground text-sm">
+          {verdict.votes === 1 ? '1 Bewertung' : `${String(verdict.votes)} Bewertungen`}
+        </span>
+      </div>
+
+      {facets.size > 0 ? (
+        <dl className="flex max-w-md flex-col gap-1.5">
+          {FACET_KINDS.filter((facet) => facets.has(facet)).map((facet) => {
+            const row = facets.get(facet);
+            const score = row?.avg_score ?? 0;
+            return (
+              <div key={facet} className="flex items-center gap-3 text-sm">
+                <dt className="text-muted-foreground w-44 shrink-0 text-xs">
+                  {FACET_LABELS_DE[facet]}
+                </dt>
+                <dd className="flex flex-1 items-center gap-2">
+                  <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+                    <span
+                      className="bg-primary block h-full rounded-full"
+                      style={{ width: `${String((score / 10) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="w-8 text-right text-xs tabular-nums">
+                    {formatRating(score)}
+                  </span>
+                  <span className="text-muted-foreground w-8 text-right text-xs tabular-nums">
+                    {String(row?.vote_count ?? 0)}
+                  </span>
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      ) : null}
+    </section>
   );
 }

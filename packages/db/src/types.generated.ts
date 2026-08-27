@@ -535,9 +535,23 @@ export type Database = {
       }
     }
     Functions: {
+      film_rating_summary: {
+        Args: { film: string }
+        Returns: {
+          average: number
+          votes: number
+        }[]
+      }
       film_search_text: {
         Args: { title_de: string; title_en: string; title_original: string }
         Returns: string
+      }
+      my_facet_ratings: {
+        Args: { film: string }
+        Returns: {
+          facet: Database["public"]["Enums"]["facet_kind"]
+          score: number
+        }[]
       }
       refresh_film_facet_averages: { Args: never; Returns: undefined }
       search_films: {
