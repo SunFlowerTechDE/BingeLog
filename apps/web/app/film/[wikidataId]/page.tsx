@@ -100,7 +100,7 @@ export default async function FilmPage({
   if (viewer) {
     const { data: entry } = await supabase
       .from('diary_entries')
-      .select('id, rating, watched_on, review, is_rewatch, is_private')
+      .select('id, rating, watched_on, review, is_rewatch, visibility')
       .eq('user_id', viewer.id)
       .eq('film_id', wikidataId)
       .order('created_at', { ascending: false })
@@ -266,15 +266,13 @@ async function Reviews({ wikidataId, page }: { wikidataId: string; page: number 
             <li key={entry.id} className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 <span className="font-medium">{entry.profiles?.username ?? 'jemand'}</span>
-                {entry.rating === null ? null : (
-                  <PopcornRating rating={entry.rating} size={18} />
-                )}
+                {entry.rating === null ? null : <PopcornRating rating={entry.rating} size={18} />}
                 {watched ? <span className="text-muted-foreground">{watched}</span> : null}
                 {entry.is_rewatch ? (
                   <span className="text-muted-foreground">Wiedersehen</span>
                 ) : null}
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-line">{entry.review}</p>
+              <p className="whitespace-pre-line text-sm leading-relaxed">{entry.review}</p>
             </li>
           );
         })}
@@ -323,9 +321,7 @@ async function CommunityVerdict({ wikidataId }: { wikidataId: string }) {
     .select('facet, avg_score, vote_count')
     .eq('film_id', wikidataId);
 
-  const facets = new Map(
-    (facetRows ?? []).map((row) => [row.facet, row]),
-  );
+  const facets = new Map((facetRows ?? []).map((row) => [row.facet, row]));
 
   if (!verdict?.votes) {
     return (
@@ -365,9 +361,7 @@ async function CommunityVerdict({ wikidataId }: { wikidataId: string }) {
                       style={{ width: `${String((score / 10) * 100)}%` }}
                     />
                   </span>
-                  <span className="w-8 text-right text-xs tabular-nums">
-                    {formatRating(score)}
-                  </span>
+                  <span className="w-8 text-right text-xs tabular-nums">{formatRating(score)}</span>
                   <span className="text-muted-foreground w-8 text-right text-xs tabular-nums">
                     {String(row?.vote_count ?? 0)}
                   </span>

@@ -19,36 +19,36 @@ export type Database = {
           created_at: string
           film_id: string
           id: string
-          is_private: boolean
           is_rewatch: boolean
           rating: number | null
           review: string | null
           updated_at: string
           user_id: string
+          visibility: Database["public"]["Enums"]["entry_visibility"]
           watched_on: string | null
         }
         Insert: {
           created_at?: string
           film_id: string
           id?: string
-          is_private?: boolean
           is_rewatch?: boolean
           rating?: number | null
           review?: string | null
           updated_at?: string
           user_id: string
+          visibility?: Database["public"]["Enums"]["entry_visibility"]
           watched_on?: string | null
         }
         Update: {
           created_at?: string
           film_id?: string
           id?: string
-          is_private?: boolean
           is_rewatch?: boolean
           rating?: number | null
           review?: string | null
           updated_at?: string
           user_id?: string
+          visibility?: Database["public"]["Enums"]["entry_visibility"]
           watched_on?: string | null
         }
         Relationships: [
@@ -243,6 +243,39 @@ export type Database = {
         }
         Relationships: []
       }
+      follows: {
+        Row: {
+          created_at: string
+          followee_id: string
+          follower_id: string
+        }
+        Insert: {
+          created_at?: string
+          followee_id: string
+          follower_id: string
+        }
+        Update: {
+          created_at?: string
+          followee_id?: string
+          follower_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_followee_id_fkey"
+            columns: ["followee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       genres: {
         Row: {
           label_de: string | null
@@ -258,6 +291,27 @@ export type Database = {
           label_de?: string | null
           label_en?: string | null
           wikidata_id?: string
+        }
+        Relationships: []
+      }
+      lazy_creation_attempts: {
+        Row: {
+          created_at: string
+          found: number
+          id: number
+          term: string
+        }
+        Insert: {
+          created_at?: string
+          found?: number
+          id?: never
+          term: string
+        }
+        Update: {
+          created_at?: string
+          found?: number
+          id?: never
+          term?: string
         }
         Relationships: []
       }
@@ -535,6 +589,11 @@ export type Database = {
       }
     }
     Functions: {
+      are_friends: { Args: { a: string; b: string }; Returns: boolean }
+      claim_lazy_creation: {
+        Args: { per_minute?: number; search_term: string }
+        Returns: boolean
+      }
       film_rating_summary: {
         Args: { film: string }
         Returns: {
@@ -553,6 +612,7 @@ export type Database = {
           score: number
         }[]
       }
+      prune_lazy_creation_attempts: { Args: never; Returns: undefined }
       refresh_film_facet_averages: { Args: never; Returns: undefined }
       search_films: {
         Args: { max_results?: number; query: string }
@@ -575,6 +635,7 @@ export type Database = {
       username_available: { Args: { candidate: string }; Returns: boolean }
     }
     Enums: {
+      entry_visibility: "public" | "friends" | "private"
       facet_kind:
         | "acting"
         | "story"
@@ -710,6 +771,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      entry_visibility: ["public", "friends", "private"],
       facet_kind: [
         "acting",
         "story",

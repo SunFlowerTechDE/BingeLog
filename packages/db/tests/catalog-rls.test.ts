@@ -112,7 +112,7 @@ describe('diary visibility', () => {
   it('hides a private entry from anon and from other users', async () => {
     const { data: created } = await owner.client
       .from('diary_entries')
-      .insert({ user_id: owner.id, film_id: FILM_ID, rating: 3, is_private: true })
+      .insert({ user_id: owner.id, film_id: FILM_ID, rating: 3, visibility: 'private' })
       .select('id')
       .single();
     const privateId = (created as { id: string }).id;
@@ -181,7 +181,7 @@ describe('facet ratings follow their entry', () => {
       .single();
     const { data: privateEntry } = await owner.client
       .from('diary_entries')
-      .insert({ user_id: owner.id, film_id: FILM_ID, rating: 8, is_private: true })
+      .insert({ user_id: owner.id, film_id: FILM_ID, rating: 8, visibility: 'private' })
       .select('id')
       .single();
 

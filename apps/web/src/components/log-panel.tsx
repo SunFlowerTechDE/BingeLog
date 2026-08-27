@@ -13,13 +13,43 @@ import {
 import { ActionNote } from '@/components/action-note';
 import { FACET_KINDS, FACET_LABELS_DE } from '@binge-log/db';
 
+export type Visibility = 'public' | 'friends' | 'private';
+
+/**
+ * Die drei Stufen samt dem, was sie bewirken.
+ *
+ * "Nur fuer Freunde" verlangt beidseitiges Folgen. Solange das Folgen
+ * selbst noch nicht gebaut ist (M4), ist niemand Freund und die Stufe
+ * wirkt wie "Nur fuer mich" — sie faellt zu, nicht auf. Der Hinweis sagt
+ * das, statt eine Zusicherung zu geben, die noch niemand einloest.
+ */
+const VISIBILITIES: readonly { value: Visibility; label: string; hint: string }[] = [
+  {
+    value: 'public',
+    label: 'Öffentlich',
+    hint: 'Alle sehen den Eintrag. Deine Bewertung zählt zum Schnitt des Films.',
+  },
+  {
+    value: 'friends',
+    label: 'Nur für Freunde',
+    hint:
+      'Nur wer dir folgt und dem du zurückfolgst. Deine Bewertung zählt zum Schnitt' +
+      ' des Films. Solange du niemandem folgst, sieht es niemand.',
+  },
+  {
+    value: 'private',
+    label: 'Nur für mich',
+    hint: 'Niemand sonst sieht den Eintrag, und deine Bewertung zählt nicht zum Schnitt.',
+  },
+];
+
 export interface OwnEntry {
   id: string;
   rating: number | null;
   watched_on: string | null;
   review: string | null;
   is_rewatch: boolean;
-  is_private: boolean;
+  visibility: Visibility;
 }
 
 /**
@@ -47,6 +77,10 @@ export function LogPanel({
   // Tapping a popcorn and deleting an entry both go straight to the
   // server without a form, so their answer needs somewhere to land.
   const [problem, setProblem] = useState<string | undefined>(undefined);
+  const [visibility, setVisibility] = useState<Visibility>(entry?.visibility ?? 'public');
+  // Ohne Eintrag ist heute die haeufigste Antwort: man traegt ein, was
+  // man gerade gesehen hat.
+  const [today, setToday] = useState(!entry);
   const [confirmation, setConfirmation] = useState<string | undefined>(undefined);
 
   // A save that changed nothing on screen was indistinguishable from a
@@ -125,15 +159,30 @@ export function LogPanel({
             <RatingInput value={entry?.rating ?? null} size={26} />
           </div>
 
-          <label className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Gesehen am</span>
-            <input
-              type="date"
-              name="watchedOn"
-              defaultValue={entry?.watched_on ?? ''}
-              className="border-border bg-card focus:ring-ring w-48 rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
-            />
-          </label>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <input
+                type="date"
+                name="watchedOn"
+                defaultValue={entry?.watched_on ?? ''}
+                disabled={today}
+                aria-label="Datum"
+                className="border-border bg-card focus:ring-ring w-48 rounded-md border px-3 py-2 text-base outline-none focus:ring-2 disabled:opacity-40"
+              />
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="watchedToday"
+                  checked={today}
+                  onChange={(event) => {
+                    setToday(event.target.checked);
+                  }}
+                />
+                Heute gesehen
+              </label>
+            </div>
+          </div>
 
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Notiz</span>
@@ -145,16 +194,39 @@ export function LogPanel({
             />
           </label>
 
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="isRewatch" defaultChecked={entry?.is_rewatch} />
-              Wiedersehen
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="isPrivate" defaultChecked={entry?.is_private} />
-              Nur für mich
-            </label>
-          </div>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm font-medium">Wer sieht den Eintrag</legend>
+            <div className="border-border flex w-fit overflow-hidden rounded-md border">
+              {VISIBILITIES.map((step) => (
+                <label
+                  key={step.value}
+                  className={`border-border cursor-pointer border-r px-3 py-1.5 text-sm last:border-r-0 ${
+                    visibility === step.value
+                      ? 'bg-primary text-primary-foreground font-medium'
+                      : 'hover:bg-card'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="visibility"
+                    value={step.value}
+                    checked={visibility === step.value}
+                    onChange={() => {
+                      setVisibility(step.value);
+                    }}
+                    className="sr-only"
+                  />
+                  {step.label}
+                </label>
+              ))}
+            </div>
+            {/* Ein Schalter mit Folgen muss die Folgen nennen. Dass die
+                eigene Stimme aus dem Schnitt faellt, stand vorher
+                nirgends. */}
+            <p aria-live="polite" className="text-muted-foreground text-xs">
+              {VISIBILITIES.find((step) => step.value === visibility)?.hint}
+            </p>
+          </fieldset>
 
           <div className="border-border flex flex-col gap-3 border-t pt-4">
             <button

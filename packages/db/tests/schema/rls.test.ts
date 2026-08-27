@@ -48,7 +48,10 @@ describe('migrations', () => {
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
     `);
-    assert.deepEqual(rows.rows.map((r) => r.relname), []);
+    assert.deepEqual(
+      rows.rows.map((r) => r.relname),
+      [],
+    );
   });
 
   it('creates the seven facets of ADR-009 in order', async () => {
@@ -139,10 +142,10 @@ describe('thread activation', () => {
   it('creates no thread below five distinct viewers', async () => {
     await h
       .as('authenticated', rater)
-      .query(
-        `insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 8)`,
-        [rater, FILM],
-      );
+      .query(`insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 8)`, [
+        rater,
+        FILM,
+      ]);
 
     const { rows } = await h.sql.query<{ viewer_count: number; is_active: boolean }>(
       `select viewer_count, is_active from public.film_threads where film_id = $1`,
@@ -153,13 +156,11 @@ describe('thread activation', () => {
   });
 
   it('counts a rewatch as one viewer, not two', async () => {
-    await h
-      .as('authenticated', rater)
-      .query(
-        `insert into public.diary_entries (user_id, film_id, rating, is_rewatch)
+    await h.as('authenticated', rater).query(
+      `insert into public.diary_entries (user_id, film_id, rating, is_rewatch)
          values ($1, $2, 9, true)`,
-        [rater, FILM],
-      );
+      [rater, FILM],
+    );
 
     const { rows } = await h.sql.query<{ viewer_count: number }>(
       `select viewer_count from public.film_threads where film_id = $1`,
@@ -238,13 +239,11 @@ describe('the spoiler gate', () => {
   let messageId = '';
 
   it('lets a rated user post', async () => {
-    const rows = await h
-      .as('authenticated', rater)
-      .query<{ id: string }>(
-        `insert into public.thread_messages (user_id, film_id, body)
+    const rows = await h.as('authenticated', rater).query<{ id: string }>(
+      `insert into public.thread_messages (user_id, film_id, body)
          values ($1, $2, 'Das Ende erklaert alles davor.') returning id`,
-        [rater, FILM],
-      );
+      [rater, FILM],
+    );
     messageId = rows[0]?.id ?? '';
     assert.notEqual(messageId, '');
   });
@@ -276,14 +275,12 @@ describe('the spoiler gate', () => {
   });
 
   it('does not leak the body through a join from films', async () => {
-    const rows = await h
-      .as('authenticated', stranger)
-      .query(
-        `select m.body from public.films f
+    const rows = await h.as('authenticated', stranger).query(
+      `select m.body from public.films f
          join public.thread_messages m on m.film_id = f.wikidata_id
          where f.wikidata_id = $1`,
-        [FILM],
-      );
+      [FILM],
+    );
     assert.deepEqual(rows, []);
   });
 
@@ -318,7 +315,9 @@ describe('the spoiler gate', () => {
   it('opens the gate for a private entry too', async () => {
     await h
       .as('authenticated', unrated)
-      .query(`update public.diary_entries set is_private = true where user_id = $1`, [unrated]);
+      .query(`update public.diary_entries set visibility = 'private' where user_id = $1`, [
+        unrated,
+      ]);
 
     const rows = await h
       .as('authenticated', unrated)
@@ -364,20 +363,16 @@ describe('the spoiler gate', () => {
   });
 
   it('rejects a reply pointing at a message about another film', async () => {
-    const error = await h
-      .as('authenticated', rater)
-      .expectError(
-        `insert into public.thread_messages (user_id, film_id, parent_id, body)
+    const error = await h.as('authenticated', rater).expectError(
+      `insert into public.thread_messages (user_id, film_id, parent_id, body)
          values ($1, $2, $3, 'Falscher Film')`,
-        [rater, QUIET_FILM, messageId],
-      );
+      [rater, QUIET_FILM, messageId],
+    );
     assert.notEqual(error, null);
   });
 
   it('rejects writing into a locked thread', async () => {
-    await h.sql.query(`update public.film_threads set is_locked = true where film_id = $1`, [
-      FILM,
-    ]);
+    await h.sql.query(`update public.film_threads set is_locked = true where film_id = $1`, [FILM]);
 
     const error = await h
       .as('authenticated', rater)
@@ -461,15 +456,148 @@ describe('message integrity', () => {
 
 // ---------------------------------------------------------------------------
 
+describe('friends-only entries', () => {
+  it('stays hidden while only one side follows', async () => {
+    const rows = await h.as('authenticated', rater).query<{ id: string }>(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+         values ($1, $2, 7, 'friends') returning id`,
+      [rater, QUIET_FILM],
+    );
+    const id = rows[0]?.id ?? '';
+
+    // Der Fremde folgt. Das allein macht ihn nicht zum Freund — sonst
+    // waere die Stufe keine Sperre, sondern eine Einladung.
+    await h
+      .as('authenticated', stranger)
+      .query(`insert into public.follows (follower_id, followee_id) values ($1, $2)`, [
+        stranger,
+        rater,
+      ]);
+
+    const oneWay = await h
+      .as('authenticated', stranger)
+      .query(`select id from public.diary_entries where id = $1`, [id]);
+    assert.deepEqual(oneWay, [], 'einseitiges Folgen darf nicht reichen');
+
+    // Erst die Gegenrichtung oeffnet.
+    await h
+      .as('authenticated', rater)
+      .query(`insert into public.follows (follower_id, followee_id) values ($1, $2)`, [
+        rater,
+        stranger,
+      ]);
+
+    const mutual = await h
+      .as('authenticated', stranger)
+      .query(`select id from public.diary_entries where id = $1`, [id]);
+    assert.equal(mutual.length, 1, 'beidseitiges Folgen muss oeffnen');
+
+    // Fuer alle anderen bleibt es zu.
+    const anonRows = await h
+      .as('anon', null)
+      .query(`select id from public.diary_entries where id = $1`, [id]);
+    const outsider = await h
+      .as('authenticated', unrated)
+      .query(`select id from public.diary_entries where id = $1`, [id]);
+    assert.deepEqual(anonRows, []);
+    assert.deepEqual(outsider, []);
+
+    await h.sql.query(`delete from public.follows`);
+    await h.sql.query(`delete from public.diary_entries where id = $1`, [id]);
+  });
+
+  it('counts friends-only ratings toward the average but not private ones', async () => {
+    const film = 'Q100003';
+    await seedFilm(h, film);
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $3, 10, 'public'), ($2, $3, 8, 'friends')`,
+      [rater, stranger, film],
+    );
+    const { rows: before } = await h.sql.query<{ average: string; votes: number }>(
+      `select * from public.film_rating_summary($1)`,
+      [film],
+    );
+    assert.equal(before[0]?.votes, 2, 'oeffentlich und Freunde zaehlen');
+    assert.equal(Number(before[0]?.average), 9);
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $2, 2, 'private')`,
+      [unrated, film],
+    );
+    const { rows: after } = await h.sql.query<{ average: string; votes: number }>(
+      `select * from public.film_rating_summary($1)`,
+      [film],
+    );
+    assert.equal(after[0]?.votes, 2, '"nur fuer mich" darf den Schnitt nicht bewegen');
+    assert.equal(Number(after[0]?.average), 9);
+
+    await h.sql.query(`delete from public.diary_entries where film_id = $1`, [film]);
+  });
+
+  it('refuses a follow of oneself', async () => {
+    const error = await h
+      .as('authenticated', rater)
+      .expectError(`insert into public.follows (follower_id, followee_id) values ($1, $1)`, [
+        rater,
+      ]);
+    assert.match(String(error), /follows_not_self/);
+  });
+
+  it("refuses to follow on someone else's behalf", async () => {
+    const error = await h
+      .as('authenticated', rater)
+      .expectError(`insert into public.follows (follower_id, followee_id) values ($1, $2)`, [
+        stranger,
+        unrated,
+      ]);
+    assert.match(String(error), /row-level security/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('rewatch', () => {
+  it('marks the second entry for a film and leaves the first alone', async () => {
+    const film = 'Q100004';
+    await seedFilm(h, film);
+
+    const first = await h.as('authenticated', rater).query<{ is_rewatch: boolean }>(
+      `insert into public.diary_entries (user_id, film_id, rating)
+         values ($1, $2, 6) returning is_rewatch`,
+      [rater, film],
+    );
+    const second = await h.as('authenticated', rater).query<{ is_rewatch: boolean }>(
+      `insert into public.diary_entries (user_id, film_id, rating)
+         values ($1, $2, 9) returning is_rewatch`,
+      [rater, film],
+    );
+    // Eine andere Person faengt bei sich selbst wieder von vorn an.
+    const other = await h.as('authenticated', stranger).query<{ is_rewatch: boolean }>(
+      `insert into public.diary_entries (user_id, film_id, rating)
+         values ($1, $2, 4) returning is_rewatch`,
+      [stranger, film],
+    );
+
+    assert.equal(first[0]?.is_rewatch, false);
+    assert.equal(second[0]?.is_rewatch, true);
+    assert.equal(other[0]?.is_rewatch, false);
+
+    await h.sql.query(`delete from public.diary_entries where film_id = $1`, [film]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe('diary and facet visibility', () => {
   it('hides a private entry from everyone but its owner', async () => {
-    const rows = await h
-      .as('authenticated', rater)
-      .query<{ id: string }>(
-        `insert into public.diary_entries (user_id, film_id, rating, is_private)
-         values ($1, $2, 3, true) returning id`,
-        [rater, FILM],
-      );
+    const rows = await h.as('authenticated', rater).query<{ id: string }>(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+         values ($1, $2, 3, 'private') returning id`,
+      [rater, FILM],
+    );
     const id = rows[0]?.id ?? '';
 
     const anonRows = await h
@@ -498,7 +626,9 @@ describe('diary and facet visibility', () => {
     const otherRows = await h
       .as('authenticated', stranger)
       .query(`select film_id from public.watchlist`);
-    const ownRows = await h.as('authenticated', rater).query(`select film_id from public.watchlist`);
+    const ownRows = await h
+      .as('authenticated', rater)
+      .query(`select film_id from public.watchlist`);
 
     assert.deepEqual(otherRows, []);
     assert.equal(ownRows.length, 1);
@@ -511,21 +641,17 @@ describe('diary and facet visibility', () => {
         `insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 8) returning id`,
         [rater, FILM],
       );
-    const priv = await h
-      .as('authenticated', rater)
-      .query<{ id: string }>(
-        `insert into public.diary_entries (user_id, film_id, rating, is_private)
-         values ($1, $2, 8, true) returning id`,
-        [rater, FILM],
-      );
+    const priv = await h.as('authenticated', rater).query<{ id: string }>(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+         values ($1, $2, 8, 'private') returning id`,
+      [rater, FILM],
+    );
 
-    await h
-      .as('authenticated', rater)
-      .query(
-        `insert into public.entry_facet_ratings (entry_id, facet, score)
+    await h.as('authenticated', rater).query(
+      `insert into public.entry_facet_ratings (entry_id, facet, score)
          values ($1, 'cinematography', 9), ($2, 'story', 2)`,
-        [pub[0]?.id, priv[0]?.id],
-      );
+      [pub[0]?.id, priv[0]?.id],
+    );
 
     const visible = await h
       .as('anon', null)

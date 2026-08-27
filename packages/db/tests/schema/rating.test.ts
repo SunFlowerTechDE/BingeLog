@@ -32,13 +32,11 @@ async function log(
   rating: number | null,
   isPrivate = false,
 ): Promise<string> {
-  const rows = await h
-    .as('authenticated', user)
-    .query<{ id: string }>(
-      `insert into public.diary_entries (user_id, film_id, rating, is_private)
+  const rows = await h.as('authenticated', user).query<{ id: string }>(
+    `insert into public.diary_entries (user_id, film_id, rating, visibility)
        values ($1, $2, $3, $4) returning id`,
-      [user, film, rating, isPrivate],
-    );
+    [user, film, rating, isPrivate ? 'private' : 'public'],
+  );
   return rows[0]?.id ?? '';
 }
 
@@ -148,13 +146,11 @@ describe('the viewer’s own facet ratings', () => {
     const aliceEntry = await log(alice, OTHER_FILM, 9);
     const bobEntry = await log(bob, OTHER_FILM, 4);
 
-    await h
-      .as('authenticated', alice)
-      .query(
-        `insert into public.entry_facet_ratings (entry_id, facet, score)
+    await h.as('authenticated', alice).query(
+      `insert into public.entry_facet_ratings (entry_id, facet, score)
          values ($1, 'cinematography', 10), ($1, 'story', 6)`,
-        [aliceEntry],
-      );
+      [aliceEntry],
+    );
     await h
       .as('authenticated', bob)
       .query(

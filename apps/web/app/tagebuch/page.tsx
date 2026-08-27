@@ -15,7 +15,7 @@ interface Entry {
   watched_on: string | null;
   review: string | null;
   is_rewatch: boolean;
-  is_private: boolean;
+  visibility: 'public' | 'friends' | 'private';
   created_at: string;
   films: {
     title_de: string | null;
@@ -37,7 +37,7 @@ export default async function DiaryPage() {
   const { data } = await supabase
     .from('diary_entries')
     .select(
-      'id, film_id, rating, watched_on, review, is_rewatch, is_private, created_at, films(title_de, title_original, release_year, poster_source, poster_url)',
+      'id, film_id, rating, watched_on, review, is_rewatch, visibility, created_at, films(title_de, title_original, release_year, poster_source, poster_url)',
     )
     .eq('user_id', viewer.id)
     .order('watched_on', { ascending: false, nullsFirst: false })
@@ -113,13 +113,16 @@ export default async function DiaryPage() {
                     {entry.is_rewatch ? (
                       <span className="text-muted-foreground">Wiedersehen</span>
                     ) : null}
-                    {entry.is_private ? (
+                    {entry.visibility === 'private' ? (
                       <span className="text-muted-foreground">nur für dich</span>
+                    ) : null}
+                    {entry.visibility === 'friends' ? (
+                      <span className="text-muted-foreground">nur für Freunde</span>
                     ) : null}
                   </div>
 
                   {entry.review ? (
-                    <p className="text-sm leading-relaxed whitespace-pre-line">{entry.review}</p>
+                    <p className="whitespace-pre-line text-sm leading-relaxed">{entry.review}</p>
                   ) : null}
                 </div>
               </li>

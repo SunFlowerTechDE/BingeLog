@@ -30,6 +30,25 @@ export interface EntryResult {
 const RATING_MIN = 1;
 const RATING_MAX = 10;
 
+const VISIBILITIES = ['public', 'friends', 'private'] as const;
+type Visibility = (typeof VISIBILITIES)[number];
+
+/**
+ * Das heutige Datum in Europe/Berlin als YYYY-MM-DD.
+ *
+ * Der Server laeuft auf UTC. Wer um 00:30 deutscher Zeit eintraegt,
+ * bekaeme dort den Vortag — genau in der Stunde, in der man einen Film
+ * eintraegt, den man gerade zu Ende gesehen hat.
+ */
+function today(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 function readField(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === 'string' ? value : '';
@@ -124,15 +143,26 @@ export async function saveEntry(_previous: EntryResult, formData: FormData): Pro
     return { error: 'Gib eine Sternebewertung ab.' };
   }
 
-  const watchedOn = readField(formData, 'watchedOn');
   const review = readField(formData, 'review').trim();
+
+  // "Heute gesehen" schlaegt das Datumsfeld. Das Datum entsteht auf dem
+  // Server im Moment des Absendens: ein Formular, das ueber Mitternacht
+  // offen stand, traegt sonst den Vortag ein. Europe/Berlin, weil die
+  // App fuer den deutschsprachigen Raum gebaut ist — die Uhr des
+  // Browsers waere manipulierbar und die des Servers steht auf UTC.
+  const watchedOn =
+    formData.get('watchedToday') !== null ? today() : readField(formData, 'watchedOn');
+
+  const visibilityRaw = readField(formData, 'visibility');
+  const visibility = VISIBILITIES.includes(visibilityRaw as Visibility)
+    ? (visibilityRaw as Visibility)
+    : 'public';
 
   const values = {
     rating: ratingRaw,
     watched_on: watchedOn === '' ? null : watchedOn,
     review: review === '' ? null : review,
-    is_rewatch: formData.get('isRewatch') !== null,
-    is_private: formData.get('isPrivate') !== null,
+    visibility,
   };
 
   const { data: saved, error } = entryId
@@ -205,7 +235,9 @@ export async function logRewatch(filmId: string, rating: number): Promise<EntryR
     user_id: user.id,
     film_id: filmId,
     rating,
-    is_rewatch: true,
+    // is_rewatch setzt ein Trigger: ein zweiter Eintrag zum selben Film
+    // derselben Person ist einer, unabhaengig davon, welcher Weg ihn
+    // angelegt hat.
   });
 
   if (error) {
