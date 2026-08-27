@@ -71,3 +71,7 @@ packages/pipeline/data/
 .dev.vars
 .open-next/
 .wrangler/
+
+# Generated copies for the edge functions; see
+# packages/db/scripts/sync-function-sources.mjs
+packages/db/supabase/functions/_shared/

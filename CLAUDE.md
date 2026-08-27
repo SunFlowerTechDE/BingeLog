@@ -76,9 +76,19 @@ die Such-Testfälle brauchen, samt ihrer Beinahe-Treffer. Der Volldump
 (M1 1.1) ist bewusst zurückgestellt; die Messungen dazu stehen in
 `docs/roadmap/11-m1-datenpipeline.md`.
 
-Laufend ist M3. Die Suche (3.2) steht: das Ranking ist eine
-Postgres-Funktion, die fünf Pflicht-Testfälle sind grün und laufen gegen
+Laufend ist M3. Auth, Suche, Filmdetail, Bewerten, Tagebuch, Watchlist
+und Reviews stehen; die fünf Pflicht-Testfälle der Suche laufen gegen
 lokales Postgres, also ohne Projekt.
+
+Die Lazy Creation liegt in einer Edge Function (`packages/db/supabase/
+functions/lazy-film`), weil `apps/web` den Katalog nicht schreiben darf.
+Ihr Wikidata-Code ist eine **erzeugte Kopie** aus `packages/pipeline` —
+`pnpm --filter @binge-log/db functions:deploy` synchronisiert sie. Ändere
+immer das Original, nie die Kopie unter `_shared`.
+
+Offen: Wiedersehen und „Mail erneut senden" sind gebaut, aber nicht
+verdrahtet. Dazu 360 px und Lighthouse. Apple Sign-in braucht einen
+Apple-Developer-Account.
 
 Wenn du eine Policy oder einen Trigger anfasst, gehört ein Test in
 `packages/db/tests/schema/rls.test.ts` dazu. Eine Policy ohne Test ist

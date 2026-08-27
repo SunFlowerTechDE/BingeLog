@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { FilmTile, type TileFilm } from '@/components/film-tile';
 import { SearchInput } from '@/components/search-input';
+import { LazySearch } from '@/components/lazy-search';
 
 async function Results({ query }: { query: string }) {
   if (query.trim().length < 2) {
@@ -28,13 +29,8 @@ async function Results({ query }: { query: string }) {
 
   const films = data as unknown as TileFilm[];
 
-  if (films.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        Nichts gefunden. Prüf die Schreibweise oder such nach dem Originaltitel.
-      </p>
-    );
-  }
+  // M3 3.2: a search that finds nothing may reach past the catalog.
+  if (films.length === 0) return <LazySearch term={query} />;
 
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-6">

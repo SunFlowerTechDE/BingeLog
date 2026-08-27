@@ -22,7 +22,9 @@
     "test": "pnpm test:schema",
     "verify": "node --env-file=.env --experimental-strip-types scripts/verify.ts",
     "test:schema": "node --experimental-strip-types --test tests/schema/*.test.ts",
-    "cleanup:test": "node --env-file=.env --experimental-strip-types scripts/cleanup-test-data.ts"
+    "cleanup:test": "node --env-file=.env --experimental-strip-types scripts/cleanup-test-data.ts",
+    "functions:sync": "node scripts/sync-function-sources.mjs",
+    "functions:deploy": "pnpm functions:sync && set -a && . ./.env && set +a && supabase functions deploy lazy-film --project-ref \"$SUPABASE_PROJECT_REF\" --use-api"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.58.0",
