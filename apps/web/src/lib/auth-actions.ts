@@ -85,8 +85,38 @@ export async function signIn(_previous: FormState, formData: FormData): Promise<
   const { error } = await supabase.auth.signInWithPassword(credentials);
 
   if (error) {
-    console.error('signIn failed:', error.message);
+    console.error('signIn failed:', error.code ?? error.message);
+
+    // Supabase only reports this when the password was right, so saying
+    // it out loud tells the caller nothing they did not already know —
+    // and leaving them with "wrong password" would send them looking for
+    // a problem that is not there.
+    if (error.code === 'email_not_confirmed') {
+      return {
+        error:
+          'Bestätige zuerst deine E-Mail-Adresse. Den Link findest du in deinem Postfach.',
+      };
+    }
+
     return { error: 'E-Mail oder Passwort stimmt nicht.' };
+  }
+
+  // Signing in is not the same as being set up. An account that never
+  // finished choosing a name has no profile row, and sending it to the
+  // home page produces an app that is logged in and looks logged out,
+  // with nothing pointing the way out.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile) redirect('/willkommen');
   }
 
   // The target comes from a query parameter, so it is a runtime string
@@ -141,4 +171,39 @@ export async function chooseUsername(
 
   revalidatePath('/', 'layout');
   redirect('/');
+}
+
+/**
+ * Sends the confirmation mail again.
+ *
+ * The first one expires, gets lost, or arrives while the site it points
+ * at is unreachable. Without this the only way forward is a second
+ * account, which is worse for everyone.
+ */
+export async function resendConfirmation(
+  _previous: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const email = readField(formData, 'email').trim().toLowerCase();
+  if (!EMAIL_PATTERN.test(email)) return { error: 'Gib eine gültige E-Mail-Adresse ein.' };
+
+  const supabase = await createClient();
+  const requestHeaders = await headers();
+  const host = requestHeaders.get('host') ?? 'localhost:3000';
+  const protocol = host.startsWith('localhost') ? 'http' : 'https';
+
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: `${protocol}://${host}/auth/bestaetigen` },
+  });
+
+  if (error) {
+    console.error('resendConfirmation failed:', error.message);
+    // Deliberately the same answer either way: whether an address is
+    // registered is not something a stranger gets to find out.
+    return { message: 'Wenn es ein Konto dazu gibt, ist die Mail unterwegs.' };
+  }
+
+  return { message: 'Die Mail ist unterwegs. Sieh auch im Spam-Ordner nach.' };
 }

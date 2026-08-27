@@ -14,7 +14,21 @@ export async function Header() {
         </Link>
 
         <div className="ml-auto flex items-center gap-4 text-sm">
-          {viewer?.username ? (
+          {viewer && !viewer.username ? (
+            // Signed in but never finished choosing a name. Showing
+            // "Anmelden" here produced an app that was logged in and
+            // looked logged out, with nothing pointing the way out.
+            <>
+              <Link href="/willkommen" className="text-primary underline underline-offset-4">
+                Namen wählen
+              </Link>
+              <form action={signOut}>
+                <button type="submit" className="text-muted-foreground hover:text-foreground">
+                  Abmelden
+                </button>
+              </form>
+            </>
+          ) : viewer?.username ? (
             <>
               <Link href="/tagebuch" className="text-muted-foreground hover:text-foreground">
                 Tagebuch

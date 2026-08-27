@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 
 import { RatingInput } from '@/components/rating-input';
 import { rateFilm, saveEntry, deleteEntry, type EntryResult } from '@/lib/diary-actions';
+import { ActionNote } from '@/components/action-note';
 import { FACET_KINDS, FACET_LABELS_DE } from '@binge-log/db';
 
 export interface OwnEntry {
@@ -39,6 +40,9 @@ export function LogPanel({
     Object.keys(ownFacets).length > 0,
   );
   const [state, action] = useActionState<EntryResult, FormData>(saveEntry, {});
+  // Tapping a popcorn and deleting an entry both go straight to the
+  // server without a form, so their answer needs somewhere to land.
+  const [problem, setProblem] = useState<string | undefined>(undefined);
 
   return (
     <section className="border-border flex flex-col gap-3 border-t pt-5">
@@ -46,9 +50,16 @@ export function LogPanel({
         <span className="text-muted-foreground text-xs">Deine Bewertung</span>
         <RatingInput
           value={entry?.rating ?? null}
-          onSelect={async (rating) => rateFilm(filmId, rating)}
+          onSelect={async (rating) => {
+            setProblem(undefined);
+            const result = await rateFilm(filmId, rating);
+            setProblem(result.error);
+            return result;
+          }}
         />
       </div>
+
+      <ActionNote message={problem} />
 
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <button
@@ -65,7 +76,9 @@ export function LogPanel({
         {entry ? (
           <form
             action={async () => {
-              await deleteEntry(entry.id, filmId);
+              setProblem(undefined);
+              const result = await deleteEntry(entry.id, filmId);
+              setProblem(result.error);
             }}
           >
             <button
@@ -153,11 +166,7 @@ export function LogPanel({
             ) : null}
           </div>
 
-          {state.error ? (
-            <p role="alert" className="text-destructive text-sm">
-              {state.error}
-            </p>
-          ) : null}
+          <ActionNote message={state.error} />
 
           <button
             type="submit"
