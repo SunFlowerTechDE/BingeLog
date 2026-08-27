@@ -16,6 +16,10 @@
     "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm"
   },
+  // Die workers.dev-Adresse bleibt an. Sobald "routes" gesetzt ist,
+  // schaltet Wrangler sie sonst stillschweigend ab, und dann ist die
+  // Adresse weg, unter der die Seite bis dahin erreichbar war.
+  "workers_dev": true,
   "observability": {
     "enabled": true
   }

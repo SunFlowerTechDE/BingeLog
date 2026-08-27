@@ -24,13 +24,13 @@ mehr. Wer dort startet, plant einen Umzug ein.
 
 ## Vergleich
 
-| | Grundpreis | pro Monat | Aufwand | kommerziell |
-|---|---|---|---|---|
-| Vercel Hobby | 0 $ | 0 € | keiner | **nein** |
-| Vercel Pro | 20 $ | ca. 19 € | keiner | ja |
-| Cloudflare Workers, kostenlos | 0 $ | 0 € | gering | ja |
-| Cloudflare Workers, bezahlt | 5 $ | ca. 5 € | gering | ja |
-| Hetzner Cloud (Nürnberg) | — | ca. 4 bis 6 € | **hoch** | ja |
+|                               | Grundpreis | pro Monat     | Aufwand  | kommerziell |
+| ----------------------------- | ---------- | ------------- | -------- | ----------- |
+| Vercel Hobby                  | 0 $        | 0 €           | keiner   | **nein**    |
+| Vercel Pro                    | 20 $       | ca. 19 €      | keiner   | ja          |
+| Cloudflare Workers, kostenlos | 0 $        | 0 €           | gering   | ja          |
+| Cloudflare Workers, bezahlt   | 5 $        | ca. 5 €       | gering   | ja          |
+| Hetzner Cloud (Nürnberg)      | —          | ca. 4 bis 6 € | **hoch** | ja          |
 
 Umsatzsteuer nicht enthalten. Für ein Unternehmen mit USt-IdNr. greift
 bei US-Anbietern in der Regel das Reverse-Charge-Verfahren.
@@ -56,12 +56,12 @@ DSGVO-Betrachtung vereinfacht.
 
 ## Auswirkung auf das Budget
 
-| Variante | Fixkosten gesamt |
-|---|---|
+| Variante             | Fixkosten gesamt                 |
+| -------------------- | -------------------------------- |
 | Cloudflare kostenlos | ca. 35 € — Roadmap-Ziel gehalten |
-| Cloudflare bezahlt | ca. 40 € |
-| Hetzner | ca. 40 € |
-| Vercel Pro | ca. 54 € — **plus 54 Prozent** |
+| Cloudflare bezahlt   | ca. 40 €                         |
+| Hetzner              | ca. 40 €                         |
+| Vercel Pro           | ca. 54 € — **plus 54 Prozent**   |
 
 ## Abwägung
 
@@ -88,13 +88,13 @@ Der Adapter wurde nicht angenommen, sondern ausprobiert. Die App läuft
 lokal auf `workerd`, dem Laufzeitsystem, das Cloudflare auch in Produktion
 benutzt:
 
-| Geprüft | Ergebnis |
-|---|---|
-| Build über `@opennextjs/cloudflare` | läuft durch |
-| Startseite und Suche | 200, Treffer aus Supabase korrekt sortiert |
-| Filmdetail | Originaltitel kyrillisch, Attribution vorhanden |
-| Prozedurale Karte | SVG mit korrekten Cache-Headern |
-| Geschützte Route ohne Session | 307 auf `/anmelden?weiter=…` |
+| Geprüft                             | Ergebnis                                        |
+| ----------------------------------- | ----------------------------------------------- |
+| Build über `@opennextjs/cloudflare` | läuft durch                                     |
+| Startseite und Suche                | 200, Treffer aus Supabase korrekt sortiert      |
+| Filmdetail                          | Originaltitel kyrillisch, Attribution vorhanden |
+| Prozedurale Karte                   | SVG mit korrekten Cache-Headern                 |
+| Geschützte Route ohne Session       | 307 auf `/anmelden?weiter=…`                    |
 
 Die Middleware, die die Session erneuert, funktioniert also — trotz der
 Build-Warnung, dass Node.js-Middleware auf Cloudflare experimentell sei.
@@ -103,11 +103,11 @@ OpenNext oder Next.js ansteht.
 
 ### Die Grenze, die zuerst greift, ist nicht der Traffic
 
-| Grenze | Free | Paid | BingeLog heute |
-|---|---|---|---|
-| Worker-Größe komprimiert | 3 MB | 10 MB | **2,60 MB** |
-| Anfragen pro Tag | 100.000 | 10 Mio./Monat | weit darunter |
-| CPU-Zeit pro Aufruf | 10 ms | 5 min | Wartezeit zählt nicht mit |
+| Grenze                   | Free    | Paid          | BingeLog heute            |
+| ------------------------ | ------- | ------------- | ------------------------- |
+| Worker-Größe komprimiert | 3 MB    | 10 MB         | **2,60 MB**               |
+| Anfragen pro Tag         | 100.000 | 10 Mio./Monat | weit darunter             |
+| CPU-Zeit pro Aufruf      | 10 ms   | 5 min         | Wartezeit zählt nicht mit |
 
 Gemessen mit `wrangler deploy --dry-run`: 11.692 KiB roh, **2.664 KiB
 komprimiert**. Das sind 87 Prozent der kostenlosen Grenze, bei einer App
@@ -140,3 +140,30 @@ Leistung, die diese App nicht braucht.
 - `bingelog.eu` bleibt bei INWX registriert, die Nameserver zeigen auf
   Cloudflare — das verlangt eine Umstellung bei INWX, sonst kann keine
   eigene Domain auf den Worker zeigen
+
+### Die eigene Domain auf den Worker legen
+
+`bingelog.eu` antwortete am 27.08.2026 mit **521 — Web server is down**.
+Die Nameserver zeigten längst auf Cloudflare, aber der Worker war nirgends
+daran gebunden: Cloudflare nahm die Anfrage an und suchte danach einen
+Ursprungsserver, den es nicht gibt. Der Fehler sagt „Server down", die
+Ursache ist eine fehlende Zuordnung.
+
+Die Bindung heißt bei Wrangler `routes` mit `custom_domain: true`.
+Cloudflare legt die DNS-Einträge dann selbst an — und verweigert das,
+solange schon eigene Einträge für den Namen bestehen:
+
+```
+Hostname 'bingelog.eu' already has externally managed DNS records
+```
+
+Also erst im Cloudflare-Dashboard unter **DNS → Records** die A-Einträge
+für `bingelog.eu` und `www` löschen, dann `cf:deploy` mit dem
+`routes`-Block. Vorher nicht — der Deploy bricht sonst nach dem Hochladen
+ab, und was schon umgestellt wurde, bleibt umgestellt.
+
+**Fallstrick:** Sobald `routes` in der Wrangler-Datei steht, schaltet
+Wrangler die `workers.dev`-Adresse standardmäßig ab. Genau das ist beim
+ersten Versuch passiert — die Seite war unter
+`bingelog-web.binge-log-web.workers.dev` schlagartig ein 404. Deshalb
+steht `"workers_dev": true` ausdrücklich in der Datei.
