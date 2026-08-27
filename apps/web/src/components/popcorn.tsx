@@ -46,14 +46,25 @@ export function fillFor(rating: number, index: number): BucketFill {
 }
 
 export function Bucket({ fill, size }: { fill: BucketFill; size: number }) {
+  // Every state is the same element with the same box. Rendering the
+  // empty one as a span and the filled one as an img gave them different
+  // baselines, so changing a rating changed the line height and pushed
+  // everything below it around.
+  const common = {
+    width: size,
+    height: size,
+    backgroundSize: 'contain',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center',
+  } as const;
+
   if (fill === 0) {
     return (
       <span
         aria-hidden="true"
-        className="bg-muted-foreground/70 inline-block shrink-0"
+        className="bg-muted-foreground/70 block shrink-0"
         style={{
-          width: size,
-          height: size,
+          ...common,
           maskImage: `url(${OUTLINE})`,
           maskSize: 'contain',
           maskRepeat: 'no-repeat',
@@ -68,14 +79,10 @@ export function Bucket({ fill, size }: { fill: BucketFill; size: number }) {
   }
 
   return (
-    <img
+    <span
       aria-hidden="true"
-      src={fill === 2 ? FULL : HALF}
-      alt=""
-      width={size}
-      height={size}
-      className="inline-block shrink-0 object-contain"
-      style={{ width: size, height: size }}
+      className="block shrink-0"
+      style={{ ...common, backgroundImage: `url(${fill === 2 ? FULL : HALF})` }}
     />
   );
 }
