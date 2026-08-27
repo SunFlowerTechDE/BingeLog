@@ -10,7 +10,8 @@
     "artwork:tvdb": "node --experimental-strip-types --env-file=.env src/tvdb/run.ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "subclasses": "node scripts/fetch-film-subclasses.mjs",
-    "catalog:seed": "node --experimental-strip-types --env-file=.env src/wikidata/run-seed.ts"
+    "catalog:seed": "node --experimental-strip-types --env-file=.env src/wikidata/run-seed.ts",
+    "refresh:people": "node --experimental-strip-types --env-file=.env scripts/refresh-people.ts"
   },
   "dependencies": {
     "@binge-log/db": "workspace:*",

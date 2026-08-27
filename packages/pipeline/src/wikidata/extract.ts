@@ -98,12 +98,30 @@ function label(entity: WikidataEntity, language: string): string | null {
 }
 
 /**
+ * The label that is not tied to a language.
+ *
+ * Wikidata moved names that read the same everywhere onto the `mul`
+ * label, so a person can carry ninety labels and have neither `en` nor
+ * `de` among them — Christopher Nolan is exactly that. Reaching for
+ * "whatever label came first" then picks an arbitrary script, which is
+ * how a German film page ended up crediting كريستوفر نولان.
+ *
+ * It belongs after the real languages, not before them: for a Japanese
+ * actor `mul` holds the Japanese spelling, and preferring it replaced
+ * "Daisuke Kuroda" with 黒田大輔.
+ */
+function languageNeutralLabel(entity: WikidataEntity): string | null {
+  return label(entity, 'mul');
+}
+
+/**
  * The original title.
  *
  * P1476 is the authority. Where it is missing, fall back to the label in
- * the work's original language, then to English, then to German, then to
- * whatever label exists. The column is NOT NULL and a film without any
- * title at all is not importable, so the caller drops it.
+ * the work's original language, then to the language-neutral label, then
+ * English, then German, then whatever exists. The column is NOT NULL and
+ * a film without any title at all is not importable, so the caller drops
+ * it.
  *
  * This ladder is a fallback for a missing property, not for a missing
  * translation. Note the contrast with titleDe below.
@@ -123,7 +141,7 @@ function originalTitle(entity: WikidataEntity): string | null {
 
   const firstLabel = Object.values(entity.labels ?? {})[0]?.value.trim();
   const anyLabel = firstLabel === undefined || firstLabel.length === 0 ? null : firstLabel;
-  return label(entity, 'en') ?? label(entity, 'de') ?? anyLabel;
+  return label(entity, 'en') ?? label(entity, 'de') ?? languageNeutralLabel(entity) ?? anyLabel;
 }
 
 /**
@@ -283,9 +301,14 @@ export function extractNamedEntity(entity: WikidataEntity): {
   name: string;
   sitelinkCount: number;
 } | null {
+  // A real language label wins where there is one: for a Japanese actor
+  // Wikidata's `mul` is the Japanese spelling, and putting it first
+  // turned "Daisuke Kuroda" into 黒田大輔 on a German page. `mul` sits
+  // after them, before the arbitrary-script last resort.
   const name =
     label(entity, 'en') ??
     label(entity, 'de') ??
+    languageNeutralLabel(entity) ??
     Object.values(entity.labels ?? {})[0]?.value.trim() ??
     null;
   if (!name) return null;

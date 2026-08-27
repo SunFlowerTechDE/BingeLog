@@ -15,8 +15,8 @@ import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const HERE = import.meta.dirname;
-const FROM = path.join(HERE, '..', '..', 'pipeline', 'src', 'wikidata');
-const TO = path.join(HERE, '..', 'supabase', 'functions', '_shared', 'wikidata');
+const PIPELINE = path.join(HERE, '..', '..', 'pipeline', 'src');
+const SHARED = path.join(HERE, '..', 'supabase', 'functions', '_shared');
 
 const HEADER = `/*
  * GENERATED — do not edit.
@@ -26,14 +26,23 @@ const HEADER = `/*
  */
 `;
 
-await mkdir(TO, { recursive: true });
+const FILES = [
+  ['wikidata', 'extract.ts'],
+  ['wikidata', 'api.ts'],
+  ['wikidata', 'types.ts'],
+  ['tvdb', 'client.ts'],
+];
 
-for (const name of ['extract.ts', 'api.ts', 'types.ts']) {
-  const source = await readFile(path.join(FROM, name), 'utf8');
-  await writeFile(path.join(TO, name), HEADER + source);
+for (const [folder, name] of FILES) {
+  await mkdir(path.join(SHARED, folder), { recursive: true });
+  const source = await readFile(path.join(PIPELINE, folder, name), 'utf8');
+  await writeFile(path.join(SHARED, folder, name), HEADER + source);
 }
 
 // The subclass closure is data, not code, and is copied as it is.
-await copyFile(path.join(FROM, 'film-subclasses.json'), path.join(TO, 'film-subclasses.json'));
+await copyFile(
+  path.join(PIPELINE, 'wikidata', 'film-subclasses.json'),
+  path.join(SHARED, 'wikidata', 'film-subclasses.json'),
+);
 
-console.log(`synced 4 file(s) into ${path.relative(process.cwd(), TO)}`);
+console.log(`synced ${String(FILES.length + 1)} file(s) into ${path.relative(process.cwd(), SHARED)}`);

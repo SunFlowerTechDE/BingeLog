@@ -274,6 +274,83 @@ describe('rank and unit handling', () => {
   });
 });
 
+describe('names that belong to no language', () => {
+  const NOLAN = fixture('Q25191');
+
+  it('has no English or German label at all, which is the whole problem', () => {
+    // Wikidata moved names that read the same everywhere onto `mul`.
+    // Christopher Nolan carries ninety labels and neither en nor de is
+    // among them, so a ladder ending in "whatever came first" picks an
+    // arbitrary script.
+    assert.equal(NOLAN.labels?.en, undefined);
+    assert.equal(NOLAN.labels?.de, undefined);
+    assert.ok(Object.keys(NOLAN.labels ?? {}).length > 50);
+  });
+
+  it('takes the language-neutral label', () => {
+    assert.equal(extractNamedEntity(NOLAN)?.name, 'Christopher Nolan');
+  });
+
+  it('does not fall back to an arbitrary script', () => {
+    const name = extractNamedEntity(NOLAN)?.name ?? '';
+    // This is what a German film page actually credited before the fix.
+    assert.ok(!/[\u0600-\u06FF]/.test(name), 'no Arabic script');
+    assert.ok(!/[\u4e00-\u9fff]/.test(name), 'no CJK script');
+    assert.match(name, /^[\x20-\x7E\u00C0-\u024F]+$/, 'a Latin name');
+  });
+
+  it('still prefers a real language label where one exists', () => {
+    const withEnglish: WikidataEntity = {
+      id: 'Q1',
+      type: 'item',
+      labels: {
+        mul: { language: 'mul', value: 'Neutral' },
+        en: { language: 'en', value: 'English' },
+      },
+    };
+    // A real language wins. For a Japanese actor `mul` carries the
+    // Japanese spelling, so preferring it turned "Daisuke Kuroda" into
+    // 黒田大輔 on a German page.
+    assert.equal(extractNamedEntity(withEnglish)?.name, 'English');
+  });
+
+  it('keeps a Latin label over the neutral one for a Japanese name', () => {
+    const japanese: WikidataEntity = {
+      id: 'Q3',
+      type: 'item',
+      labels: {
+        mul: { language: 'mul', value: '黒田大輔' },
+        en: { language: 'en', value: 'Daisuke Kuroda' },
+      },
+    };
+    assert.equal(extractNamedEntity(japanese)?.name, 'Daisuke Kuroda');
+  });
+
+  it('uses it for an original title too, before guessing a script', () => {
+    const film: WikidataEntity = {
+      id: 'Q2',
+      type: 'item',
+      labels: {
+        ar: { language: 'ar', value: 'عنوان' },
+        mul: { language: 'mul', value: 'Ordinary Title' },
+      },
+      claims: {
+        P31: [
+          {
+            rank: 'normal',
+            mainsnak: {
+              snaktype: 'value',
+              property: 'P31',
+              datavalue: { value: { id: 'Q11424' }, type: 'wikibase-entityid' },
+            },
+          },
+        ],
+      },
+    };
+    assert.equal(extractFilm(film)?.film.titleOriginal, 'Ordinary Title');
+  });
+});
+
 describe('referenced entities', () => {
   it('reads a name and sitelink count off a person', () => {
     const person: WikidataEntity = {

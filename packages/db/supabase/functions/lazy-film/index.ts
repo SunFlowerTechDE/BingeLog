@@ -24,6 +24,7 @@ import {
   findFilmIdByImdbId,
   findFilmIdsByTitle,
 } from '../_shared/wikidata/api.ts';
+import { createTvdbClient } from '../_shared/tvdb/client.ts';
 
 /** Enough to answer one search; more would be stockpiling on a whim. */
 const MAX_CANDIDATES = 5;
@@ -176,6 +177,47 @@ Deno.serve(async (request: Request) => {
     );
   }
 
+  // --- artwork ---------------------------------------------------------
+  //
+  // M2 2.2 asks for the lookup to be triggered as the film is created,
+  // and leaving it to the next batch was visibly wrong: a film fetched on
+  // demand showed its procedural card while TheTVDB had a poster for it.
+  //
+  // Matching is by IMDb id and nothing else (ADR-003). A failure here
+  // leaves poster_source null, which is exactly the state the batch picks
+  // up, so nothing is lost.
+  const tvdbKey = Deno.env.get('TVDB_API_KEY');
+
+  if (tvdbKey) {
+    const tvdb = createTvdbClient({ apiKey: tvdbKey, pin: Deno.env.get('TVDB_PIN') ?? undefined });
+
+    for (const entry of extracted) {
+      if (!entry.film.imdbId) {
+        // No id means no bridge, ever. The procedural card is the answer,
+        // not a waiting room.
+        await supabase
+          .from('films')
+          .update({ poster_source: 'generated' })
+          .eq('wikidata_id', entry.film.wikidataId);
+        continue;
+      }
+
+      try {
+        const match = await tvdb.findByImdbId(entry.film.imdbId);
+        await supabase
+          .from('films')
+          .update(
+            match
+              ? { tvdb_id: match.tvdbId, poster_url: match.posterUrl, poster_source: 'tvdb' }
+              : { poster_source: 'generated' },
+          )
+          .eq('wikidata_id', entry.film.wikidataId);
+      } catch (error) {
+        console.error(`artwork lookup failed for ${entry.film.imdbId}:`, String(error));
+      }
+    }
+  }
+
   const created = extracted.map((e) => e.film.wikidataId);
 
   await supabase
@@ -185,9 +227,5 @@ Deno.serve(async (request: Request) => {
     .order('created_at', { ascending: false })
     .limit(1);
 
-  // poster_source stays null on purpose. The film shows its procedural
-  // card straight away — a complete state, not a placeholder (ADR-004) —
-  // and the next artwork batch picks it up because that is exactly the
-  // rows it looks for.
   return json({ created });
 });
