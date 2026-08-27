@@ -6,42 +6,54 @@
  * steps to ten later would silently change what every existing rating
  * meant (M3, Fallstricke).
  *
- * Two images do the work. The filled one is drawn as it is; the empty one
- * is a black line drawing on transparency, which would vanish against the
- * dark theme, so it is used as a mask and takes its colour from the
- * stylesheet instead of from the file.
+ * Each bucket is in one of three drawn states, which maps exactly onto
+ * the two half-units it can hold:
  *
- * Do not render these below about 18 px. A star is a silhouette and
- * survives any size; a bucket of popcorn is a drawing with stripes and a
- * ragged top, and at 13 px the five of them turn into one orange smear
- * with no readable half. Checked by rendering every step at 48, 20 and
- * 13 px and looking at them.
+ *   empty  outline only
+ *   half   the bag, striped, with nothing in it
+ *   full   the bag with popcorn
+ *
+ * An earlier version clipped the full drawing at 50 % to make a half.
+ * Rendered at 48, 20 and 13 px and looked at, that failed: a bucket is a
+ * drawing with stripes and a ragged top, not a silhouette, and half of
+ * one does not read as half of anything. Three drawn states carry the
+ * difference on colour instead — yellow on top or not — which survives
+ * much smaller sizes.
+ *
+ * The empty state is a black line drawing on transparency and would
+ * vanish against the dark theme, so it is used as a CSS mask: the file
+ * gives the shape, the stylesheet gives the colour.
  */
 
-/** Below this the drawing stops being readable. */
-export const MIN_BUCKET_SIZE = 18;
-
-const FILLED = '/popcorn-on.png';
+const FULL = '/popcorn-on.png';
+const HALF = '/popcorn-half.png';
 const OUTLINE = '/popcorn-off.png';
+
+/** Below this the three states stop being told apart. */
+export const MIN_BUCKET_SIZE = 18;
 
 export function formatRating(rating: number): string {
   // German decimal comma, one place: 7 becomes "3,5".
   return (rating / 2).toFixed(1).replace('.', ',');
 }
 
-/** One bucket, filled from the left by `portion` (0 to 1). */
-export function Bucket({ portion, size }: { portion: number; size: number }) {
-  const clamped = Math.max(0, Math.min(1, portion));
+/** How many half-units of a bucket are filled. */
+export type BucketFill = 0 | 1 | 2;
 
-  return (
-    <span
-      className="relative inline-block shrink-0"
-      style={{ width: size, height: size }}
-      aria-hidden="true"
-    >
+export function fillFor(rating: number, index: number): BucketFill {
+  const halves = rating - index * 2;
+  return halves >= 2 ? 2 : halves === 1 ? 1 : 0;
+}
+
+export function Bucket({ fill, size }: { fill: BucketFill; size: number }) {
+  if (fill === 0) {
+    return (
       <span
-        className="bg-muted-foreground/70 absolute inset-0"
+        aria-hidden="true"
+        className="bg-muted-foreground/70 inline-block shrink-0"
         style={{
+          width: size,
+          height: size,
           maskImage: `url(${OUTLINE})`,
           maskSize: 'contain',
           maskRepeat: 'no-repeat',
@@ -52,24 +64,19 @@ export function Bucket({ portion, size }: { portion: number; size: number }) {
           WebkitMaskPosition: 'center',
         }}
       />
+    );
+  }
 
-      {clamped > 0 ? (
-        // Clipped rather than faded: a half rating shows half a bucket.
-        <span
-          className="absolute inset-y-0 left-0 overflow-hidden"
-          style={{ width: `${String(clamped * 100)}%` }}
-        >
-          <img
-            src={FILLED}
-            alt=""
-            width={size}
-            height={size}
-            className="max-w-none"
-            style={{ width: size, height: size }}
-          />
-        </span>
-      ) : null}
-    </span>
+  return (
+    <img
+      aria-hidden="true"
+      src={fill === 2 ? FULL : HALF}
+      alt=""
+      width={size}
+      height={size}
+      className="inline-block shrink-0 object-contain"
+      style={{ width: size, height: size }}
+    />
   );
 }
 
@@ -83,8 +90,6 @@ export function PopcornRating({
   size?: number;
   label?: string;
 }) {
-  const filled = rating / 2;
-
   return (
     <span
       className="inline-flex items-center gap-0.5"
@@ -92,7 +97,7 @@ export function PopcornRating({
       aria-label={label ?? `${formatRating(rating)} von 5 Popcorn`}
     >
       {[0, 1, 2, 3, 4].map((index) => (
-        <Bucket key={index} portion={filled - index} size={size} />
+        <Bucket key={index} fill={fillFor(rating, index)} size={size} />
       ))}
     </span>
   );

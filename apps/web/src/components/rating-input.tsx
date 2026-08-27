@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 
-import { Bucket, formatRating } from '@/components/popcorn';
+import { Bucket, fillFor, formatRating } from '@/components/popcorn';
 
 /**
  * Ten radio inputs behind five buckets of popcorn.
@@ -52,7 +52,7 @@ export function RatingInput({
 
       <div className="relative inline-flex gap-0.5" style={{ height: size }}>
         {[0, 1, 2, 3, 4].map((index) => (
-          <Bucket key={index} portion={shown / 2 - index} size={size} />
+          <Bucket key={index} fill={fillFor(shown, index)} size={size} />
         ))}
 
         {/* The radios sit on top as half-width hit areas, invisible but
