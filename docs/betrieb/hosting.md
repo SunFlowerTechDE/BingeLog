@@ -162,8 +162,18 @@ für `bingelog.eu` und `www` löschen, dann `cf:deploy` mit dem
 `routes`-Block. Vorher nicht — der Deploy bricht sonst nach dem Hochladen
 ab, und was schon umgestellt wurde, bleibt umgestellt.
 
+Erledigt am 28.08.2026: die drei A-Eintraege standen noch auf
+`185.181.104.242`, der geparkten Adresse aus der INWX-Zeit. Nach dem
+Loeschen legte Cloudflare beim naechsten `cf:deploy` die eigenen
+Eintraege an, und beide Namen antworten mit der App.
+
 **Fallstrick:** Sobald `routes` in der Wrangler-Datei steht, schaltet
 Wrangler die `workers.dev`-Adresse standardmäßig ab. Genau das ist beim
 ersten Versuch passiert — die Seite war unter
 `bingelog-web.binge-log-web.workers.dev` schlagartig ein 404. Deshalb
 steht `"workers_dev": true` ausdrücklich in der Datei.
+
+Ein zweiter, harmloser: unmittelbar nach dem Loeschen meldet der eigene
+Rechner die Namen noch als nicht aufloesbar, weil er sich das negative
+Ergebnis gemerkt hat. `dig` sieht sie laengst, `curl` noch nicht. Kein
+Grund, an der Umstellung zu zweifeln.

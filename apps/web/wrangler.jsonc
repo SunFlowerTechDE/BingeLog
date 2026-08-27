@@ -16,6 +16,14 @@
     "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm"
   },
+  // Ohne diese Bindung nimmt Cloudflare die Anfrage fuer die Domain zwar
+  // an, sucht dann aber einen Ursprungsserver, den es nicht gibt: 521.
+  // Cloudflare legt die DNS-Eintraege dazu selbst an und weigert sich,
+  // solange eigene Eintraege fuer den Namen bestehen.
+  "routes": [
+    { "pattern": "bingelog.eu", "custom_domain": true },
+    { "pattern": "www.bingelog.eu", "custom_domain": true }
+  ],
   // Die workers.dev-Adresse bleibt an. Sobald "routes" gesetzt ist,
   // schaltet Wrangler sie sonst stillschweigend ab, und dann ist die
   // Adresse weg, unter der die Seite bis dahin erreichbar war.
