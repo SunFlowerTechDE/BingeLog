@@ -212,3 +212,36 @@ export async function logRewatch(filmId: string, rating: number): Promise<EntryR
   revalidatePath('/tagebuch');
   return {};
 }
+
+/**
+ * M3 3.3 — the watchlist.
+ *
+ * Unlike the diary, it is private by default and by policy: what someone
+ * has not seen yet is a different kind of statement from what they have
+ * (M0 0.4). The table has no read policy for anyone but its owner, so
+ * nothing here needs to enforce that a second time.
+ */
+export async function toggleWatchlist(filmId: string): Promise<EntryResult> {
+  const { supabase, user } = await requireViewer();
+  if (!user) return { error: 'Melde dich an, um Filme vorzumerken.' };
+
+  const { data: existing } = await supabase
+    .from('watchlist')
+    .select('film_id')
+    .eq('user_id', user.id)
+    .eq('film_id', filmId)
+    .maybeSingle();
+
+  const { error } = existing
+    ? await supabase.from('watchlist').delete().eq('user_id', user.id).eq('film_id', filmId)
+    : await supabase.from('watchlist').insert({ user_id: user.id, film_id: filmId });
+
+  if (error) {
+    console.error('toggleWatchlist failed:', error.message);
+    return { error: 'Das hat nicht geklappt. Versuch es noch einmal.' };
+  }
+
+  revalidatePath(`/film/${filmId}`);
+  revalidatePath('/watchlist');
+  return {};
+}

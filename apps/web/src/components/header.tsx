@@ -19,6 +19,9 @@ export async function Header() {
               <Link href="/tagebuch" className="text-muted-foreground hover:text-foreground">
                 Tagebuch
               </Link>
+              <Link href="/watchlist" className="text-muted-foreground hover:text-foreground">
+                Watchlist
+              </Link>
               {/* Profilseiten kommen mit M4. Bis dahin steht der Name da,
                   ohne ins Leere zu führen. */}
               <span className="text-muted-foreground">{viewer.username}</span>

@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import type { Metadata } from 'next';
+import type { Metadata, Route } from 'next';
 
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { LogPanel, type OwnEntry } from '@/components/log-panel';
+import { WatchlistButton } from '@/components/watchlist-button';
+import { formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
 import { FACET_KINDS, FACET_LABELS_DE } from '@binge-log/db';
 
@@ -56,10 +58,14 @@ export async function generateMetadata({
 
 export default async function FilmPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ wikidataId: string }>;
+  searchParams: Promise<{ seite?: string }>;
 }) {
   const { wikidataId } = await params;
+  const { seite } = await searchParams;
+  const page = Math.max(1, Number(seite) || 1);
 
   if (!/^Q\d+$/.test(wikidataId)) notFound();
 
@@ -89,6 +95,7 @@ export default async function FilmPage({
   // beyond what the policies already enforce.
   let ownEntry: OwnEntry | null = null;
   let ownFacets: Partial<Record<string, number>> = {};
+  let onWatchlist = false;
 
   if (viewer) {
     const { data: entry } = await supabase
@@ -104,6 +111,14 @@ export default async function FilmPage({
 
     const { data: facets } = await supabase.rpc('my_facet_ratings', { film: wikidataId });
     ownFacets = Object.fromEntries((facets ?? []).map((row) => [row.facet, row.score]));
+
+    const { data: watched } = await supabase
+      .from('watchlist')
+      .select('film_id')
+      .eq('user_id', viewer.id)
+      .eq('film_id', wikidataId)
+      .maybeSingle();
+    onWatchlist = watched !== null;
   }
 
   const title = film.title_de ?? film.title_original;
@@ -180,7 +195,12 @@ export default async function FilmPage({
         <CommunityVerdict wikidataId={wikidataId} />
 
         {viewer ? (
-          <LogPanel filmId={wikidataId} entry={ownEntry} ownFacets={ownFacets} />
+          <>
+            <LogPanel filmId={wikidataId} entry={ownEntry} ownFacets={ownFacets} />
+            <div>
+              <WatchlistButton filmId={wikidataId} initiallyOn={onWatchlist} />
+            </div>
+          </>
         ) : (
           <section className="border-border border-t pt-5">
             <p className="text-muted-foreground text-sm">
@@ -191,8 +211,96 @@ export default async function FilmPage({
             </p>
           </section>
         )}
+
+        <Reviews wikidataId={wikidataId} page={page} />
       </div>
     </main>
+  );
+}
+
+const REVIEWS_PER_PAGE = 10;
+
+/**
+ * What other people wrote about the film.
+ *
+ * Private entries never appear, and that is not this component's doing:
+ * the policy on diary_entries decides, and a filter here would be a
+ * second opinion that can drift from the first (M0 0.4).
+ */
+async function Reviews({ wikidataId, page }: { wikidataId: string; page: number }) {
+  const supabase = await createClient();
+
+  // One more than a page, to find out whether there is a next one without
+  // a second count query.
+  const from = (page - 1) * REVIEWS_PER_PAGE;
+  const { data } = await supabase
+    .from('diary_entries')
+    .select('id, rating, review, watched_on, is_rewatch, created_at, profiles(username)')
+    .eq('film_id', wikidataId)
+    .not('review', 'is', null)
+    .order('created_at', { ascending: false })
+    .range(from, from + REVIEWS_PER_PAGE);
+
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    rating: number | null;
+    review: string;
+    watched_on: string | null;
+    is_rewatch: boolean;
+    profiles: { username: string } | null;
+  }[];
+
+  if (rows.length === 0 && page === 1) return null;
+
+  const hasMore = rows.length > REVIEWS_PER_PAGE;
+  const reviews = rows.slice(0, REVIEWS_PER_PAGE);
+
+  return (
+    <section className="border-border flex flex-col gap-5 border-t pt-5">
+      <h2 className="text-muted-foreground text-xs">Was andere geschrieben haben</h2>
+
+      <ol className="flex flex-col gap-5">
+        {reviews.map((entry) => {
+          const watched = formatWatchedOn(entry.watched_on);
+          return (
+            <li key={entry.id} className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <span className="font-medium">{entry.profiles?.username ?? 'jemand'}</span>
+                {entry.rating === null ? null : (
+                  <PopcornRating rating={entry.rating} size={18} />
+                )}
+                {watched ? <span className="text-muted-foreground">{watched}</span> : null}
+                {entry.is_rewatch ? (
+                  <span className="text-muted-foreground">Wiedersehen</span>
+                ) : null}
+              </div>
+              <p className="text-sm leading-relaxed whitespace-pre-line">{entry.review}</p>
+            </li>
+          );
+        })}
+      </ol>
+
+      {page > 1 || hasMore ? (
+        <div className="flex gap-4 text-sm">
+          {page > 1 ? (
+            <Link
+              href={`/film/${wikidataId}?seite=${String(page - 1)}` as Route}
+              className="text-muted-foreground hover:text-foreground underline underline-offset-4"
+            >
+              Zurück
+            </Link>
+          ) : null}
+          {hasMore ? (
+            <Link
+              href={`/film/${wikidataId}?seite=${String(page + 1)}` as Route}
+              className="text-muted-foreground hover:text-foreground underline underline-offset-4"
+            >
+              Weitere
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

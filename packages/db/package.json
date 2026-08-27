@@ -21,7 +21,8 @@
     "test:rls": "node --env-file=.env --experimental-strip-types --test --test-concurrency=1 tests/*.test.ts",
     "test": "pnpm test:schema",
     "verify": "node --env-file=.env --experimental-strip-types scripts/verify.ts",
-    "test:schema": "node --experimental-strip-types --test tests/schema/*.test.ts"
+    "test:schema": "node --experimental-strip-types --test tests/schema/*.test.ts",
+    "cleanup:test": "node --env-file=.env --experimental-strip-types scripts/cleanup-test-data.ts"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.58.0",
