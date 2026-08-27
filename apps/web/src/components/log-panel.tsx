@@ -3,7 +3,13 @@
 import { useActionState, useState } from 'react';
 
 import { RatingInput } from '@/components/rating-input';
-import { rateFilm, saveEntry, deleteEntry, type EntryResult } from '@/lib/diary-actions';
+import {
+  rateFilm,
+  saveEntry,
+  deleteEntry,
+  unrateFilm,
+  type EntryResult,
+} from '@/lib/diary-actions';
 import { ActionNote } from '@/components/action-note';
 import { FACET_KINDS, FACET_LABELS_DE } from '@binge-log/db';
 
@@ -52,7 +58,10 @@ export function LogPanel({
           value={entry?.rating ?? null}
           onSelect={async (rating) => {
             setProblem(undefined);
-            const result = await rateFilm(filmId, rating);
+            // Clicking the last popcorn away is how a rating is taken
+            // back, so zero means remove the entry rather than store a
+            // rating the schema does not allow.
+            const result = rating === 0 ? await unrateFilm(filmId) : await rateFilm(filmId, rating);
             setProblem(result.error);
             return result;
           }}
