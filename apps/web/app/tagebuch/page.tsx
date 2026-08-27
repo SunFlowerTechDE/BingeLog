@@ -3,7 +3,7 @@ import type { Metadata, Route } from 'next';
 
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
-import { Stars, formatRating } from '@/components/stars';
+import { PopcornRating, formatRating } from '@/components/popcorn';
 import { formatWatchedOn } from '@/lib/dates';
 
 export const metadata: Metadata = { title: 'Tagebuch' };
@@ -103,7 +103,7 @@ export default async function DiaryPage() {
                       <span className="text-muted-foreground">ohne Bewertung</span>
                     ) : (
                       <span className="flex items-center gap-1.5">
-                        <Stars rating={entry.rating} size={13} />
+                        <PopcornRating rating={entry.rating} size={18} />
                         <span className="text-muted-foreground tabular-nums">
                           {formatRating(entry.rating)}
                         </span>

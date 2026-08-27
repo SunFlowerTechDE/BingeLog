@@ -2,20 +2,17 @@
 
 import { useState, useTransition } from 'react';
 
-import { formatRating } from '@/components/stars';
-
-const STAR_PATH =
-  'M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z';
+import { Bucket, formatRating } from '@/components/popcorn';
 
 /**
- * Ten radio inputs behind five stars.
+ * Ten radio inputs behind five buckets of popcorn.
  *
  * Real radios rather than buttons with ARIA: arrow keys, focus and
  * screen-reader semantics then come from the browser instead of from
  * code that has to be kept correct.
  *
- * `onSelect` makes this the two-tap path — one tap on a star logs the
- * film. Without it the component is just a field inside a larger form.
+ * `onSelect` makes this the two-tap path — one tap logs the film.
+ * Without it the component is just a field inside a larger form.
  */
 export function RatingInput({
   name = 'rating',
@@ -51,42 +48,12 @@ export function RatingInput({
         setHovered(null);
       }}
     >
-      <legend className="sr-only">Bewertung in halben Sternen</legend>
+      <legend className="sr-only">Bewertung in halben Popcorn</legend>
 
-      <div className="relative inline-flex" style={{ height: size }}>
-        {[0, 1, 2, 3, 4].map((index) => {
-          const portion = Math.max(0, Math.min(1, shown / 2 - index));
-          const id = `input-star-${String(index)}`;
-          return (
-            <svg
-              key={index}
-              width={size}
-              height={size}
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              className="shrink-0"
-            >
-              <defs>
-                <linearGradient id={`${id}-${String(Math.round(portion * 100))}`}>
-                  <stop offset={`${String(portion * 100)}%`} stopColor="currentColor" />
-                  <stop offset={`${String(portion * 100)}%`} stopColor="transparent" />
-                </linearGradient>
-              </defs>
-              <path
-                d={STAR_PATH}
-                fill={`url(#${id}-${String(Math.round(portion * 100))})`}
-                className="text-primary"
-              />
-              <path
-                d={STAR_PATH}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                className="text-muted-foreground opacity-40"
-              />
-            </svg>
-          );
-        })}
+      <div className="relative inline-flex gap-0.5" style={{ height: size }}>
+        {[0, 1, 2, 3, 4].map((index) => (
+          <Bucket key={index} portion={shown / 2 - index} size={size} />
+        ))}
 
         {/* The radios sit on top as half-width hit areas, invisible but
             focusable, so the whole control works from the keyboard. */}
@@ -109,7 +76,7 @@ export function RatingInput({
                 }}
                 className="sr-only"
               />
-              <span className="sr-only">{formatRating(rating)} Sterne</span>
+              <span className="sr-only">{formatRating(rating)} Popcorn</span>
             </label>
           ))}
         </div>

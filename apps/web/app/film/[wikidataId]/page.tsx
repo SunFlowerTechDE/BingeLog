@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { LogPanel, type OwnEntry } from '@/components/log-panel';
-import { Stars, formatRating } from '@/components/stars';
+import { PopcornRating, formatRating } from '@/components/popcorn';
 import { FACET_KINDS, FACET_LABELS_DE } from '@binge-log/db';
 
 /**
@@ -233,7 +233,7 @@ async function CommunityVerdict({ wikidataId }: { wikidataId: string }) {
   return (
     <section className="border-border flex flex-col gap-4 border-t pt-5">
       <div className="flex items-center gap-3">
-        <Stars rating={average} size={18} />
+        <PopcornRating rating={average} size={22} />
         <span className="text-sm font-medium tabular-nums">{formatRating(average)}</span>
         <span className="text-muted-foreground text-sm">
           {verdict.votes === 1 ? '1 Bewertung' : `${String(verdict.votes)} Bewertungen`}
