@@ -3,6 +3,26 @@
 > Stand 26.08.2026. `bingelog.eu` ist bei INWX registriert.
 > Betrifft M3 3.1 (Bestätigungsmails) und M6 (Launch).
 
+## Stand
+
+| Schritt | Stand |
+|---|---|
+| Domain bei INWX registriert | erledigt, 26.08.2026 |
+| Cloudflare-Konto, Zone `bingelog.eu` | erledigt, 27.08.2026 |
+| Nameserver bei INWX auf Cloudflare | erledigt — `felicity` / `jocelyn.ns.cloudflare.com` |
+| TLS-Zertifikat | stellt Cloudflare selbst aus |
+| Worker deployen | offen, wenn M3 steht |
+| SMTP-Versand | offen |
+| `site_url` auf die Domain | offen, **erst nach dem Deployment** |
+
+DNS liegt jetzt bei Cloudflare. Neue Einträge — MX, SPF, DKIM, DMARC für
+den Mailversand — kommen dorthin, nicht mehr zu INWX. INWX bleibt die
+Stelle, an der die Domain registriert ist und verlängert wird.
+
+Es gibt keine MX-Einträge und kein DNSSEC. Beim Wechsel ging also nichts
+verloren, und der eine Fehler, der eine Domain unerreichbar macht — eine
+Signatur ohne passenden Schlüssel — konnte nicht auftreten.
+
 ## Reihenfolge
 
 Die Schritte hängen voneinander ab. In dieser Reihenfolge, sonst brechen
