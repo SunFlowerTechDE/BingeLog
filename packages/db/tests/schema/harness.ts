@@ -131,6 +131,13 @@ export async function startHarness(): Promise<Harness> {
     password: 'postgres',
     port: await freePort(),
     persistent: false,
+    // Dieselbe Locale wie das Projekt (en_US.UTF-8). Ohne Angabe erbt
+    // initdb die des Rechners, und in der C-Locale wirft pg_trgm
+    // nichtlateinische Zeichen aus den Trigrammen. Ein Suchtest lief
+    // deshalb auf macOS gruen und auf dem CI-Rechner rot — und die
+    // gruene Seite war die falsche: sie prueft Bedingungen, die es auf
+    // dem Projekt nicht gibt.
+    initdbFlags: ['--locale=en_US.UTF-8', '--encoding=UTF8'],
   });
 
   await postgres.initialise();
