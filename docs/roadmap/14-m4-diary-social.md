@@ -23,10 +23,16 @@ Community. Das ist der Teil, der Nutzer hält.
 - [x] Öffentliche Profilseite unter `/@username`
 - [x] Zuletzt gesehen, Lieblingsfilme (4 Slots, wie bei Letterboxd
       etabliert), Statistiken
-- [ ] Statistiken: Filme pro Jahr, Bewertungsverteilung, häufigste
+- [x] Statistiken: Filme pro Jahr, Bewertungsverteilung, häufigste
       Regisseure, häufigste Jahrzehnte
-- [ ] Statistiken serverseitig berechnen und cachen, nicht pro
-      Seitenaufruf aggregieren
+- [x] Statistiken serverseitig berechnen, nicht pro Seitenaufruf im
+      Client aggregieren. **Ohne Cache, mit Messung:** bei 3000
+      Einträgen brauchen alle sechs Auswertungen zusammen unter 25 ms,
+      die Leitung nach Frankfurt allein rund 14. Zwei Abfragen waren
+      vorher aufgebläht (Regie 38 ms, Genres 16 ms) — erst je Film
+      verdichten statt je Eintrag verbinden brachte beide unter 4 ms.
+      Ein Cache käme, wenn die Summe in den Bereich der Leitung wächst,
+      und dann als materialisierte Sicht wie bei den Facetten.
 
 ### 4.3 Listen
 

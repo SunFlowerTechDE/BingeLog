@@ -135,3 +135,67 @@ export function Chip({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
+
+/**
+ * Saeulen fuer eine Verteilung.
+ *
+ * Ohne Bibliothek: es sind Rechtecke mit einer Hoehe. Ein Diagrammpaket
+ * dafuer waere mehr Gewicht als die ganze Seite.
+ *
+ * Die Hoehe bezieht sich auf den groessten Wert, nicht auf eine feste
+ * Zahl — sonst waere bei kleinen Tagebuechern alles ein Strich und bei
+ * grossen alles am Anschlag.
+ */
+export function Saeulen({
+  daten,
+  einheit,
+}: {
+  daten: { label: string; wert: number }[];
+  einheit: string;
+}) {
+  const groesste = Math.max(1, ...daten.map((d) => d.wert));
+
+  return (
+    <ol className="flex items-end gap-1.5 overflow-x-auto pb-1">
+      {daten.map((d) => (
+        <li key={d.label} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+          <span className="text-muted-foreground text-[10px] tabular-nums">
+            {d.wert > 0 ? d.wert : ''}
+          </span>
+          <div
+            title={`${d.label}: ${String(d.wert)} ${einheit}`}
+            style={{ height: `${String(Math.max(2, (d.wert / groesste) * 72))}px` }}
+            className={`w-full rounded-sm ${d.wert > 0 ? 'bg-primary' : 'bg-border'}`}
+          />
+          <span className="text-muted-foreground truncate text-[10px] tabular-nums">{d.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** Balken fuer eine Rangfolge. Waagerecht, weil Namen waagerecht stehen. */
+export function Balken({ daten }: { daten: { label: string; wert: number }[] }) {
+  const groesste = Math.max(1, ...daten.map((d) => d.wert));
+
+  return (
+    <ol className="flex flex-col gap-2">
+      {daten.map((d) => (
+        <li key={d.label} className="flex items-center gap-3">
+          <span className="w-28 shrink-0 truncate text-xs" title={d.label}>
+            {d.label}
+          </span>
+          <span className="bg-border h-2 min-w-0 flex-1 overflow-hidden rounded-full">
+            <span
+              style={{ width: `${String((d.wert / groesste) * 100)}%` }}
+              className="bg-primary block h-full rounded-full"
+            />
+          </span>
+          <span className="text-muted-foreground w-6 shrink-0 text-right text-xs tabular-nums">
+            {d.wert}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}

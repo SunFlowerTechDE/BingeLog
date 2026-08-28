@@ -734,11 +734,32 @@ export type Database = {
         }[]
       }
       my_friends: { Args: never; Returns: string[] }
+      profile_decades: {
+        Args: { profile: string }
+        Returns: {
+          decade: number
+          films: number
+        }[]
+      }
+      profile_directors: {
+        Args: { max_results?: number; profile: string }
+        Returns: {
+          films: number
+          name: string
+        }[]
+      }
       profile_genres: {
         Args: { max_results?: number; profile: string }
         Returns: {
           films: number
           label: string
+        }[]
+      }
+      profile_rating_spread: {
+        Args: { profile: string }
+        Returns: {
+          films: number
+          rating: number
         }[]
       }
       profile_stats: {
@@ -749,6 +770,13 @@ export type Database = {
           first_seen: string
           ratings: number
           reviews: number
+        }[]
+      }
+      profile_years: {
+        Args: { profile: string }
+        Returns: {
+          films: number
+          year: number
         }[]
       }
       prune_lazy_creation_attempts: { Args: never; Returns: undefined }

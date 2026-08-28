@@ -7,7 +7,7 @@ import { getViewer } from '@/lib/session';
 import { FollowButton } from '@/components/follow-button';
 import { PopcornRating, formatRating } from '@/components/popcorn';
 import { formatWatchedOn } from '@/lib/dates';
-import { Avatar, StatCard, Panel, Chip } from '@/components/profile-parts';
+import { Avatar, StatCard, Panel, Chip, Saeulen, Balken } from '@/components/profile-parts';
 import { Symbol } from '@/components/icons';
 import { ShareButton } from '@/components/share-button';
 
@@ -125,6 +125,27 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     // dagegen nicht; die kurze Liste gehoert dazu.
     supabase.rpc('profile_genres', { profile: profile.id, max_results: 3 }),
   ]);
+
+  // Die vier Auswertungen aus 4.2. Alle vier sind `security invoker`:
+  // was ein Fremder zaehlt, ist das, was er auch sehen darf. Ein
+  // privater Eintrag zaehlt nicht mit — auch nicht als Strich in einem
+  // Balken.
+  //
+  // Kein Cache. Bei 3000 Eintraegen brauchen alle sechs Auswertungen
+  // zusammen unter 25 ms, die Leitung nach Frankfurt allein rund 14.
+  // Die Messung steht in 20260828300000.
+  const [{ data: jahrRows }, { data: notenRows }, { data: regieRows }, { data: dekadenRows }] =
+    await Promise.all([
+      supabase.rpc('profile_years', { profile: profile.id }),
+      supabase.rpc('profile_rating_spread', { profile: profile.id }),
+      supabase.rpc('profile_directors', { profile: profile.id, max_results: 5 }),
+      supabase.rpc('profile_decades', { profile: profile.id }),
+    ]);
+
+  const jahre = jahrRows ?? [];
+  const noten = notenRows ?? [];
+  const regie = regieRows ?? [];
+  const dekaden = dekadenRows ?? [];
   const stats = statRows?.[0];
   const genres = genreRows ?? [];
 
@@ -569,6 +590,48 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
               </ul>
             )}
           </Panel>
+        ) : null}
+
+        {/* Die Zahlen erscheinen erst, wenn sie etwas sagen. Ein
+            Balkendiagramm mit einem Balken ist kein Diagramm, und eine
+            Verteilung aus drei Bewertungen ist keine Verteilung. */}
+        {jahre.length > 1 || noten.some((n) => n.films > 0) || dekaden.length > 1 ? (
+          <div className="grid gap-4 lg:grid-cols-3">
+            {noten.some((n) => n.films > 0) ? (
+              <Panel titel="Wie du bewertest" art="popcorn">
+                <Saeulen
+                  daten={noten.map((n) => ({ label: formatRating(n.rating), wert: n.films }))}
+                  einheit="Filme"
+                />
+              </Panel>
+            ) : null}
+
+            {jahre.length > 1 ? (
+              <Panel titel="Filme pro Jahr" art="film">
+                <Saeulen
+                  daten={jahre.map((j) => ({ label: String(j.year), wert: j.films }))}
+                  einheit="Filme"
+                />
+              </Panel>
+            ) : null}
+
+            {dekaden.length > 1 ? (
+              <Panel titel="Aus welchen Jahrzehnten" art="stern">
+                <Balken
+                  daten={dekaden.map((d) => ({ label: `${String(d.decade)}er`, wert: d.films }))}
+                />
+              </Panel>
+            ) : null}
+
+            {/* Ab zwei Filmen je Person — einer macht keinen
+                Lieblingsregisseur. Die Untergrenze steckt in der
+                Funktion, hier faellt nur die leere Tafel weg. */}
+            {regie.length > 0 ? (
+              <Panel titel="Häufigste Regie" art="feder">
+                <Balken daten={regie.map((r) => ({ label: r.name, wert: r.films }))} />
+              </Panel>
+            ) : null}
+          </div>
         ) : null}
 
         {eigenes || profile.watchlist_public ? (
