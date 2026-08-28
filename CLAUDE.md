@@ -71,7 +71,8 @@ liegt vor, und der Artwork-Batch läuft. Die Lizenzprüfung steht in
 `docs/legal/thetvdb-lizenz.md` — Kurzfassung: **Bilder werden verlinkt,
 nie gespiegelt.**
 
-Der Katalog enthält 59 Filme — die meistverlinkten plus die Filme, die
+Der Katalog enthält 155 Filme (Stand 28.08.2026, gewachsen durch die
+Lazy Creation aus dem Startbestand von 59) — die meistverlinkten plus die Filme, die
 die Such-Testfälle brauchen, samt ihrer Beinahe-Treffer. Der Volldump
 (M1 1.1) ist bewusst zurückgestellt; die Messungen dazu stehen in
 `docs/roadmap/11-m1-datenpipeline.md`.
@@ -83,10 +84,10 @@ lokales Postgres, also ohne Projekt.
 Laufend ist M4. Profil, Kopf- und Profilbild, Folgen, Favoriten (vier
 Plätze) und Binge-Listen stehen. Der Header hat drei Zonen: Ziele in der
 Mitte, Suche als Lupe, das eigene Konto rechts hinter einem Klappmenü.
-Offen sind die Statistiken aus 4.2, der Feed (4.4), die
-spoilergeschützte Diskussion (4.5) und die Melde-Funktion (4.7).
-„Entdecken" steht in der Navigation, die Seite dahinter ist ein
-Platzhalter.
+Entdecken ist für Angemeldete die Startseite: Genre-Kacheln als
+Schieber, der chronologische Feed der gefolgten Profile, die neuesten
+Filme. Offen sind die spoilergeschützte Diskussion (4.5) und die
+Melde-Funktion (4.7).
 
 Die Bilder liegen im Objektspeicher, nicht in der Datenbank. **Beim
 Löschen eines Kontos müssen beide Ordner mit** — `avatars` und

@@ -64,12 +64,13 @@ create table list_items (
 
 ### 4.4 Folgen und Feed
 
-- [ ] `follows`-Tabelle (follower_id, following_id)
-- [ ] Feed: Einträge der gefolgten Nutzer, chronologisch
-- [ ] **Kein algorithmischer Feed.** Chronologisch, vollständig,
+- [x] `follows`-Tabelle (follower_id, following_id)
+- [x] Feed: Einträge der gefolgten Nutzer, chronologisch — auf der
+      Entdecken-Seite, die für Angemeldete die Startseite ist
+- [x] **Kein algorithmischer Feed.** Chronologisch, vollständig,
       nachvollziehbar. Das ist ein Produktversprechen, kein
       Implementierungsdetail.
-- [ ] Paginierung per Cursor, nicht per Offset
+- [x] Paginierung per Cursor, nicht per Offset — auf `(created_at, id)`
 
 ### 4.5 Filmdiskussion (spoilergeschützt)
 

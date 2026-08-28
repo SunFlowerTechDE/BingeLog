@@ -724,6 +724,33 @@ export type Database = {
         Args: { title_de: string; title_en: string; title_original: string }
         Returns: string
       }
+      following_feed: {
+        Args: { before_at?: string; before_id?: string; max_results?: number }
+        Returns: {
+          avatar_path: string
+          created_at: string
+          film_id: string
+          id: string
+          is_rewatch: boolean
+          poster_source: string
+          poster_url: string
+          rating: number
+          release_year: number
+          review: string
+          title_de: string
+          title_original: string
+          username: string
+          watched_on: string
+        }[]
+      }
+      genre_tiles: {
+        Args: { max_results?: number }
+        Returns: {
+          films: number
+          genre_id: string
+          label: string
+        }[]
+      }
       list_is_mine: { Args: { list: string }; Returns: boolean }
       list_is_readable: { Args: { list: string }; Returns: boolean }
       my_facet_ratings: {

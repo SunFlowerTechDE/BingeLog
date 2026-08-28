@@ -963,6 +963,44 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.lists where user_id = $1`, [eigner]);
   });
 
+  it('never puts an entry into the feed that the reader may not see', async () => {
+    const autor = await seedUser(h, 'feedautor');
+    const leser = await seedUser(h, 'feedleser');
+    const dritter = await seedUser(h, 'feeddritter');
+
+    // Einseitig: der Leser folgt, es wird nicht zurueckgefolgt. Damit
+    // sind die beiden **keine** Freunde.
+    await h.sql.query(`insert into public.follows (follower_id, followee_id) values ($1, $2)`, [
+      leser,
+      autor,
+    ]);
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $2, 8, 'public'), ($1, $3, 7, 'private')`,
+      [autor, FILM, QUIET_FILM],
+    );
+
+    const sichtbar = await h
+      .as('authenticated', leser)
+      .query<{ film_id: string }>(`select film_id from public.following_feed()`);
+    assert.deepEqual(
+      sichtbar.map((r) => r.film_id),
+      [FILM],
+      'der private Eintrag steht nicht im Feed',
+    );
+
+    // Und wer nicht folgt, sieht auch das Oeffentliche hier nicht — der
+    // Feed ist die Auswahl der gefolgten Profile, nicht der Katalog.
+    const ohneFolgen = await h
+      .as('authenticated', dritter)
+      .query(`select film_id from public.following_feed()`);
+    assert.deepEqual(ohneFolgen, [], 'ohne Folgen ist der Feed leer');
+
+    await h.sql.query(`delete from public.diary_entries where user_id = $1`, [autor]);
+    await h.sql.query(`delete from public.follows where follower_id = $1`, [leser]);
+  });
+
   it('keeps the watchlist private unless it is opened', async () => {
     await h
       .as('authenticated', rater)
