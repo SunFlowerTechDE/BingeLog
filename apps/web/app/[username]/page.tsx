@@ -111,7 +111,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const [{ data: statRows }, { data: genreRows }] = await Promise.all([
     supabase.rpc('profile_stats', { profile: profile.id }),
-    supabase.rpc('profile_genres', { profile: profile.id, max_results: 5 }),
+    // Drei, nicht fuenf: Wikidata haengt einem Film gern ein halbes
+    // Dutzend Genres an — Titanic fuehrt dort Monumentalfilm,
+    // Historienfilm, Katastrophenfilm, Melodram und Liebesfilm. Eine
+    // lange Liste liest sich wie eine Datenabschrift, drei wie eine
+    // Aussage.
+    supabase.rpc('profile_genres', { profile: profile.id, max_results: 3 }),
   ]);
   const stats = statRows?.[0];
   const genres = genreRows ?? [];

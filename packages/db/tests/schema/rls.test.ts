@@ -500,6 +500,52 @@ describe('profile statistics', () => {
 
     await h.sql.query(`delete from public.diary_entries where film_id in ($1, $2)`, [film, quiet]);
   });
+
+  it('names a genre only from two films on', async () => {
+    const einzeln = await seedUser(h, 'einzelseher');
+    const a = 'Q100007';
+    const b = 'Q100008';
+    await seedFilm(h, a);
+    await seedFilm(h, b);
+
+    await h.sql.query(
+      `insert into public.genres (wikidata_id, label_de) values ('Q900001', 'Probegenre')
+       on conflict do nothing`,
+    );
+    await h.sql.query(`insert into public.film_genres (film_id, genre_id) values ($1, 'Q900001')`, [
+      a,
+    ]);
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 8)`,
+      [einzeln, a],
+    );
+
+    const beiEinem = await h
+      .as('authenticated', einzeln)
+      .query(`select * from public.profile_genres($1)`, [einzeln]);
+    assert.deepEqual(beiEinem, [], 'ein Film macht kein Lieblingsgenre');
+
+    // Zweiter Film desselben Genres: jetzt zaehlt es.
+    await h.sql.query(`insert into public.film_genres (film_id, genre_id) values ($1, 'Q900001')`, [
+      b,
+    ]);
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 9)`,
+      [einzeln, b],
+    );
+
+    const beiZweien = await h
+      .as('authenticated', einzeln)
+      .query<{ label: string; films: number }>(`select * from public.profile_genres($1)`, [
+        einzeln,
+      ]);
+    assert.deepEqual(
+      beiZweien.map((g) => g.label),
+      ['Probegenre'],
+    );
+
+    await h.sql.query(`delete from public.diary_entries where user_id = $1`, [einzeln]);
+  });
 });
 
 // ---------------------------------------------------------------------------
