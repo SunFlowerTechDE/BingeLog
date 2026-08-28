@@ -3,24 +3,26 @@
 import { useState } from 'react';
 
 /**
- * Die Profiladresse weitergeben.
+ * Eine Adresse weitergeben.
  *
  * Wo das Geraet eine eigene Teilen-Auswahl hat, bekommt es sie — auf dem
  * Handy ist das der gewohnte Weg. Sonst wandert die Adresse in die
  * Zwischenablage, und der Knopf sagt es fuer zwei Sekunden. Ein Knopf,
  * der nichts sagt, wirkt kaputt.
  */
-export function ShareButton({ username }: { username: string }) {
+export function ShareButton({ pfad, titel }: { pfad?: string; titel?: string }) {
   const [kopiert, setKopiert] = useState(false);
 
   const teilen = async () => {
-    const url = `${window.location.origin}/@${username}`;
+    // Ohne Angabe die Seite, auf der man steht. Das ist fast immer das
+    // Gemeinte und geht nie am Ziel vorbei.
+    const url = pfad ? `${window.location.origin}${pfad}` : window.location.href;
 
     // Die Typen behaupten, es gebe die Auswahl immer. Firefox am
     // Schreibtisch hat sie nicht, deshalb wird gefragt statt geglaubt.
     if ('share' in navigator) {
       try {
-        await navigator.share({ title: `@${username} auf BingeLog`, url });
+        await navigator.share({ title: titel ?? document.title, url });
         return;
       } catch {
         // Abgebrochen oder abgelehnt: dann eben die Zwischenablage.

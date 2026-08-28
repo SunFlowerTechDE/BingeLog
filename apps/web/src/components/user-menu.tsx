@@ -90,6 +90,16 @@ export function UserMenu({
           </Link>
           <Link
             role="menuitem"
+            href={`/@${username}/listen` as Route}
+            onClick={() => {
+              setOffen(false);
+            }}
+            className="hover:bg-background rounded-md px-3 py-2 text-sm"
+          >
+            Meine Listen
+          </Link>
+          <Link
+            role="menuitem"
             href="/einstellungen"
             onClick={() => {
               setOffen(false);

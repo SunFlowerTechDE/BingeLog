@@ -348,6 +348,80 @@ export type Database = {
         }
         Relationships: []
       }
+      list_items: {
+        Row: {
+          film_id: string
+          list_id: string
+          note: string | null
+          ord: number
+        }
+        Insert: {
+          film_id: string
+          list_id: string
+          note?: string | null
+          ord?: number
+        }
+        Update: {
+          film_id?: string
+          list_id?: string
+          note?: string | null
+          ord?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_items_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           name: string
@@ -650,6 +724,8 @@ export type Database = {
         Args: { title_de: string; title_en: string; title_original: string }
         Returns: string
       }
+      list_is_mine: { Args: { list: string }; Returns: boolean }
+      list_is_readable: { Args: { list: string }; Returns: boolean }
       my_facet_ratings: {
         Args: { film: string }
         Returns: {

@@ -6,7 +6,7 @@ import {
   addFavourite,
   removeFavourite,
   swapFavourites,
-  searchForFavourite,
+  searchCatalogue,
   type FilmTreffer,
 } from '@/lib/favourite-actions';
 import { ActionNote } from '@/components/action-note';
@@ -60,7 +60,7 @@ export function FavouriteEditor({ anfang }: { anfang: Favorit[] }) {
       return;
     }
     setSucht(true);
-    void searchForFavourite(trimmed).then((rows) => {
+    void searchCatalogue(trimmed).then((rows) => {
       // Nur uebernehmen, wenn das Feld noch dasselbe sagt: eine langsame
       // Antwort darf eine neuere nicht ueberschreiben.
       setTerm((aktuell) => {

@@ -76,9 +76,22 @@ die Such-Testfälle brauchen, samt ihrer Beinahe-Treffer. Der Volldump
 (M1 1.1) ist bewusst zurückgestellt; die Messungen dazu stehen in
 `docs/roadmap/11-m1-datenpipeline.md`.
 
-Laufend ist M3. Auth, Suche, Filmdetail, Bewerten, Tagebuch, Watchlist
-und Reviews stehen; die fünf Pflicht-Testfälle der Suche laufen gegen
+M3 ist durch: Auth, Suche, Filmdetail, Bewerten, Tagebuch, Watchlist und
+Reviews stehen; die fünf Pflicht-Testfälle der Suche laufen gegen
 lokales Postgres, also ohne Projekt.
+
+Laufend ist M4. Profil, Kopf- und Profilbild, Folgen, Favoriten (vier
+Plätze) und Binge-Listen stehen. Der Header hat drei Zonen: Ziele in der
+Mitte, Suche als Lupe, das eigene Konto rechts hinter einem Klappmenü.
+Offen sind die Statistiken aus 4.2, der Feed (4.4), die
+spoilergeschützte Diskussion (4.5) und die Melde-Funktion (4.7).
+„Entdecken" steht in der Navigation, die Seite dahinter ist ein
+Platzhalter.
+
+Die Bilder liegen im Objektspeicher, nicht in der Datenbank. **Beim
+Löschen eines Kontos müssen beide Ordner mit** — `avatars` und
+`banners`. Die Kaskade räumt die Zeile, den Objektspeicher räumt sie
+nicht.
 
 Die Lazy Creation liegt in einer Edge Function (`packages/db/supabase/
 functions/lazy-film`), weil `apps/web` den Katalog nicht schreiben darf.

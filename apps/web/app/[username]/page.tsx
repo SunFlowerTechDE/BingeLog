@@ -169,6 +169,22 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     };
   }[];
 
+  // Welche Listen hier stehen, entscheidet die Policy: oeffentliche
+  // fuer alle, private nur fuer den Besitzer.
+  const { data: listenRows, count: listenCount } = await supabase
+    .from('lists')
+    .select('id, title, is_public, list_items(count)', { count: 'exact' })
+    .eq('user_id', profile.id)
+    .order('updated_at', { ascending: false })
+    .limit(4);
+
+  const listen = (listenRows ?? []) as unknown as {
+    id: string;
+    title: string;
+    is_public: boolean;
+    list_items: { count: number }[];
+  }[];
+
   const { data: rows } = await supabase
     .from('diary_entries')
     .select(
@@ -300,7 +316,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                   followsBack={folgtZurueck}
                 />
               ) : null}
-              <ShareButton username={profile.username} />
+              <ShareButton
+                pfad={`/@${profile.username}`}
+                titel={`@${profile.username} auf BingeLog`}
+              />
             </div>
 
             {eigenes ? (
@@ -516,6 +535,38 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                   </li>
                 ))}
               </ol>
+            )}
+          </Panel>
+        ) : null}
+
+        {listen.length > 0 || eigenes ? (
+          <Panel
+            titel="Binge-Listen"
+            art="buch"
+            mehr={`/@${profile.username}/listen`}
+            mehrText={listenCount && listenCount > listen.length ? 'Alle anzeigen' : undefined}
+          >
+            {listen.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Noch keine Liste. Filme, die zusammengehören, kannst du zu einer Sammlung machen.
+              </p>
+            ) : (
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {listen.map((liste) => (
+                  <li key={liste.id}>
+                    <Link
+                      href={`/listen/${liste.id}` as Route}
+                      className="border-border bg-card/60 hover:bg-card flex h-full flex-col gap-1 rounded-lg border p-3"
+                    >
+                      <span className="text-sm font-medium">{liste.title}</span>
+                      <span className="text-muted-foreground text-xs tabular-nums">
+                        {liste.list_items[0]?.count ?? 0} Filme
+                        {eigenes && !liste.is_public ? ' · nur für dich' : ''}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
           </Panel>
         ) : null}

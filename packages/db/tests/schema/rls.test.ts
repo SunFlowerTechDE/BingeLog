@@ -872,6 +872,97 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.favourites where user_id = $1`, [eigner]);
   });
 
+  it('shows a public list to everyone and a private one to nobody else', async () => {
+    const eigner = await seedUser(h, 'listenfuehrer');
+
+    const [offen] = await h.as('authenticated', eigner).query<{ id: string }>(
+      `insert into public.lists (user_id, title, is_public)
+         values ($1, 'Filme im Regen', true) returning id`,
+      [eigner],
+    );
+    const [zu] = await h.as('authenticated', eigner).query<{ id: string }>(
+      `insert into public.lists (user_id, title, is_public)
+         values ($1, 'Nur fuer mich', false) returning id`,
+      [eigner],
+    );
+
+    assert.ok(offen && zu);
+
+    await h.sql.query(
+      `insert into public.list_items (list_id, film_id, ord) values ($1, $2, 1), ($3, $4, 1)`,
+      [offen.id, FILM, zu.id, QUIET_FILM],
+    );
+
+    const fremdeListen = await h
+      .as('authenticated', stranger)
+      .query<{ id: string }>(`select id from public.lists where user_id = $1`, [eigner]);
+    assert.deepEqual(
+      fremdeListen.map((r) => r.id),
+      [offen.id],
+      'die private Liste taucht nicht einmal auf',
+    );
+
+    // Und ihr Inhalt auch nicht. Die Policy auf list_items haengt an der
+    // Liste, nicht am Eintrag — sonst waere der Titel verborgen und die
+    // Filme darin sichtbar.
+    const fremdeEintraege = await h
+      .as('authenticated', stranger)
+      .query<{ film_id: string }>(`select film_id from public.list_items`);
+    assert.deepEqual(
+      fremdeEintraege.map((r) => r.film_id),
+      [FILM],
+      'der Inhalt der privaten Liste bleibt drin',
+    );
+
+    // Ohne Konto dasselbe.
+    const anonym = await h.as('anon', null).query(`select film_id from public.list_items`);
+    assert.equal(anonym.length, 1, 'oeffentlich heisst oeffentlich, privat heisst privat');
+
+    const eigene = await h
+      .as('authenticated', eigner)
+      .query(`select id from public.lists where user_id = $1`, [eigner]);
+    assert.equal(eigene.length, 2, 'der Besitzer sieht beide');
+
+    await h.sql.query(`delete from public.lists where user_id = $1`, [eigner]);
+  });
+
+  it('lets nobody write into a list they do not own', async () => {
+    const eigner = await seedUser(h, 'listenbesitzer');
+    const [liste] = await h
+      .as('authenticated', eigner)
+      .query<{ id: string }>(
+        `insert into public.lists (user_id, title) values ($1, 'Offen') returning id`,
+        [eigner],
+      );
+    assert.ok(liste);
+
+    // Lesbar ist sie, beschreibbar nicht. Das ist der ganze Punkt einer
+    // oeffentlichen Liste.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', stranger)
+          .query(`insert into public.list_items (list_id, film_id) values ($1, $2)`, [
+            liste.id,
+            FILM,
+          ]),
+      /row-level security/,
+      'ein Fremder legt nichts hinein',
+    );
+
+    // Ein UPDATE, das per RLS keine Zeile sieht, wirft nicht — es
+    // trifft nichts. Der Nachweis ist deshalb der Titel danach.
+    await h
+      .as('authenticated', stranger)
+      .query(`update public.lists set title = 'Gekapert' where id = $1`, [liste.id]);
+    const [titel] = await h
+      .as('anon', null)
+      .query<{ title: string }>(`select title from public.lists where id = $1`, [liste.id]);
+    assert.equal(titel?.title, 'Offen', 'der Titel steht unveraendert');
+
+    await h.sql.query(`delete from public.lists where user_id = $1`, [eigner]);
+  });
+
   it('keeps the watchlist private unless it is opened', async () => {
     await h
       .as('authenticated', rater)

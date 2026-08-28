@@ -4,54 +4,9 @@ import { revalidatePath } from 'next/cache';
 
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
+import { searchCatalogue, type FilmTreffer } from '@/lib/catalogue-search';
 
-export interface FilmTreffer {
-  wikidata_id: string;
-  title_de: string | null;
-  title_original: string;
-  release_year: number | null;
-  poster_source: string | null;
-  poster_url: string | null;
-}
-
-/**
- * Die Suche im Favoriten-Bereich.
- *
- * Sie geht ueber den ganzen Katalog, nicht ueber das eigene Tagebuch.
- * Einen Lieblingsfilm hat man oft, lange bevor man ihn hier eintraegt —
- * und vier Plaetze, die erst nach dem zwanzigsten Eintrag befuellbar
- * sind, bleiben leer.
- *
- * Dieselbe Funktion wie die Suche auf der Startseite, also dieselbe
- * Tippfehlertoleranz und dieselbe Rangfolge. Zwei Suchen mit
- * verschiedenen Ergebnissen fuer dieselbe Eingabe waeren ein Fehler,
- * den niemand meldet und jeder merkt.
- */
-export async function searchForFavourite(term: string): Promise<FilmTreffer[]> {
-  const trimmed = term.trim();
-  // Unter zwei Zeichen trifft jede Anfrage den halben Katalog.
-  if (trimmed.length < 2) return [];
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc('search_films', {
-    query: trimmed,
-    max_results: 8,
-  });
-
-  if (error) {
-    console.error('searchForFavourite failed:', error.message);
-    return [];
-  }
-
-  return data.map((f) => ({
-    wikidata_id: f.wikidata_id,
-    title_de: f.title_de,
-    title_original: f.title_original,
-    release_year: f.release_year,
-    poster_source: f.poster_source,
-    poster_url: f.poster_url,
-  }));
-}
+export { searchCatalogue, type FilmTreffer };
 
 export interface FavouriteResult {
   error?: string;

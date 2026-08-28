@@ -20,8 +20,8 @@ Community. Das ist der Teil, der Nutzer hält.
 
 ### 4.2 Profile
 
-- [ ] Öffentliche Profilseite unter `/@username`
-- [ ] Zuletzt gesehen, Lieblingsfilme (4 Slots, wie bei Letterboxd
+- [x] Öffentliche Profilseite unter `/@username`
+- [x] Zuletzt gesehen, Lieblingsfilme (4 Slots, wie bei Letterboxd
       etabliert), Statistiken
 - [ ] Statistiken: Filme pro Jahr, Bewertungsverteilung, häufigste
       Regisseure, häufigste Jahrzehnte
@@ -30,9 +30,9 @@ Community. Das ist der Teil, der Nutzer hält.
 
 ### 4.3 Listen
 
-- [ ] Nutzer legen benannte Filmlisten an, mit Beschreibung
-- [ ] Sortierbar, öffentlich oder privat
-- [ ] Neue Tabellen:
+- [x] Nutzer legen benannte Filmlisten an, mit Beschreibung
+- [x] Sortierbar, öffentlich oder privat
+- [x] Neue Tabellen:
 
 ```sql
 create table lists (
@@ -53,7 +53,7 @@ create table list_items (
 );
 ```
 
-- [ ] RLS entsprechend: öffentliche Listen für alle lesbar, private nur
+- [x] RLS entsprechend: öffentliche Listen für alle lesbar, private nur
       für den Besitzer
 
 ### 4.4 Folgen und Feed
