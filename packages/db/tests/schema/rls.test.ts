@@ -456,6 +456,54 @@ describe('message integrity', () => {
 
 // ---------------------------------------------------------------------------
 
+describe('profile statistics', () => {
+  it('counts only what the reader may see', async () => {
+    const film = 'Q100005';
+    const quiet = 'Q100006';
+    await seedFilm(h, film);
+    await seedFilm(h, quiet);
+
+    // Eigenes Konto: die anderen tragen Eintraege aus frueheren Tests,
+    // und eine Zahl laesst sich nur gegen einen bekannten Stand pruefen.
+    const zaehler = await seedUser(h, 'zaehler');
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, review, visibility)
+       values ($1, $2, 8, 'Sichtbar', 'public'), ($1, $3, 10, null, 'private')`,
+      [zaehler, film, quiet],
+    );
+
+    const eigene = await h
+      .as('authenticated', zaehler)
+      .query<{ films: number; ratings: number }>(`select * from public.profile_stats($1)`, [
+        zaehler,
+      ]);
+    const fremde = await h
+      .as('authenticated', stranger)
+      .query<{ films: number; ratings: number }>(`select * from public.profile_stats($1)`, [
+        zaehler,
+      ]);
+
+    assert.equal(eigene[0]?.films, 2, 'die eigene Sicht zeigt alles');
+    assert.equal(fremde[0]?.films, 1, 'ein privater Eintrag darf nicht mitgezaehlt werden');
+
+    // Nicht nur die Zahl: auch der Schnitt darf den privaten Wert nicht
+    // verraten. 8 und 10 gemittelt waeren 9.
+    const schnitt = Number(
+      (
+        await h
+          .as('authenticated', stranger)
+          .query<{ average: string }>(`select * from public.profile_stats($1)`, [zaehler])
+      )[0]?.average,
+    );
+    assert.equal(schnitt, 8, 'der Schnitt darf den privaten Wert nicht durchscheinen lassen');
+
+    await h.sql.query(`delete from public.diary_entries where film_id in ($1, $2)`, [film, quiet]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe('friends-only entries', () => {
   it('stays hidden while only one side follows', async () => {
     const rows = await h.as('authenticated', rater).query<{ id: string }>(
@@ -645,7 +693,7 @@ describe('diary and facet visibility', () => {
     assert.equal(ownRows.length, 1);
   });
 
-  it('keeps the watchlist private', async () => {
+  it('keeps the watchlist private unless it is opened', async () => {
     await h
       .as('authenticated', rater)
       .query(`insert into public.watchlist (user_id, film_id) values ($1, $2)`, [
@@ -662,6 +710,63 @@ describe('diary and facet visibility', () => {
 
     assert.deepEqual(otherRows, []);
     assert.equal(ownRows.length, 1);
+  });
+
+  it('opens the watchlist only when the profile says so', async () => {
+    const offen = await seedUser(h, 'offenerleser');
+    await h.sql.query(
+      `insert into public.watchlist (user_id, film_id, is_hidden)
+       values ($1, $2, false), ($1, $3, true)`,
+      [offen, FILM, QUIET_FILM],
+    );
+
+    // Noch zu: die Voreinstellung ist privat.
+    const zu = await h
+      .as('authenticated', stranger)
+      .query(`select film_id from public.watchlist where user_id = $1`, [offen]);
+    assert.deepEqual(zu, [], 'ohne Freigabe sieht niemand etwas');
+
+    await h.sql.query(`update public.profiles set watchlist_public = true where id = $1`, [offen]);
+
+    const sichtbar = await h
+      .as('authenticated', stranger)
+      .query<{ film_id: string }>(`select film_id from public.watchlist where user_id = $1`, [
+        offen,
+      ]);
+    assert.deepEqual(
+      sichtbar.map((r) => r.film_id),
+      [FILM],
+      'der einzeln ausgeblendete Titel bleibt auch bei offener Liste verborgen',
+    );
+
+    // Der Besitzer sieht beide, immer.
+    const eigene = await h
+      .as('authenticated', offen)
+      .query(`select film_id from public.watchlist where user_id = $1`, [offen]);
+    assert.equal(eigene.length, 2);
+
+    // Und ohne Konto ebenfalls, wenn die Liste offen steht.
+    const anonym = await h
+      .as('anon', null)
+      .query(`select film_id from public.watchlist where user_id = $1`, [offen]);
+    assert.equal(anonym.length, 1, 'offen heisst offen, auch ohne Anmeldung');
+
+    await h.sql.query(`delete from public.watchlist where user_id = $1`, [offen]);
+  });
+
+  it('lets nobody else change what is hidden', async () => {
+    await h.sql.query(
+      `insert into public.watchlist (user_id, film_id) values ($1, $2)
+       on conflict do nothing`,
+      [rater, FILM],
+    );
+
+    const rows = await h
+      .as('authenticated', stranger)
+      .query(`update public.watchlist set is_hidden = true where user_id = $1 returning film_id`, [
+        rater,
+      ]);
+    assert.deepEqual(rows, [], 'fremde Zeilen bleiben unberuehrt');
   });
 
   it('makes facets follow the visibility of their entry', async () => {

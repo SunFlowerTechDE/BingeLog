@@ -341,6 +341,7 @@ export type Database = {
           id: string
           updated_at: string
           username: string
+          watchlist_public: boolean
         }
         Insert: {
           bio?: string | null
@@ -349,6 +350,7 @@ export type Database = {
           id: string
           updated_at?: string
           username: string
+          watchlist_public?: boolean
         }
         Update: {
           bio?: string | null
@@ -357,6 +359,7 @@ export type Database = {
           id?: string
           updated_at?: string
           username?: string
+          watchlist_public?: boolean
         }
         Relationships: []
       }
@@ -539,16 +542,19 @@ export type Database = {
         Row: {
           added_at: string
           film_id: string
+          is_hidden: boolean
           user_id: string
         }
         Insert: {
           added_at?: string
           film_id: string
+          is_hidden?: boolean
           user_id: string
         }
         Update: {
           added_at?: string
           film_id?: string
+          is_hidden?: boolean
           user_id?: string
         }
         Relationships: [
@@ -613,6 +619,23 @@ export type Database = {
         }[]
       }
       my_friends: { Args: never; Returns: string[] }
+      profile_genres: {
+        Args: { max_results?: number; profile: string }
+        Returns: {
+          films: number
+          label: string
+        }[]
+      }
+      profile_stats: {
+        Args: { profile: string }
+        Returns: {
+          average: number
+          films: number
+          first_seen: string
+          ratings: number
+          reviews: number
+        }[]
+      }
       prune_lazy_creation_attempts: { Args: never; Returns: undefined }
       refresh_film_facet_averages: { Args: never; Returns: undefined }
       search_films: {
@@ -634,6 +657,7 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       username_available: { Args: { candidate: string }; Returns: boolean }
+      watchlist_is_public: { Args: { profile: string }; Returns: boolean }
     }
     Enums: {
       entry_visibility: "public" | "friends" | "private"
