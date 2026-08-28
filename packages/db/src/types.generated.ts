@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          description: string
+          key: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          description: string
+          key: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          description?: string
+          key?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       diary_entries: {
         Row: {
           created_at: string

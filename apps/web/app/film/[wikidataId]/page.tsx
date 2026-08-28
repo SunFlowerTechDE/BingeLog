@@ -7,6 +7,7 @@ import { getViewer } from '@/lib/session';
 import { LogPanel, type OwnEntry } from '@/components/log-panel';
 import { WatchlistButton } from '@/components/watchlist-button';
 import { AddToList } from '@/components/add-to-list';
+import { Discussion, type Beitrag } from '@/components/discussion';
 import { RewatchButton } from '@/components/rewatch-button';
 import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
@@ -304,6 +305,12 @@ export default async function FilmPage({
           </section>
         )}
 
+        <DiscussionSection
+          filmId={wikidataId}
+          hatBewertet={Boolean(ownEntry?.rating)}
+          angemeldet={viewer !== null}
+        />
+
         {/* Facetten und fremde Rezensionen nebeneinander: das eine ist
             eine Zahlenreihe, das andere Fliesstext. Untereinander gibt
             das eine sehr lange, sehr schmale Spalte. */}
@@ -493,5 +500,125 @@ async function Reviews({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Die Diskussion, in drei Zustaenden (M4 4.5).
+ *
+ * Ohne eigene Bewertung: nur die Zahl der Beitraege. **Kein Inhalt,
+ * keine Vorschautexte, keine Namen, keine Zeitstempel.** Die Zahl selbst
+ * verraet nichts — sie sagt, dass geredet wird, nicht worueber.
+ *
+ * Und die Formulierung bleibt ehrlich: "sichtbar nach deiner Bewertung",
+ * nicht "spoilerfrei garantiert". Das Gate ist absichtlich umgehbar, wer
+ * irgendetwas eintraegt kommt hinein (ADR-010). Ein Versprechen, das die
+ * Technik nicht halten kann, waere schlimmer als keins.
+ *
+ * Die Sperre selbst steht in der Datenbank. Diese Funktion fragt und
+ * bekommt null Zeilen, wenn sie nicht darf — sie entscheidet nichts.
+ */
+async function DiscussionSection({
+  filmId,
+  hatBewertet,
+  angemeldet,
+}: {
+  filmId: string;
+  hatBewertet: boolean;
+  angemeldet: boolean;
+}) {
+  const supabase = await createClient();
+
+  const { data: thread } = await supabase
+    .from('film_threads')
+    .select('message_count, viewer_count, is_active, is_locked')
+    .eq('film_id', filmId)
+    .maybeSingle();
+
+  // Die Schwelle steht in der Konfiguration, nicht hier
+  // (20260828340000): sie aendert sich mit der Nutzerzahl.
+  const { data: einstellung } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'discussion_threshold')
+    .maybeSingle();
+  const schwelle = einstellung?.value ?? 5;
+
+  const zuschauer = thread?.viewer_count ?? 0;
+  const aktiv = thread?.is_active ?? false;
+
+  const rahmen = (inhalt: React.ReactNode) => (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-base font-semibold tracking-tight">Diskussion</h2>
+      {inhalt}
+    </section>
+  );
+
+  // Noch nicht aufgegangen. Das ist kein Versaeumnis, sondern Absicht:
+  // 350.000 leere Raeume sind schlimmer als keine (ADR-010).
+  if (!aktiv) {
+    return rahmen(
+      <p className="text-muted-foreground border-border max-w-prose rounded-md border border-dashed p-4 text-sm">
+        Die Diskussion geht auf, sobald {schwelle} Leute den Film eingetragen haben. Bisher sind es{' '}
+        {zuschauer}.
+      </p>,
+    );
+  }
+
+  if (!angemeldet || !hatBewertet) {
+    return rahmen(
+      <div className="border-border max-w-prose rounded-md border border-dashed p-4">
+        <p className="text-sm">
+          Sichtbar, sobald du den Film bewertet hast.{' '}
+          {thread?.message_count
+            ? `${String(thread.message_count)} ${thread.message_count === 1 ? 'Beitrag' : 'Beiträge'} bisher.`
+            : 'Noch keine Beiträge.'}
+        </p>
+        <p className="text-muted-foreground mt-2 text-xs">
+          Hier wird über das Ende geredet, über Wendungen, über alles. Deshalb erst danach.
+        </p>
+      </div>,
+    );
+  }
+
+  const { data: rows } = await supabase
+    .from('thread_messages')
+    .select('id, parent_id, body, created_at, edited_at, user_id, profiles(username, avatar_path)')
+    .eq('film_id', filmId)
+    .order('created_at', { ascending: true });
+
+  const viewer = await getViewer();
+  const roh = (rows ?? []) as unknown as {
+    id: string;
+    parent_id: string | null;
+    body: string;
+    created_at: string;
+    edited_at: string | null;
+    user_id: string;
+    profiles: { username: string; avatar_path: string | null };
+  }[];
+
+  const beitraege: Beitrag[] = roh.map((r) => ({
+    id: r.id,
+    parent_id: r.parent_id,
+    body: r.body,
+    created_at: r.created_at,
+    edited_at: r.edited_at,
+    username: r.profiles.username,
+    avatar_url: r.profiles.avatar_path
+      ? supabase.storage.from('avatars').getPublicUrl(r.profiles.avatar_path).data.publicUrl
+      : null,
+    eigener: r.user_id === viewer?.id,
+  }));
+
+  const eigenesBild = beitraege.find((b) => b.eigener)?.avatar_url ?? null;
+
+  return rahmen(
+    <Discussion
+      filmId={filmId}
+      anfang={beitraege}
+      gesperrt={thread?.is_locked ?? false}
+      ich={{ username: viewer?.username ?? '', avatarUrl: eigenesBild }}
+    />,
   );
 }
