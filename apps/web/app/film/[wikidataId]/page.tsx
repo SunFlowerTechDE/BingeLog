@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { LogPanel, type OwnEntry } from '@/components/log-panel';
 import { WatchlistButton } from '@/components/watchlist-button';
+import { AddToList } from '@/components/add-to-list';
 import { RewatchButton } from '@/components/rewatch-button';
 import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
@@ -226,7 +227,12 @@ export default async function FilmPage({
           ) : null}
         </dl>
 
-        {viewer ? <WatchlistButton filmId={wikidataId} initiallyOn={onWatchlist} /> : null}
+        {viewer ? (
+          <div className="flex flex-col items-start gap-2">
+            <WatchlistButton filmId={wikidataId} initiallyOn={onWatchlist} />
+            <AddToList filmId={wikidataId} />
+          </div>
+        ) : null}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col gap-6">

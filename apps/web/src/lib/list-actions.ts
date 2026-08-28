@@ -238,3 +238,85 @@ export async function swapInList(
   revalidatePath(`/listen/${listId}`);
   return { message: 'Verschoben' };
 }
+
+export interface ListeFuerFilm {
+  id: string;
+  title: string;
+  is_public: boolean;
+  /** Steht der Film schon drin? */
+  enthaelt: boolean;
+}
+
+/**
+ * Die eigenen Listen, samt der Frage ob dieser Film schon drinsteht.
+ *
+ * Erst beim Aufklappen geladen und nicht mit der Filmseite: die meisten
+ * Aufrufe der Seite fassen die Listen nie an, und eine Abfrage, die
+ * niemand braucht, zahlt trotzdem jeder.
+ */
+export async function myListsFor(wikidataId: string): Promise<ListeFuerFilm[]> {
+  const viewer = await getViewer();
+  if (!viewer?.username) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('lists')
+    .select('id, title, is_public, list_items(film_id)')
+    .eq('user_id', viewer.id)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error('myListsFor failed:', error.message);
+    return [];
+  }
+
+  return (
+    data as unknown as {
+      id: string;
+      title: string;
+      is_public: boolean;
+      list_items: { film_id: string }[];
+    }[]
+  ).map((l) => ({
+    id: l.id,
+    title: l.title,
+    is_public: l.is_public,
+    enthaelt: l.list_items.some((i) => i.film_id === wikidataId),
+  }));
+}
+
+/**
+ * Eine Liste anlegen und den Film gleich hineinlegen.
+ *
+ * Der haeufigste Anlass fuer eine neue Liste ist ein Film, der in keine
+ * bestehende passt. Erst anlegen, dann suchen, dann anhaengen waeren
+ * drei Schritte fuer einen Gedanken.
+ */
+export async function createListWithFilm(title: string, wikidataId: string): Promise<ListResult> {
+  const viewer = await getViewer();
+  if (!viewer?.username) return { error: 'Melde dich an.' };
+
+  const sauber = title.trim();
+  if (sauber === '') return { error: 'Gib der Liste einen Namen.' };
+  if (sauber.length > TITEL_MAX) {
+    return { error: `Der Name darf höchstens ${String(TITEL_MAX)} Zeichen haben.` };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('lists')
+    .insert({ user_id: viewer.id, title: sauber })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('createListWithFilm failed:', error.message);
+    return { error: 'Das hat nicht geklappt.' };
+  }
+
+  const angehaengt = await addToList(data.id, wikidataId);
+  if (angehaengt.error) return angehaengt;
+
+  revalidatePath(`/@${viewer.username}/listen`);
+  return { message: 'Angelegt', id: data.id };
+}
