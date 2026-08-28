@@ -52,3 +52,76 @@ jobs:
       # Such-Testfaelle.
       - name: Tests
         run: pnpm test
+
+  lighthouse:
+    name: Lighthouse auf der Filmdetailseite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Erst messen, wenn Typen und Tests stehen: ein Wert von einer App,
+    # die nicht uebersetzt, sagt nichts.
+    needs: pruefen
+
+    # Oeffentlich by design, beide stehen ohnehin im Client-Bundle und in
+    # wrangler.jsonc. Der Secret Key hat hier nichts zu suchen.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://rbgofrgstnotgpnnvehb.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Gegen den Produktionsbau, nicht gegen den Entwicklungsserver:
+      # sonst misst man Turbopack statt der App.
+      - name: Bauen
+        run: pnpm --filter @binge-log/web build
+
+      - name: Starten
+        run: |
+          pnpm --filter @binge-log/web start --port 3100 &
+          npx --yes wait-on http://127.0.0.1:3100 --timeout 60000
+
+      # Keine feste Film-ID: welcher Film im Katalog liegt, ist Datenlage
+      # und darf die Messung nicht zum Kippen bringen.
+      - name: Film aussuchen
+        id: film
+        run: |
+          ID=$(curl -s -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/films?select=wikidata_id&order=sitelink_count.desc&limit=1" \
+            | node -e "process.stdin.on('data',d=>console.log(JSON.parse(d)[0].wikidata_id))")
+          echo "Gemessen wird /film/$ID"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+      - name: Messen
+        run: |
+          npx --yes lighthouse@12 "http://127.0.0.1:3100/film/${{ steps.film.outputs.id }}" \
+            --only-categories=performance \
+            --preset=desktop \
+            --output=json --output-path=./lighthouse.json \
+            --chrome-flags="--headless=new --no-sandbox" \
+            --quiet
+
+      # Die Definition of Done nennt 85. Ohne diese Pruefung waere der
+      # Lauf ein Bericht, den niemand liest.
+      - name: Schwelle 85
+        run: |
+          node -e "
+            const r = JSON.parse(require('node:fs').readFileSync('./lighthouse.json', 'utf8'));
+            const wert = Math.round(r.categories.performance.score * 100);
+            for (const k of ['first-contentful-paint','largest-contentful-paint','total-blocking-time','cumulative-layout-shift'])
+              console.log(r.audits[k].title + ': ' + r.audits[k].displayValue);
+            console.log('Performance: ' + wert);
+            if (wert < 85) { console.error('Unter der Schwelle von 85 (M3 Definition of Done).'); process.exit(1); }
+          "
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse
+          path: lighthouse.json
