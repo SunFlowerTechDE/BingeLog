@@ -149,9 +149,9 @@ export default async function FilmPage({
   const facetAverages = (facetRows ?? []) as FacetAverage[];
   // Die Zweispaltigkeit haengt daran, dass es auch zwei Dinge gibt.
   // Sonst steht die Rezensionskarte in der schmaleren Spalte und rechts
-  // daneben nichts.
-  const hasFacets =
-    facetAverages.length > 0 || Object.values(ownFacets).some((score) => score !== undefined);
+  // daneben nichts. Eigene Facetten allein reichen nicht: die stehen im
+  // Formular und ergaeben hier nur eine zweite Ansicht derselben Zahlen.
+  const hasFacets = facetAverages.length > 0;
 
   const title = film.title_de ?? film.title_original;
   const showsOriginal = film.title_de !== null && film.title_de !== film.title_original;
