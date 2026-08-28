@@ -7,7 +7,8 @@ import { getViewer } from '@/lib/session';
 import { FollowButton } from '@/components/follow-button';
 import { PopcornRating, formatRating } from '@/components/popcorn';
 import { formatWatchedOn } from '@/lib/dates';
-import { Avatar, StatCard, Panel, Chip, Symbol } from '@/components/profile-parts';
+import { Avatar, StatCard, Panel, Chip } from '@/components/profile-parts';
+import { Symbol } from '@/components/icons';
 import { ShareButton } from '@/components/share-button';
 
 /**
