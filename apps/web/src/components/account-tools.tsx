@@ -45,6 +45,48 @@ const EINGRIFFE = [
 ] as const;
 
 /**
+ * Vorgefertigte Begruendungen.
+ *
+ * Sie sind ein **Anfang, kein Ende**: der gewaehlte Baustein landet im
+ * Textfeld und laesst sich dort weiterschreiben. Ein Dropdown, das den
+ * Text festlegt, produziert Mails, die niemandem etwas sagen — und
+ * gerade diese Mail wird von einem Menschen gelesen, dem gerade etwas
+ * weggenommen wurde.
+ *
+ * Formuliert wie an den Nutzer gerichtet, nicht wie eine Aktennotiz:
+ * genau dieser Text steht spaeter in seinem Postfach.
+ */
+const BAUSTEINE: Record<string, string[]> = {
+  password_reset: [
+    'Es gab Hinweise auf einen unbefugten Zugriff auf dein Konto. Zur Sicherheit haben wir das Passwort zurückgesetzt.',
+    'Du hast uns geschrieben, dass du nicht mehr in dein Konto kommst. Hier ist der Weg zu einem neuen Passwort.',
+  ],
+  username_reset: [
+    'Dein Benutzername verstößt gegen unsere Regeln — er beleidigt, gibt eine andere Person vor oder ist Werbung.',
+    'Du hast uns um einen anderen Benutzernamen gebeten.',
+  ],
+  email_change: [
+    'Du hast uns geschrieben, dass du auf deine alte Adresse keinen Zugriff mehr hast.',
+    'Die hinterlegte Adresse war dauerhaft nicht erreichbar. Wir haben sie auf deine Angabe hin geändert.',
+  ],
+  account_closed: [
+    'Wiederholte Beleidigungen gegenüber anderen Nutzern, trotz Hinweis.',
+    'Spam oder Werbung in Rezensionen und in der Diskussion.',
+    'Mehrere Konten, angelegt um Bewertungen zu beeinflussen.',
+    'Rechtswidrige Inhalte.',
+    'Auf deinen eigenen Wunsch.',
+  ],
+  account_restored: [
+    'Die erneute Prüfung hat ergeben, dass die Schließung nicht gerechtfertigt war. Entschuldige die Umstände.',
+    'Die Sperrfrist ist abgelaufen.',
+  ],
+  note: [
+    'Eine Meldung zu deinem Konto wurde geprüft. Wir haben keinen Verstoß festgestellt und nichts geändert.',
+    'Wir haben eine Meldung zu deinem Verhalten erhalten. Das hier ist ein Hinweis, keine Maßnahme — beim nächsten Mal folgt eine.',
+  ],
+};
+
+/**
  * Eingriffe in ein Konto (M4 4.7).
  *
  * Erst suchen, dann waehlen, dann begruenden. Die Begruendung steht
@@ -191,6 +233,27 @@ export function AccountTools() {
           ) : null}
 
           <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Textbaustein</span>
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value !== '') setGrund(e.target.value);
+              }}
+              className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
+            >
+              <option value="">Eigener Text</option>
+              {(BAUSTEINE[eingriff] ?? []).map((b) => (
+                <option key={b} value={b}>
+                  {b.length > 70 ? `${b.slice(0, 70)}…` : b}
+                </option>
+              ))}
+            </select>
+            <span className="text-muted-foreground text-xs">
+              Setzt den Text unten. Ändern kannst du ihn danach trotzdem.
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Begründung</span>
             <textarea
               value={grund}
@@ -202,6 +265,11 @@ export function AccountTools() {
               placeholder="Warum greifst du ein? Der Nutzer bekommt genau diesen Text."
               className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
             />
+            {/* Der Text geht wortwoertlich raus. Das gehoert dazugesagt,
+                bevor jemand hier eine Aktennotiz hinterlaesst. */}
+            <span className="text-muted-foreground text-xs">
+              Steht so in der Mail an @{gewaehlt.username}.
+            </span>
           </label>
 
           <div className="flex flex-wrap items-center gap-3">

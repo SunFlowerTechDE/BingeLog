@@ -63,12 +63,97 @@ const BESCHREIBUNG: Record<Aktion, string> = {
 };
 
 /**
+ * Die Farben der Seite, als Hex.
+ *
+ * Mailprogramme sind keine Browser: Outlook kennt kein Flexbox, Gmail
+ * wirft `<style>` aus der Nachricht, und `oklch` versteht keines von
+ * beiden. Deshalb Tabellen, Stile inline und Hex — dieselben Werte wie
+ * in `docs/betrieb/mailvorlagen.md`, aus `globals.css` umgerechnet.
+ *
+ * Aendern sich die Tokens, aendert sich die Mail nicht mit. Das ist der
+ * Preis dafuer, dass sie in Outlook 2016 aussieht wie gedacht.
+ */
+const FARBE = {
+  grund: '#0c0d10',
+  karte: '#14161a',
+  rand: '#2b2e33',
+  text: '#edeef1',
+  gedaempft: '#95989f',
+  leise: '#6f7279',
+  akzent: '#efbc4b',
+} as const;
+
+const SCHRIFT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+/** Was in fremdem Text steht, wird nie Markup. */
+function sicher(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function vorlage(name: string, aktion: Aktion, grund: string): string {
+  // Ein vollstaendiges Dokument mit `charset`, nicht nur die Tabelle.
+  //
+  // Ueber die Brevo-API kommt der Zeichensatz aus dem Transport, und die
+  // Umlaute kaemen wohl auch so an. "Wohl" ist bei einer Mail, die
+  // jemandem eine Kontoschliessung mitteilt, keine gute Grundlage — und
+  // wer sie weiterleitet oder als Datei speichert, verliert den
+  // Transport-Header.
+  return `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Änderung an deinem BingeLog-Konto</title>
+</head>
+<body style="margin:0;padding:0;background-color:${FARBE.grund};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${FARBE.grund};margin:0;padding:32px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+      <tr><td style="padding:0 0 24px 0;font-family:${SCHRIFT};font-size:20px;font-weight:700;letter-spacing:-0.01em;color:${FARBE.akzent};">BingeLog</td></tr>
+
+      <tr><td style="background-color:${FARBE.karte};border:1px solid ${FARBE.rand};border-radius:8px;padding:32px;">
+        <p style="margin:0 0 20px 0;font-family:${SCHRIFT};font-size:22px;font-weight:600;letter-spacing:-0.01em;line-height:1.3;color:${FARBE.text};">Änderung an deinem Konto</p>
+
+        <p style="margin:0 0 12px 0;font-family:${SCHRIFT};font-size:15px;line-height:1.6;color:${FARBE.gedaempft};">Hallo ${sicher(name)},</p>
+
+        <p style="margin:0 0 24px 0;font-family:${SCHRIFT};font-size:15px;line-height:1.6;color:${FARBE.text};">${BESCHREIBUNG[aktion]}</p>
+
+        <!-- Die Begruendung abgesetzt und in Textfarbe: sie ist der
+             Grund, warum diese Mail geschrieben wurde, und nicht das
+             Kleingedruckte darunter. -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+          <tr><td style="border-left:3px solid ${FARBE.akzent};padding:4px 0 4px 16px;">
+            <p style="margin:0 0 6px 0;font-family:${SCHRIFT};font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${FARBE.gedaempft};">Begründung</p>
+            <p style="margin:0;font-family:${SCHRIFT};font-size:15px;line-height:1.6;color:${FARBE.text};white-space:pre-line;">${sicher(grund)}</p>
+          </td></tr>
+        </table>
+
+        <p style="margin:0;font-family:${SCHRIFT};font-size:13px;line-height:1.6;color:${FARBE.gedaempft};">Hältst du das für falsch, antworte einfach auf diese Mail. Wir schauen es uns noch einmal an.</p>
+      </td></tr>
+
+      <tr><td style="padding:20px 4px 0 4px;font-family:${SCHRIFT};font-size:12px;line-height:1.6;color:${FARBE.leise};">Filmtagebuch für den deutschsprachigen Raum · bingelog.eu</td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
+/**
  * Die Benachrichtigung.
  *
  * Ueber die Brevo-API und nicht ueber SMTP: eine Edge Function haelt
  * keine Verbindung offen, und ein HTTP-Aufruf ist hier das kleinere
  * Werkzeug. Fehlt der Schluessel, meldet die Funktion das zurueck statt
  * still nichts zu tun.
+ *
+ * HTML **und** Text. Wer sein Programm auf Nur-Text stellt, bekommt sonst
+ * eine leere Nachricht — und ausgerechnet diese Mail darf nicht leer
+ * ankommen.
  */
 async function benachrichtigen(
   an: string,
@@ -83,9 +168,9 @@ async function benachrichtigen(
     `Hallo ${name},\n\n` +
     `${BESCHREIBUNG[aktion]}\n\n` +
     `Begründung:\n${grund}\n\n` +
-    `Wenn du das für falsch hältst, antworte auf diese Mail. ` +
+    `Hältst du das für falsch, antworte einfach auf diese Mail. ` +
     `Wir schauen es uns noch einmal an.\n\n` +
-    `BingeLog`;
+    `BingeLog — Filmtagebuch für den deutschsprachigen Raum`;
 
   try {
     const antwort = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -95,6 +180,7 @@ async function benachrichtigen(
         sender: { name: 'BingeLog', email: 'registrierung@bingelog.eu' },
         to: [{ email: an, name }],
         subject: 'Änderung an deinem BingeLog-Konto',
+        htmlContent: vorlage(name, aktion, grund),
         textContent: text,
       }),
     });
