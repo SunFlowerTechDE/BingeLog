@@ -20,7 +20,7 @@ export function SettingsForm({
   avatarUrl: string | null;
   watchlistPublic: boolean;
 }) {
-  const [state, action] = useActionState(saveProfile, {});
+  const [state, action, speichert] = useActionState(saveProfile, {});
   const [waehlt, setWaehlt] = useState(false);
   const [bildProblem, setBildProblem] = useState<string | undefined>(undefined);
   const [bildMeldung, setBildMeldung] = useState<string | undefined>(undefined);
@@ -113,7 +113,15 @@ export function SettingsForm({
           </div>
         )}
 
-        {pending ? <p className="text-muted-foreground text-sm">Wird gespeichert</p> : null}
+        {pending ? (
+          <p className="text-muted-foreground flex items-center gap-2 text-sm">
+            <span
+              aria-hidden="true"
+              className="border-muted-foreground/40 border-t-foreground inline-block h-3.5 w-3.5 animate-spin rounded-full border-2"
+            />
+            Bild wird hochgeladen
+          </p>
+        ) : null}
         <ActionNote message={bildProblem} />
         <ActionNote message={bildMeldung} tone="info" />
       </section>
@@ -162,11 +170,14 @@ export function SettingsForm({
         </label>
 
         <div className="flex flex-wrap items-center gap-4">
+          {/* Ohne sichtbaren Zustand haelt man einen langsamen Vorgang
+              fuer keinen und klickt noch einmal. */}
           <button
             type="submit"
-            className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-semibold"
+            disabled={speichert}
+            className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
           >
-            Speichern
+            {speichert ? 'Wird gespeichert' : 'Speichern'}
           </button>
           <ActionNote message={state.error} />
           <ActionNote message={state.message} tone="info" />

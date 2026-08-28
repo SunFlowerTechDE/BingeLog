@@ -21,7 +21,36 @@ import { useEffect, useRef, useState } from 'react';
  */
 
 const AUSGABE = 512;
-const QUALITAET = 0.82;
+
+/**
+ * Absteigende Qualitaetsstufen. Ein Foto wird bei 0.82 fast immer klein
+ * genug; ein Bild mit viel Rauschen oder Text braucht manchmal weniger.
+ * Lieber eine Stufe schlechter als eine Ablehnung nach dem Hochladen.
+ */
+const STUFEN = [0.82, 0.7, 0.6, 0.5, 0.4];
+
+/** Was der Bucket annimmt. Hier schon prüfen, nicht erst dort. */
+const GRENZE = 262144;
+
+/**
+ * Als WebP, klein genug — oder null.
+ *
+ * `toBlob` faellt bei fehlender WebP-Unterstuetzung **stillschweigend auf
+ * PNG zurueck**. Ein PNG mit 512 Pixeln wiegt schnell ein halbes
+ * Megabyte, und der Bucket nimmt ohnehin nur WebP. Deshalb wird der Typ
+ * geprueft und nicht angenommen.
+ */
+async function alsWebp(leinwand: HTMLCanvasElement): Promise<Blob | null> {
+  for (const guete of STUFEN) {
+    const blob = await new Promise<Blob | null>((auf) => {
+      leinwand.toBlob(auf, 'image/webp', guete);
+    });
+
+    if (blob?.type !== 'image/webp') return null;
+    if (blob.size <= GRENZE) return blob;
+  }
+  return null;
+}
 
 /** Wieviel Breite die Vorschau hat. Der Zuschnitt rechnet in diesem Raum. */
 const BUEHNE = 260;
@@ -86,15 +115,22 @@ export function AvatarPicker({
     el.src = url;
   };
 
-  const fertigstellen = () => {
+  const [rechnet, setRechnet] = useState(false);
+
+  const fertigstellen = async () => {
     if (!bild) return;
+    setRechnet(true);
+    setProblem(undefined);
 
     // Dieselbe Rechnung wie in der Vorschau, nur auf 512 hochskaliert.
     const ziel = document.createElement('canvas');
     ziel.width = AUSGABE;
     ziel.height = AUSGABE;
     const ctx = ziel.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      setRechnet(false);
+      return;
+    }
 
     const massstab = AUSGABE / BUEHNE;
     const f = deckung * zoom * massstab;
@@ -109,17 +145,18 @@ export function AvatarPicker({
       h,
     );
 
-    ziel.toBlob(
-      (blob) => {
-        if (!blob) {
-          setProblem('Das Bild ließ sich nicht umwandeln.');
-          return;
-        }
-        onReady({ datei: blob, vorschau: ziel.toDataURL('image/webp', QUALITAET) });
-      },
-      'image/webp',
-      QUALITAET,
-    );
+    const blob = await alsWebp(ziel);
+    setRechnet(false);
+
+    if (!blob) {
+      setProblem(
+        'Das Bild ließ sich nicht klein genug umwandeln. Versuch ein anderes oder einen ' +
+          'engeren Ausschnitt.',
+      );
+      return;
+    }
+
+    onReady({ datei: blob, vorschau: URL.createObjectURL(blob) });
   };
 
   return (
@@ -184,10 +221,13 @@ export function AvatarPicker({
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={fertigstellen}
-              className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-semibold"
+              disabled={rechnet}
+              onClick={() => {
+                void fertigstellen();
+              }}
+              className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
             >
-              Übernehmen
+              {rechnet ? 'Wird verkleinert' : 'Übernehmen'}
             </button>
             <button
               type="button"
