@@ -13,6 +13,8 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+import type { Database } from '../src/types.generated.ts';
+
 const TEST_DOMAIN = '@bingelog.test';
 
 function required(name: string): string {
@@ -21,9 +23,13 @@ function required(name: string): string {
   return value;
 }
 
-const admin = createClient(required('SUPABASE_URL'), required('SUPABASE_SERVICE_ROLE_KEY'), {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const admin = createClient<Database>(
+  required('SUPABASE_URL'),
+  required('SUPABASE_SERVICE_ROLE_KEY'),
+  {
+    auth: { persistSession: false, autoRefreshToken: false },
+  },
+);
 
 const { data, error } = await admin.auth.admin.listUsers();
 if (error) throw new Error(error.message);
@@ -37,6 +43,19 @@ if (testAccounts.length === 0) {
 }
 
 for (const user of testAccounts) {
+  // Erst das Bild, dann das Konto. Der Objektspeicher kaskadiert nicht:
+  // faellt die Zeile zuerst, bleibt eine Datei liegen, zu der es kein
+  // Profil mehr gibt und die niemand mehr zuordnen kann.
+  const { data: profil } = await admin
+    .from('profiles')
+    .select('avatar_path')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profil?.avatar_path) {
+    await admin.storage.from('avatars').remove([profil.avatar_path]);
+  }
+
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   console.log(
     deleteError

@@ -43,6 +43,9 @@ export async function Header() {
               >
                 {viewer.username}
               </Link>
+              <Link href="/einstellungen" className="text-muted-foreground hover:text-foreground">
+                Einstellungen
+              </Link>
               <form action={signOut}>
                 <button type="submit" className="text-muted-foreground hover:text-foreground">
                   Abmelden

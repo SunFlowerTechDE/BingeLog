@@ -72,7 +72,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, display_name, bio, created_at, watchlist_public')
+    .select('id, username, display_name, bio, created_at, watchlist_public, avatar_path')
     .eq('username', name)
     .maybeSingle();
 
@@ -176,7 +176,22 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           {/* Vorlaeufig: Initialen. Echte Bilder brauchen Speicher,
               Upload und eine Groessenbeschraenkung — ein eigener
               Schritt. */}
-          <Avatar name={profile.username} size={96} />
+          {profile.avatar_path ? (
+            // Kein next/image: das Bild liegt bereits in der richtigen
+            // Groesse im Speicher, ein Proxy davor waere Arbeit ohne
+            // Wirkung.
+            <img
+              src={
+                supabase.storage.from('avatars').getPublicUrl(profile.avatar_path).data.publicUrl
+              }
+              alt=""
+              width={96}
+              height={96}
+              className="h-24 w-24 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <Avatar name={profile.username} size={96} />
+          )}
 
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex flex-col gap-0.5">
@@ -215,6 +230,17 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                   initiallyFollowing={folgtIhm}
                   followsBack={folgtZurueck}
                 />
+              </div>
+            ) : null}
+
+            {eigenes ? (
+              <div className="pt-1">
+                <Link
+                  href="/einstellungen"
+                  className="border-border hover:bg-card inline-block rounded-md border px-3 py-1.5 text-sm"
+                >
+                  Profil bearbeiten
+                </Link>
               </div>
             ) : null}
 

@@ -335,6 +335,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
           bio: string | null
           created_at: string
           display_name: string | null
@@ -344,6 +345,7 @@ export type Database = {
           watchlist_public: boolean
         }
         Insert: {
+          avatar_path?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
@@ -353,6 +355,7 @@ export type Database = {
           watchlist_public?: boolean
         }
         Update: {
+          avatar_path?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
