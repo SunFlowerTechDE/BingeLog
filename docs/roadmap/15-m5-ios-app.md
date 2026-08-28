@@ -58,14 +58,14 @@ Datenmodelle ändern sich nicht mehr grundlegend.
 
 ### 5.4 Bildschirme
 
-| Screen | iPhone | iPad |
-|---|---|---|
-| Feed | Liste | zweispaltig mit Detail |
-| Suche | Vollbild-Sheet | Sidebar-Suche |
-| Filmdetail | Push | Detailspalte |
-| Tagebuch | Liste, nach Monat | Raster |
-| Profil | Scroll | zweispaltig |
-| Eintrag erfassen | Sheet | Sheet, breiter |
+| Screen           | iPhone            | iPad                   |
+| ---------------- | ----------------- | ---------------------- |
+| Feed             | Liste             | zweispaltig mit Detail |
+| Suche            | Vollbild-Sheet    | Sidebar-Suche          |
+| Filmdetail       | Push              | Detailspalte           |
+| Tagebuch         | Liste, nach Monat | Raster                 |
+| Profil           | Scroll            | zweispaltig            |
+| Eintrag erfassen | Sheet             | Sheet, breiter         |
 
 - [ ] Tab Bar auf iPhone, `NavigationSplitView` auf iPad
 - [ ] Dynamic Type unterstützen, keine festen Schriftgrößen

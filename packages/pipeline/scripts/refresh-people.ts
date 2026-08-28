@@ -49,17 +49,18 @@ for (let offset = 0; offset < ids.length; offset += BATCH) {
     const previous = before.get(named.wikidataId);
     if (previous === named.name) continue;
 
-    await db.query('update public.people set name = $2, sitelink_count = $3 where wikidata_id = $1', [
-      named.wikidataId,
-      named.name,
-      named.sitelinkCount,
-    ]);
+    await db.query(
+      'update public.people set name = $2, sitelink_count = $3 where wikidata_id = $1',
+      [named.wikidataId, named.name, named.sitelinkCount],
+    );
 
     console.log(`  ${named.wikidataId}: ${previous ?? '?'} -> ${named.name}`);
     changed++;
   }
 
-  process.stdout.write(`\r  ${String(Math.min(offset + BATCH, ids.length))}/${String(ids.length)}\n`);
+  process.stdout.write(
+    `\r  ${String(Math.min(offset + BATCH, ids.length))}/${String(ids.length)}\n`,
+  );
 }
 
 const genreEntities = await fetchEntities(genres.map((row) => row.wikidata_id));

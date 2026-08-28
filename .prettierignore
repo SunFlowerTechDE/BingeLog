@@ -5,3 +5,17 @@ build
 pnpm-lock.yaml
 apps/ios
 packages/db/src/types.generated.ts
+
+# Eingefangene API-Antworten. Sie werden nicht gelesen, sondern
+# verglichen; formatiert blaehen sie den Verlauf um Zehntausende Zeilen
+# auf, ohne dass eine davon jemanden interessiert.
+packages/db/tests/fixtures
+packages/pipeline/tests/fixtures
+
+# Prettier findet auf diesen beiden keinen festen Punkt: es rueckt
+# Zitatbloecke innerhalb von Aufzaehlungen ein und beanstandet das
+# Ergebnis anschliessend erneut, in jedem Durchlauf. Nachgemessen am
+# 28.08.2026 ueber drei Laeufe. Die Dokumente danach zu verbiegen hiesse,
+# den Inhalt einem Werkzeugfehler anzupassen.
+docs/roadmap/11-m1-datenpipeline.md
+docs/roadmap/12-m2-poster-system.md

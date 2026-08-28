@@ -20,8 +20,7 @@ const SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql';
 const API_ENDPOINT = 'https://www.wikidata.org/w/api.php';
 
 /** Wikidata asks for a descriptive agent with a way to make contact. */
-const USER_AGENT =
-  'BingeLog/0.1 (https://github.com/SunFlowerTechDE/BingeLog; catalog import)';
+const USER_AGENT = 'BingeLog/0.1 (https://github.com/SunFlowerTechDE/BingeLog; catalog import)';
 
 /** wbgetentities takes at most 50 ids per call for anonymous clients. */
 const MAX_IDS_PER_REQUEST = 50;
@@ -109,10 +108,14 @@ async function requestWithRetry(
 
     // A service that says how long to wait knows better than the formula.
     const retryAfter = Number(response.headers.get('Retry-After'));
-    await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : backoffMs(attempt));
+    await sleep(
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : backoffMs(attempt),
+    );
   }
 
-  throw new Error(`request to ${url.slice(0, 80)} failed after ${String(MAX_ATTEMPTS)} attempts: ${lastProblem}`);
+  throw new Error(
+    `request to ${url.slice(0, 80)} failed after ${String(MAX_ATTEMPTS)} attempts: ${lastProblem}`,
+  );
 }
 
 /** Exponential, with a little spread so parallel runs do not synchronise. */
@@ -174,7 +177,10 @@ export async function sparqlValues(
  */
 export async function collectFilmIds(
   minSitelinks: number,
-  options: FetchOptions & { maxSitelinks?: number; onProgress?: (ids: number, at: number) => void } = {},
+  options: FetchOptions & {
+    maxSitelinks?: number;
+    onProgress?: (ids: number, at: number) => void;
+  } = {},
 ): Promise<string[]> {
   // Measured in August 2026: no film exceeds 150 language versions, and
   // only four reach 120. Starting at 400 would spend a few hundred
@@ -238,7 +244,11 @@ export async function fetchEntities(
       `&props=labels|claims|sitelinks&ids=${chunk.join('|')}`;
 
     await throttle();
-    const response = await requestWithRetry(url, { headers: { 'User-Agent': USER_AGENT } }, options);
+    const response = await requestWithRetry(
+      url,
+      { headers: { 'User-Agent': USER_AGENT } },
+      options,
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -297,10 +307,14 @@ export async function findFilmIdsByTitle(
     `${API_ENDPOINT}?action=query&list=search&format=json&formatversion=2` +
     `&srlimit=${String(limit)}&srprop=&srsearch=${encodeURIComponent(`${term} haswbstatement:P31=Q11424`)}`;
 
-  const response = await requestWithRetry(url, { headers: { 'User-Agent': USER_AGENT } }, {
-    ...options,
-    fetchImpl,
-  });
+  const response = await requestWithRetry(
+    url,
+    { headers: { 'User-Agent': USER_AGENT } },
+    {
+      ...options,
+      fetchImpl,
+    },
+  );
 
   if (!response.ok) return [];
 

@@ -5,15 +5,15 @@
 
 ## Stand
 
-| Schritt | Stand |
-|---|---|
-| Domain bei INWX registriert | erledigt, 26.08.2026 |
-| Cloudflare-Konto, Zone `bingelog.eu` | erledigt, 27.08.2026 |
-| Nameserver bei INWX auf Cloudflare | erledigt — `felicity` / `jocelyn.ns.cloudflare.com` |
-| TLS-Zertifikat | stellt Cloudflare selbst aus |
-| Worker deployen | offen, wenn M3 steht |
-| SMTP-Versand | offen |
-| `site_url` auf die Domain | offen, **erst nach dem Deployment** |
+| Schritt                              | Stand                                               |
+| ------------------------------------ | --------------------------------------------------- |
+| Domain bei INWX registriert          | erledigt, 26.08.2026                                |
+| Cloudflare-Konto, Zone `bingelog.eu` | erledigt, 27.08.2026                                |
+| Nameserver bei INWX auf Cloudflare   | erledigt — `felicity` / `jocelyn.ns.cloudflare.com` |
+| TLS-Zertifikat                       | stellt Cloudflare selbst aus                        |
+| Worker deployen                      | offen, wenn M3 steht                                |
+| SMTP-Versand                         | offen                                               |
+| `site_url` auf die Domain            | offen, **erst nach dem Deployment**                 |
 
 DNS liegt jetzt bei Cloudflare. Neue Einträge — MX, SPF, DKIM, DMARC für
 den Mailversand — kommen dorthin, nicht mehr zu INWX. INWX bleibt die
@@ -56,11 +56,11 @@ Bestätigungsmails sind kein Kanal, den es gibt.
 Drei Einträge, damit die Mails nicht im Spam landen. Die konkreten Werte
 liefert der SMTP-Anbieter; die Form ist immer dieselbe:
 
-| Typ | Name | Wert |
-|---|---|---|
-| TXT | `@` | `v=spf1 include:<anbieter> ~all` |
-| TXT | `<selector>._domainkey` | vom Anbieter erzeugter DKIM-Schlüssel |
-| TXT | `_dmarc` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@bingelog.eu` |
+| Typ | Name                    | Wert                                                   |
+| --- | ----------------------- | ------------------------------------------------------ |
+| TXT | `@`                     | `v=spf1 include:<anbieter> ~all`                       |
+| TXT | `<selector>._domainkey` | vom Anbieter erzeugter DKIM-Schlüssel                  |
+| TXT | `_dmarc`                | `v=DMARC1; p=quarantine; rua=mailto:dmarc@bingelog.eu` |
 
 **SPF nur einmal.** Ein zweiter `v=spf1`-Eintrag auf derselben Domain
 macht beide ungültig. Kommt später ein weiterer Versender dazu, wird er

@@ -42,7 +42,11 @@ describe('the film filter', () => {
         P31: [
           {
             rank: 'normal',
-            mainsnak: { snaktype: 'value', property: 'P31', datavalue: { value: { id: 'Q5' }, type: 'wikibase-entityid' } },
+            mainsnak: {
+              snaktype: 'value',
+              property: 'P31',
+              datavalue: { value: { id: 'Q5' }, type: 'wikibase-entityid' },
+            },
           },
         ],
       },
@@ -159,11 +163,19 @@ describe('rank and unit handling', () => {
     const entity = filmWith('P345', [
       {
         rank: 'deprecated',
-        mainsnak: { snaktype: 'value', property: 'P345', datavalue: { value: 'tt0000001', type: 'string' } },
+        mainsnak: {
+          snaktype: 'value',
+          property: 'P345',
+          datavalue: { value: 'tt0000001', type: 'string' },
+        },
       },
       {
         rank: 'normal',
-        mainsnak: { snaktype: 'value', property: 'P345', datavalue: { value: 'tt0000002', type: 'string' } },
+        mainsnak: {
+          snaktype: 'value',
+          property: 'P345',
+          datavalue: { value: 'tt0000002', type: 'string' },
+        },
       },
     ]);
     assert.equal(extractFilm(entity)?.film.imdbId, 'tt0000002');
@@ -173,7 +185,11 @@ describe('rank and unit handling', () => {
     const entity = filmWith('P345', [
       {
         rank: 'normal',
-        mainsnak: { snaktype: 'value', property: 'P345', datavalue: { value: 'nm0000040', type: 'string' } },
+        mainsnak: {
+          snaktype: 'value',
+          property: 'P345',
+          datavalue: { value: 'nm0000040', type: 'string' },
+        },
       },
     ]);
     assert.equal(extractFilm(entity)?.film.imdbId, null);

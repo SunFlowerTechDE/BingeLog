@@ -39,8 +39,7 @@ export function Field({
         autoFocus={autoFocus}
         required
         aria-describedby={hint ? `${id}-hint` : undefined}
-        className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base
-                   outline-none focus:ring-2"
+        className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
       />
       {hint ? (
         <p id={`${id}-hint`} className="text-muted-foreground text-xs">
@@ -57,8 +56,7 @@ export function Submit({ children }: { children: React.ReactNode }) {
     <button
       type="submit"
       disabled={pending}
-      className="bg-primary text-primary-foreground mt-1 rounded-md px-4 py-2.5 text-sm
-                 font-semibold disabled:opacity-60"
+      className="bg-primary text-primary-foreground mt-1 rounded-md px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
     >
       {pending ? 'Einen Moment' : children}
     </button>

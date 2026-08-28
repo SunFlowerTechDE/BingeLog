@@ -64,12 +64,12 @@ Kein Treffer über die ID heißt: prozedurale Karte. Punkt.
 **Begründung:** Die Titelsuche von TheTVDB rankt nach Titelübereinstimmung,
 nicht nach Relevanz. Belegte Fehltreffer aus dem Test:
 
-| Gesucht | Treffer 1 der Titelsuche |
-|---|---|
-| Der dritte Mann (1949) | Doku über den Film, 2000 |
+| Gesucht                   | Treffer 1 der Titelsuche     |
+| ------------------------- | ---------------------------- |
+| Der dritte Mann (1949)    | Doku über den Film, 2000     |
 | Solaris (1972, Tarkowski) | Sowjetische TV-Fassung, 1968 |
-| Die Wand (2012) | Serie "Die Wanderhure", 2013 |
-| Shoplifters (2018) | "The Shoplifters", 2019 |
+| Die Wand (2012)           | Serie "Die Wanderhure", 2013 |
+| Shoplifters (2018)        | "The Shoplifters", 2019      |
 
 Ein falsch verknüpfter Film ist ein stiller Fehler, der nie auffällt.
 Eine fehlende Verknüpfung ist sichtbar und harmlos.
@@ -186,13 +186,13 @@ Ein Film mit 60 Sprachversionen gehört vor einen mit zweien.
 
 20 Filme, vier Kategorien, manuell geprüft.
 
-| Gruppe | Über Titelsuche | Über IMDb-ID |
-|---|---|---|
-| Aktuelle Titel | 5/5 | 5/5 |
-| Deutschsprachig | 5/5 | 5/5 |
-| Klassiker vor 1980 | 4/5 | 5/5 |
-| Arthouse | 2/5 | 5/5 |
-| **Summe** | **16/20** | **20/20** |
+| Gruppe             | Über Titelsuche | Über IMDb-ID |
+| ------------------ | --------------- | ------------ |
+| Aktuelle Titel     | 5/5             | 5/5          |
+| Deutschsprachig    | 5/5             | 5/5          |
+| Klassiker vor 1980 | 4/5             | 5/5          |
+| Arthouse           | 2/5             | 5/5          |
+| **Summe**          | **16/20**       | **20/20**    |
 
 Alle 20 mit Plakat. Einziger inhaltlicher Mangel: "Amrum" ohne Synopsis.
 
@@ -207,15 +207,15 @@ intern) können Nutzer den Film in festen Facetten bewerten.
 
 **Feste Facetten, als Enum, nicht als Freitext:**
 
-| Enum-Wert | UI-Label |
-|---|---|
-| `acting` | Schauspiel |
-| `story` | Story und Drehbuch |
-| `directing` | Regie |
-| `cinematography` | Bild und Kamera |
-| `sound` | Ton und Musik |
+| Enum-Wert           | UI-Label                |
+| ------------------- | ----------------------- |
+| `acting`            | Schauspiel              |
+| `story`             | Story und Drehbuch      |
+| `directing`         | Regie                   |
+| `cinematography`    | Bild und Kamera         |
+| `sound`             | Ton und Musik           |
 | `production_design` | Setting und Ausstattung |
-| `pacing` | Tempo |
+| `pacing`            | Tempo                   |
 
 **Warum ein Enum:** Freitext-Facetten lassen sich nicht aggregieren.
 Ohne Aggregation ist das Feature wertlos, weil der Nutzen genau darin

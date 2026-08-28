@@ -50,6 +50,7 @@ Unsicherheit anwaltlich prüfen lassen.
   Diese fünf Punkte gelten wegen der Filmdiskussion (M4) verschärft.
   Reine Sternebewertungen wären ein Grenzfall, freie Textbeiträge sind
   eindeutig UGC.
+
 - [ ] Screenshots für iPhone und iPad, alle geforderten Größen
 - [ ] App-Beschreibung, Keywords, Support-URL
 - [ ] Trader Status ist bereits hinterlegt (bestehender Account)

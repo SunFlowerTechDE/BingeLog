@@ -19,19 +19,19 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   // Beide Werte sind oeffentlich: sie landen ohnehin im Client-Bundle.
   // Der Secret Key hat hier nichts zu suchen und wuerde vom
   // ESLint-Config des Web-Workspaces auch abgelehnt.
   "vars": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm"
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm",
   },
   // Die Testumgebung haengt an keiner Domain.
   "workers_dev": true,
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
 
   "env": {
@@ -39,7 +39,7 @@
       "name": "bingelog-web-prod",
       "assets": {
         "directory": ".open-next/assets",
-        "binding": "ASSETS"
+        "binding": "ASSETS",
       },
       // Ohne diese Bindung nimmt Cloudflare die Anfrage fuer die Domain
       // zwar an, sucht dann aber einen Ursprungsserver, den es nicht
@@ -47,7 +47,7 @@
       // weigert sich, solange eigene Eintraege fuer den Namen bestehen.
       "routes": [
         { "pattern": "bingelog.eu", "custom_domain": true },
-        { "pattern": "www.bingelog.eu", "custom_domain": true }
+        { "pattern": "www.bingelog.eu", "custom_domain": true },
       ],
       // Kein workers.dev fuer die Hauptseite: sie ist unter ihrer Domain
       // erreichbar und sonst nirgends.
@@ -57,11 +57,11 @@
       // ersten Zugriff auf Supabase um.
       "vars": {
         "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm"
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm",
       },
       "observability": {
-        "enabled": true
-      }
-    }
-  }
+        "enabled": true,
+      },
+    },
+  },
 }

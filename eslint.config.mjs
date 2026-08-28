@@ -92,4 +92,12 @@ export default tseslint.config(
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked,
   },
+  {
+    // Werkzeugskripte laufen unter Node, nicht im Browser. Ohne die
+    // Globals meldet die Regel `no-undef` jedes `console` und `process`.
+    files: ['**/scripts/**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      globals: { console: 'readonly', process: 'readonly' },
+    },
+  },
 );

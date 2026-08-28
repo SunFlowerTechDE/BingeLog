@@ -106,13 +106,13 @@ werden nicht später "aus Wachstumsgründen" zurückgenommen.
 Wenn ein Feature-Vorschlag in eine dieser Kategorien fällt, gehört er
 nicht rein:
 
-| Nicht | Warum |
-|---|---|
-| Streaming-Guide | Verfügbarkeitsdaten sind lizenzpflichtig, und es ist ein anderes Produkt |
-| Allgemeines soziales Netzwerk | Der Anlass ist immer ein Film, nie ein Statusupdate |
-| Bewertungsaggregator wie Metacritic | Es geht um das eigene Tagebuch, nicht um einen Konsenswert |
-| Serientracker | Der Name legt es nahe, der Fokus ist trotzdem Film. Siehe Anmerkung unten. |
-| Empfehlungsmaschine | Kein Algorithmus, der einem sagt, was man sehen soll |
+| Nicht                               | Warum                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------------- |
+| Streaming-Guide                     | Verfügbarkeitsdaten sind lizenzpflichtig, und es ist ein anderes Produkt   |
+| Allgemeines soziales Netzwerk       | Der Anlass ist immer ein Film, nie ein Statusupdate                        |
+| Bewertungsaggregator wie Metacritic | Es geht um das eigene Tagebuch, nicht um einen Konsenswert                 |
+| Serientracker                       | Der Name legt es nahe, der Fokus ist trotzdem Film. Siehe Anmerkung unten. |
+| Empfehlungsmaschine                 | Kein Algorithmus, der einem sagt, was man sehen soll                       |
 
 ---
 

@@ -276,10 +276,7 @@ describe('rate limit', () => {
 
 describe('message immutability', () => {
   it('cannot be reassigned to another user', async () => {
-    await rater.client
-      .from('thread_messages')
-      .update({ user_id: stranger.id })
-      .eq('id', messageId);
+    await rater.client.from('thread_messages').update({ user_id: stranger.id }).eq('id', messageId);
 
     const { data } = await admin
       .from('thread_messages')
@@ -291,10 +288,7 @@ describe('message immutability', () => {
   });
 
   it('stamps edited_at server-side when the body changes', async () => {
-    await rater.client
-      .from('thread_messages')
-      .update({ body: 'Korrigiert.' })
-      .eq('id', messageId);
+    await rater.client.from('thread_messages').update({ body: 'Korrigiert.' }).eq('id', messageId);
 
     const { data } = await admin
       .from('thread_messages')

@@ -33,7 +33,9 @@ const { rows } = await db.query<{ pending: string }>(
   `select count(*) as pending from public.films
    where imdb_id is not null and poster_source is null`,
 );
-console.log(`pending: ${rows[0]?.pending ?? '0'} film(s) with an IMDb id and no artwork decision\n`);
+console.log(
+  `pending: ${rows[0]?.pending ?? '0'} film(s) with an IMDb id and no artwork decision\n`,
+);
 
 const progress = await runArtworkBatch(db, tvdb, {
   ...(limit !== undefined && Number.isFinite(limit) ? { limit } : {}),

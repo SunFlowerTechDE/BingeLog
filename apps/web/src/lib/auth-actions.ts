@@ -93,8 +93,7 @@ export async function signIn(_previous: FormState, formData: FormData): Promise<
     // a problem that is not there.
     if (error.code === 'email_not_confirmed') {
       return {
-        error:
-          'Bestätige zuerst deine E-Mail-Adresse. Den Link findest du in deinem Postfach.',
+        error: 'Bestätige zuerst deine E-Mail-Adresse. Den Link findest du in deinem Postfach.',
       };
     }
 
@@ -136,10 +135,7 @@ export async function signOut(): Promise<never> {
   redirect('/');
 }
 
-export async function chooseUsername(
-  _previous: FormState,
-  formData: FormData,
-): Promise<FormState> {
+export async function chooseUsername(_previous: FormState, formData: FormData): Promise<FormState> {
   const username = readField(formData, 'username').trim().toLowerCase();
 
   if (!/^[a-z0-9_]{3,20}$/.test(username)) {

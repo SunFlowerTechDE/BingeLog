@@ -24,7 +24,12 @@ import {
   loadGenres,
   loadPeople,
 } from '../src/wikidata/load.ts';
-import type { ExtractedCredit, ExtractedEntity, ExtractedGenre, WikidataEntity } from '../src/wikidata/types.ts';
+import type {
+  ExtractedCredit,
+  ExtractedEntity,
+  ExtractedGenre,
+  WikidataEntity,
+} from '../src/wikidata/types.ts';
 
 function fixture(id: string): WikidataEntity {
   return JSON.parse(
@@ -58,7 +63,10 @@ async function runImport(): Promise<void> {
   const credits = extracted.flatMap((e) => e.credits);
   const genreLinks = extracted.flatMap((e) => e.genres);
 
-  await loadFilms(h.sql, extracted.map((e) => e.film));
+  await loadFilms(
+    h.sql,
+    extracted.map((e) => e.film),
+  );
   await loadPeople(h.sql, peopleFor(credits));
   await loadGenres(h.sql, genresFor(genreLinks));
   await loadCredits(h.sql, credits);

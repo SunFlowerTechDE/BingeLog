@@ -180,7 +180,10 @@ describe('the TheTVDB client', () => {
     await client.findByImdbId('tt0000001');
     await client.findByImdbId('tt0000002');
 
-    assert.ok(waits.some((w) => w > 0), 'the second request must wait');
+    assert.ok(
+      waits.some((w) => w > 0),
+      'the second request must wait',
+    );
   });
 });
 
@@ -209,7 +212,11 @@ describe('the artwork batch', () => {
   }
 
   function client(options: StubOptions) {
-    return createTvdbClient({ apiKey: 'valid-key', fetchImpl: stubTvdb(options).fetchImpl, ...NO_WAIT });
+    return createTvdbClient({
+      apiKey: 'valid-key',
+      fetchImpl: stubTvdb(options).fetchImpl,
+      ...NO_WAIT,
+    });
   }
 
   it('records a hit as tvdb and a miss as generated', async () => {
@@ -231,7 +238,9 @@ describe('the artwork batch', () => {
       tvdb_id: number | null;
       poster_source: string;
       poster_url: string | null;
-    }>('select wikidata_id, tvdb_id, poster_source, poster_url from public.films order by wikidata_id');
+    }>(
+      'select wikidata_id, tvdb_id, poster_source, poster_url from public.films order by wikidata_id',
+    );
 
     assert.equal(rows[0]?.poster_source, 'tvdb');
     assert.equal(rows[0]?.tvdb_id, 7063);

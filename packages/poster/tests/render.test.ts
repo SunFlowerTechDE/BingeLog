@@ -173,9 +173,21 @@ describe('long titles', () => {
   });
 
   it('shrinks rather than overflowing', () => {
-    const short = fitTitle('M', { maxWidth: 332, maxHeight: 400, maxFontSize: 62, minFontSize: 19, leading: 1.06, maxLines: 7 });
+    const short = fitTitle('M', {
+      maxWidth: 332,
+      maxHeight: 400,
+      maxFontSize: 62,
+      minFontSize: 19,
+      leading: 1.06,
+      maxLines: 7,
+    });
     const long = fitTitle('Orgullo, Pasión, y Gloria: Tres Noches en la Ciudad de México', {
-      maxWidth: 332, maxHeight: 400, maxFontSize: 62, minFontSize: 19, leading: 1.06, maxLines: 7,
+      maxWidth: 332,
+      maxHeight: 400,
+      maxFontSize: 62,
+      minFontSize: 19,
+      leading: 1.06,
+      maxLines: 7,
     });
     assert.ok(long.fontSize < short.fontSize);
     assert.ok(long.lines.every((line) => measure(line, long.fontSize) <= 332));
@@ -183,7 +195,12 @@ describe('long titles', () => {
 
   it('truncates only when even the smallest size cannot hold the title', () => {
     const absurd = fitTitle('Wort '.repeat(400).trim(), {
-      maxWidth: 332, maxHeight: 400, maxFontSize: 62, minFontSize: 19, leading: 1.06, maxLines: 7,
+      maxWidth: 332,
+      maxHeight: 400,
+      maxFontSize: 62,
+      minFontSize: 19,
+      leading: 1.06,
+      maxLines: 7,
     });
     assert.equal(absurd.truncated, true);
     assert.ok(absurd.lines.length <= 7);
@@ -197,7 +214,11 @@ describe('non-Latin scripts', () => {
   });
 
   it('sets a Japanese title', () => {
-    const svg = renderPosterSVG({ wikidataId: 'Q48765577', title: '万引き家族', releaseYear: 2018 });
+    const svg = renderPosterSVG({
+      wikidataId: 'Q48765577',
+      title: '万引き家族',
+      releaseYear: 2018,
+    });
     assert.match(svg, /万引き家族|万/);
   });
 
@@ -245,7 +266,10 @@ describe('missing metadata', () => {
     const meta = [...svg.matchAll(/<text x="(\d+)" y="\d+" font-size="(\d+)"[^>]*>([^<]*)</g)];
     const last = meta.at(-1);
     assert.ok(last);
-    assert.ok(Number(last[1]) + measure(last[3] ?? '', Number(last[2])) <= WIDTH, 'stays on the card');
+    assert.ok(
+      Number(last[1]) + measure(last[3] ?? '', Number(last[2])) <= WIDTH,
+      'stays on the card',
+    );
   });
 });
 

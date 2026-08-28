@@ -12,10 +12,7 @@ function requiredPublic(name: string, value: string | undefined): string {
 }
 
 export const env = {
-  supabaseUrl: requiredPublic(
-    'NEXT_PUBLIC_SUPABASE_URL',
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-  ),
+  supabaseUrl: requiredPublic('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL),
   supabaseAnonKey: requiredPublic(
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

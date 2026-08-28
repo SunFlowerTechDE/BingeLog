@@ -74,11 +74,11 @@ aus M0. Hier kommt die Oberfläche dazu.
 
 Drei Zustände auf der Filmdetailseite:
 
-| Zustand | Anzeige |
-|---|---|
-| Nicht bewertet | Hinweisfläche: "Diskussion sichtbar, sobald du den Film bewertet hast." Plus Anzahl der Beiträge. **Kein Inhalt, keine Vorschau, keine Namen.** |
-| Bewertet, Thread inaktiv | "Noch keine Diskussion zu diesem Film. Sei die erste Person." |
-| Bewertet, Thread aktiv | Vollständiger Thread |
+| Zustand                  | Anzeige                                                                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nicht bewertet           | Hinweisfläche: "Diskussion sichtbar, sobald du den Film bewertet hast." Plus Anzahl der Beiträge. **Kein Inhalt, keine Vorschau, keine Namen.** |
+| Bewertet, Thread inaktiv | "Noch keine Diskussion zu diesem Film. Sei die erste Person."                                                                                   |
+| Bewertet, Thread aktiv   | Vollständiger Thread                                                                                                                            |
 
 - [ ] Die Beitragszahl darf angezeigt werden, sie verrät nichts
 - [ ] **Keine Vorschautexte, keine Autorennamen, keine Zeitstempel** im

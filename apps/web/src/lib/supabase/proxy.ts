@@ -46,7 +46,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const needsAuth = PROTECTED.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const needsAuth = PROTECTED.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
 
   if (needsAuth && !user) {
     const redirect = request.nextUrl.clone();

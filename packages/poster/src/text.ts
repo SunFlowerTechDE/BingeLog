@@ -13,7 +13,7 @@
  */
 
 /** Advance widths in em, approximating a bold grotesque. */
-const NARROW = new Set("iljItf().,;:!'\"|[]{}/\\-·");
+const NARROW = new Set('iljItf().,;:!\'"|[]{}/\\-·');
 const WIDE = new Set('mwMW@%');
 
 function isFullWidth(codePoint: number): boolean {
@@ -96,7 +96,8 @@ export function wrap(title: string, maxWidth: number, fontSize: number): string[
   let line = '';
 
   for (const token of tokens) {
-    const separator = line === '' || isIdeographic(token) || isIdeographic(line.at(-1) ?? '') ? '' : ' ';
+    const separator =
+      line === '' || isIdeographic(token) || isIdeographic(line.at(-1) ?? '') ? '' : ' ';
     const candidate = line + separator + token;
 
     if (line !== '' && measure(candidate, fontSize) > maxWidth) {
@@ -142,7 +143,11 @@ export function fitTitle(title: string, options: FitOptions): FittedText {
     const lines = wrap(title, maxWidth, fontSize);
     const widest = Math.max(...lines.map((line) => measure(line, fontSize)), 0);
 
-    if (lines.length <= maxLines && widest <= maxWidth && lines.length * fontSize * leading <= maxHeight) {
+    if (
+      lines.length <= maxLines &&
+      widest <= maxWidth &&
+      lines.length * fontSize * leading <= maxHeight
+    ) {
       return { lines, fontSize, lineHeight: fontSize * leading, truncated: false };
     }
   }

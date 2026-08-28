@@ -14,11 +14,11 @@ nutzbare Nutzerbasis in mindestens einer Region.
 
 Rechnerischer Vergleich für dasselbe Umsatzziel von 1.000 € im Monat:
 
-| Weg | Nötig |
-|---|---|
-| Werbung | ca. 4.250 monatlich aktive Nutzer |
-| Supporter-Abo (3 €/Monat) | ca. 336 zahlende Nutzer |
-| **Kinos (59 €/Monat)** | **17 Kinos** |
+| Weg                       | Nötig                             |
+| ------------------------- | --------------------------------- |
+| Werbung                   | ca. 4.250 monatlich aktive Nutzer |
+| Supporter-Abo (3 €/Monat) | ca. 336 zahlende Nutzer           |
+| **Kinos (59 €/Monat)**    | **17 Kinos**                      |
 
 Marktgröße Deutschland (FFA, Ende 2025): 947 Standorte, 1.651 Kinos,
 4.757 Leinwände. Abzüglich Kettenhäuser bleiben grob 1.000 bis 1.200
@@ -64,11 +64,11 @@ Das ist der einzige zulässige Weg, Publikumsdaten zu verwerten.
 
 ## Preisstaffel
 
-| Tarif | Preis/Monat | Umfang |
-|---|---|---|
-| Basis | 29 € | Kinoprofil, Spielplan |
-| Plus | 59 € | plus Push-Kampagnen, Reihen, Auswertung |
-| Bundle | 99 € | plus CineTime-Schichtplanung |
+| Tarif  | Preis/Monat | Umfang                                  |
+| ------ | ----------- | --------------------------------------- |
+| Basis  | 29 €        | Kinoprofil, Spielplan                   |
+| Plus   | 59 €        | plus Push-Kampagnen, Reihen, Auswertung |
+| Bundle | 99 €        | plus CineTime-Schichtplanung            |
 
 Das Bundle ist der interessanteste Weg: Derselbe Mandant kauft ein
 zweites Modul, statt dass ein neuer Markt ein erstes kauft.

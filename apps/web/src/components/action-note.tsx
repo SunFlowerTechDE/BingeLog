@@ -9,7 +9,13 @@
  * Silence is the worst answer an interface can give, because it is
  * indistinguishable from success.
  */
-export function ActionNote({ message, tone = 'error' }: { message?: string | undefined; tone?: 'error' | 'info' }) {
+export function ActionNote({
+  message,
+  tone = 'error',
+}: {
+  message?: string | undefined;
+  tone?: 'error' | 'info';
+}) {
   if (!message) return null;
 
   return (

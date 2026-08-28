@@ -21,8 +21,7 @@ Platzhalter sind in den jeweiligen Vorlagen dokumentiert.
 
 <p>Der Link gilt 24 Stunden.</p>
 
-<p>Warst du das nicht, ignorier diese Mail. Ohne Bestätigung passiert
-nichts.</p>
+<p>Warst du das nicht, ignorier diese Mail. Ohne Bestätigung passiert nichts.</p>
 ```
 
 ---
@@ -50,8 +49,7 @@ nichts.</p>
 ```html
 <p>Du willst die Adresse deines BingeLog-Kontos ändern.</p>
 
-<p>Klick auf den folgenden Link, um <strong>{{ .NewEmail }}</strong> zu
-bestätigen:</p>
+<p>Klick auf den folgenden Link, um <strong>{{ .NewEmail }}</strong> zu bestätigen:</p>
 
 <p><a href="{{ .ConfirmationURL }}">Neue Adresse bestätigen</a></p>
 
@@ -71,8 +69,7 @@ bestätigen:</p>
 
 <p>Der Link gilt eine Stunde.</p>
 
-<p>Hast du das nicht angefordert, ignorier diese Mail. Dein Passwort
-bleibt dann unverändert.</p>
+<p>Hast du das nicht angefordert, ignorier diese Mail. Dein Passwort bleibt dann unverändert.</p>
 ```
 
 ---

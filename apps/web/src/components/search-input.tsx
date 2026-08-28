@@ -45,8 +45,7 @@ export function SearchInput() {
       placeholder="Film suchen"
       aria-label="Film suchen"
       autoComplete="off"
-      className="border-border bg-card focus:ring-ring w-full rounded-md border px-4 py-3
-                 text-base outline-none focus:ring-2"
+      className="border-border bg-card focus:ring-ring w-full rounded-md border px-4 py-3 text-base outline-none focus:ring-2"
     />
   );
 }

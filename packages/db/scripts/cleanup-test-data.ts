@@ -39,7 +39,9 @@ if (testAccounts.length === 0) {
 for (const user of testAccounts) {
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   console.log(
-    deleteError ? `failed  ${user.email ?? user.id}: ${deleteError.message}` : `removed ${user.email ?? user.id}`,
+    deleteError
+      ? `failed  ${user.email ?? user.id}: ${deleteError.message}`
+      : `removed ${user.email ?? user.id}`,
   );
 }
 

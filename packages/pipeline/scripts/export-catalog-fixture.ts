@@ -33,9 +33,17 @@ const people = (
                   order by p.wikidata_id`)
 ).rows;
 
-const genres = (await db.query(`select wikidata_id, label_de, label_en from public.genres order by wikidata_id`)).rows;
-const credits = (await db.query(`select film_id, person_id, role, ord from public.film_credits order by film_id, role, ord`)).rows;
-const filmGenres = (await db.query(`select film_id, genre_id from public.film_genres order by film_id, genre_id`)).rows;
+const genres = (
+  await db.query(`select wikidata_id, label_de, label_en from public.genres order by wikidata_id`)
+).rows;
+const credits = (
+  await db.query(
+    `select film_id, person_id, role, ord from public.film_credits order by film_id, role, ord`,
+  )
+).rows;
+const filmGenres = (
+  await db.query(`select film_id, genre_id from public.film_genres order by film_id, genre_id`)
+).rows;
 
 await db.end();
 

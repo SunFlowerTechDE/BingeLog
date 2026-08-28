@@ -28,7 +28,11 @@ describe('placing whole popcorn', () => {
         const result = nextRating(current, bucket);
         const isRefinement = current === bucket * 2 || current === bucket * 2 - 1;
         if (!isRefinement) {
-          assert.equal(result % 2, 0, `clicking ${String(bucket)} at ${String(current)} gave a half`);
+          assert.equal(
+            result % 2,
+            0,
+            `clicking ${String(bucket)} at ${String(current)} gave a half`,
+          );
         }
       }
     }

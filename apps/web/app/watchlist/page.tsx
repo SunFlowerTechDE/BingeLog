@@ -32,7 +32,9 @@ export default async function WatchlistPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from('watchlist')
-    .select('film_id, added_at, films(title_de, title_original, release_year, poster_source, poster_url)')
+    .select(
+      'film_id, added_at, films(title_de, title_original, release_year, poster_source, poster_url)',
+    )
     .order('added_at', { ascending: false });
 
   const rows = (data ?? []) as unknown as Row[];
@@ -77,7 +79,7 @@ export default async function WatchlistPage() {
                   {/* Linked, never mirrored (docs/legal/thetvdb-lizenz.md). */}
                   <img src={artwork} alt="" loading="lazy" className="h-full w-full object-cover" />
                 </div>
-                <span className="line-clamp-2 text-[13px] leading-tight font-medium">{title}</span>
+                <span className="line-clamp-2 text-[13px] font-medium leading-tight">{title}</span>
                 {film?.release_year ? (
                   <span className="text-muted-foreground text-[11px]">{film.release_year}</span>
                 ) : null}

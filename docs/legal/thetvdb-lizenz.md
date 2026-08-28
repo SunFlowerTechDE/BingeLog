@@ -17,12 +17,12 @@ Quellen: [API and Data Licensing](https://www.thetvdb.com/api-information),
 
 ## 1. Lizenzstufen
 
-| Jahresumsatz | Kosten |
-|---|---|
-| unter 50.000 USD | kostenlos, Attributionspflicht |
-| 50.000 bis 250.000 USD | 1.000 USD/Jahr |
-| 250.000 bis 1.000.000 USD | 10.000 USD/Jahr |
-| über 1.000.000 USD | Verhandlungssache |
+| Jahresumsatz              | Kosten                         |
+| ------------------------- | ------------------------------ |
+| unter 50.000 USD          | kostenlos, Attributionspflicht |
+| 50.000 bis 250.000 USD    | 1.000 USD/Jahr                 |
+| 250.000 bis 1.000.000 USD | 10.000 USD/Jahr                |
+| über 1.000.000 USD        | Verhandlungssache              |
 
 Bestätigt die Annahme aus ADR-002. Harte Kanten, kein Gleitpfad.
 Maßgeblich ist der Umsatz von SunFlower Tech insgesamt, nicht der von

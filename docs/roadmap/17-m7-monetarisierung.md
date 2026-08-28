@@ -12,10 +12,10 @@
 
 Das Ziel ist Kostendeckung, nicht Gewinn.
 
-| Modell | Netto pro Nutzer/Jahr | Nötig für 35 €/Monat |
-|---|---|---|
-| Supporter 3 €/Monat | 25,71 € | **17 Abos** |
-| Supporter 25 €/Jahr | 17,86 € | 24 Abos |
+| Modell              | Netto pro Nutzer/Jahr | Nötig für 35 €/Monat |
+| ------------------- | --------------------- | -------------------- |
+| Supporter 3 €/Monat | 25,71 €               | **17 Abos**          |
+| Supporter 25 €/Jahr | 17,86 €               | 24 Abos              |
 
 Netto nach 19 % MwSt und 15 % Apple (Small Business Program, gilt unter
 1 Mio. USD Jahresumsatz).

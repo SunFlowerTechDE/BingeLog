@@ -63,7 +63,8 @@ export async function runArtworkBatch(
   const progress: BatchProgress = { processed: 0, matched: 0, generated: 0, failed: 0 };
 
   for (;;) {
-    const remaining = limit === undefined ? batchSize : Math.min(batchSize, limit - progress.processed);
+    const remaining =
+      limit === undefined ? batchSize : Math.min(batchSize, limit - progress.processed);
     if (remaining <= 0) break;
 
     const { rows } = await db.query<FilmRow>(SELECT_PENDING, [remaining]);

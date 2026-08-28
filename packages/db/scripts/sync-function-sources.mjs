@@ -45,4 +45,6 @@ await copyFile(
   path.join(SHARED, 'wikidata', 'film-subclasses.json'),
 );
 
-console.log(`synced ${String(FILES.length + 1)} file(s) into ${path.relative(process.cwd(), SHARED)}`);
+console.log(
+  `synced ${String(FILES.length + 1)} file(s) into ${path.relative(process.cwd(), SHARED)}`,
+);

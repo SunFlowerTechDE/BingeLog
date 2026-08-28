@@ -44,7 +44,10 @@ function list(row: Record<string, unknown> | undefined, key: string): string[] {
   const value = row?.[key];
   if (Array.isArray(value)) return value as string[];
   if (typeof value === 'string') {
-    return value.replace(/^\{|\}$/g, '').split(',').filter((entry) => entry !== '');
+    return value
+      .replace(/^\{|\}$/g, '')
+      .split(',')
+      .filter((entry) => entry !== '');
   }
   return [];
 }
@@ -122,9 +125,7 @@ const CHECKS: Check[] = [
     sql: `select coalesce(max(schedule), '') as schedule
           from cron.job where jobname = 'refresh-film-facet-averages'`,
     verdict: (row) =>
-      row?.schedule === ''
-        ? 'no cron job: the facet averages would never refresh (M0 0.4b)'
-        : null,
+      row?.schedule === '' ? 'no cron job: the facet averages would never refresh (M0 0.4b)' : null,
   },
   {
     name: 'the facet aggregate refreshes on demand',

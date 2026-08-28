@@ -11,8 +11,8 @@ export default function SignUpPage() {
       <div className="flex flex-col gap-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Konto anlegen</h1>
         <p className="text-muted-foreground text-sm">
-          Trag ein, was du gesehen hast, und red darüber mit Leuten, die den Film auch
-          gesehen haben.
+          Trag ein, was du gesehen hast, und red darüber mit Leuten, die den Film auch gesehen
+          haben.
         </p>
       </div>
 

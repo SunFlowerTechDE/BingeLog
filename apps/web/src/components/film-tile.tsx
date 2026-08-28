@@ -26,8 +26,7 @@ export function FilmTile({ film }: { film: TileFilm }) {
   return (
     <Link
       href={`/film/${film.wikidata_id}` as Route}
-      className="group focus-visible:ring-ring flex w-[120px] flex-col gap-1.5 rounded
-                 outline-none focus-visible:ring-2 sm:w-[140px]"
+      className="focus-visible:ring-ring group flex w-[120px] flex-col gap-1.5 rounded outline-none focus-visible:ring-2 sm:w-[140px]"
     >
       <div className="bg-card aspect-[2/3] overflow-hidden rounded">
         {hasArtwork ? (
@@ -51,7 +50,7 @@ export function FilmTile({ film }: { film: TileFilm }) {
       </div>
 
       <div className="flex flex-col gap-0.5">
-        <span className="line-clamp-2 text-[13px] leading-tight font-medium">{title}</span>
+        <span className="line-clamp-2 text-[13px] font-medium leading-tight">{title}</span>
         <span className="text-muted-foreground text-[11px]">
           {/* The year always sits next to the title, and the director joins
               it when several films share one (M3 3.2). */}

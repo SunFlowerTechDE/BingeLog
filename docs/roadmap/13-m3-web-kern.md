@@ -41,13 +41,13 @@ Ranking-Formel, absteigend gewichtet:
 
 **Pflicht-Testfälle** (alle sollen den erwarteten Film auf Platz 1 haben):
 
-| Eingabe | Erwartet |
-|---|---|
-| `Solaris` | Tarkowski 1972, nicht die TV-Fassung 1968 |
-| `Die Wand` | Pölsler 2012 |
-| `Der dritte Mann` | Reed 1949 |
-| `Shoplifters` | Kore-eda 2018 |
-| `Jeder für sich und Gott gegen alle` | Herzog 1974 |
+| Eingabe                              | Erwartet                                  |
+| ------------------------------------ | ----------------------------------------- |
+| `Solaris`                            | Tarkowski 1972, nicht die TV-Fassung 1968 |
+| `Die Wand`                           | Pölsler 2012                              |
+| `Der dritte Mann`                    | Reed 1949                                 |
+| `Shoplifters`                        | Kore-eda 2018                             |
+| `Jeder für sich und Gott gegen alle` | Herzog 1974                               |
 
 Diese fünf sind genau die, an denen TheTVDB gescheitert ist. Sie gehören
 als automatisierter Test ins Repo.
