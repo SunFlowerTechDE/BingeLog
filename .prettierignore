@@ -19,3 +19,8 @@ packages/pipeline/tests/fixtures
 # den Inhalt einem Werkzeugfehler anzupassen.
 docs/roadmap/11-m1-datenpipeline.md
 docs/roadmap/12-m2-poster-system.md
+
+# Von Next erzeugt und bei jedem `next typegen` neu geschrieben. Lokal
+# lag sie zufaellig formatiert vor, auf einem frischen Rechner nicht —
+# der erste CI-Lauf ist genau daran gescheitert.
+apps/web/next-env.d.ts

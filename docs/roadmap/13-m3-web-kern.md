@@ -13,14 +13,16 @@ Film bewerten und eintragen.
 
 ### 3.1 Auth
 
-- [ ] Supabase Auth: E-Mail plus Passwort, dazu Apple Sign-in
+- [x] Supabase Auth: E-Mail plus Passwort
+- [ ] **Apple Sign-in** — offen, braucht einen Apple-Developer-Account
       (Pflicht für den App Store, wenn andere Social Logins angeboten
       werden. Am einfachsten: nur E-Mail und Apple)
-- [ ] Nach der Registrierung: Username wählen, `profiles`-Zeile anlegen
-- [ ] Username-Regeln: 3 bis 20 Zeichen, `[a-z0-9_]`, case-insensitive
+- [x] Bestätigungsmail erneut anfordern, falls die erste nicht ankommt
+- [x] Nach der Registrierung: Username wählen, `profiles`-Zeile anlegen
+- [x] Username-Regeln: 3 bis 20 Zeichen, `[a-z0-9_]`, case-insensitive
       eindeutig, Sperrliste für reservierte Begriffe
-- [ ] Middleware für geschützte Routen
-- [ ] Session-Handling serverseitig, keine Tokens im Local Storage
+- [x] Middleware für geschützte Routen
+- [x] Session-Handling serverseitig, keine Tokens im Local Storage
 
 ### 3.2 Suche
 
@@ -34,10 +36,10 @@ Ranking-Formel, absteigend gewichtet:
 3. `sitelink_count` als Relevanzmultiplikator
 4. Erscheinungsjahr als schwacher Tiebreaker (neuer leicht bevorzugt)
 
-- [ ] Query als Postgres-Funktion, nicht im Client
-- [ ] Debounce 250 ms, Ergebnisse ab 2 Zeichen
-- [ ] Jahr immer neben dem Titel anzeigen
-- [ ] Bei mehreren Filmen gleichen Titels: Regie mit anzeigen
+- [x] Query als Postgres-Funktion, nicht im Client
+- [x] Debounce 250 ms, Ergebnisse ab 2 Zeichen
+- [x] Jahr immer neben dem Titel anzeigen
+- [x] Bei mehreren Filmen gleichen Titels: Regie mit anzeigen
 
 **Pflicht-Testfälle** (alle sollen den erwarteten Film auf Platz 1 haben):
 
@@ -52,17 +54,17 @@ Ranking-Formel, absteigend gewichtet:
 Diese fünf sind genau die, an denen TheTVDB gescheitert ist. Sie gehören
 als automatisierter Test ins Repo.
 
-- [ ] Bei null Treffern: Lazy Creation aus M1 anstoßen
+- [x] Bei null Treffern: Lazy Creation aus M1 anstoßen
 
 ### 3.3 Filmdetailseite
 
-- [ ] Plakat, Titel (deutsch mit Original als Untertitel, falls
+- [x] Plakat, Titel (deutsch mit Original als Untertitel, falls
       abweichend), Jahr, Laufzeit, Regie, Besetzung, Genres
-- [ ] Eigene Bewertung und eigener Tagebucheintrag, falls vorhanden
-- [ ] Durchschnittsbewertung der Community mit Anzahl
-- [ ] Öffentliche Reviews, paginiert
-- [ ] Aktionen: bewerten, eintragen, auf Watchlist
-- [ ] TheTVDB-Attribution, wo Artwork von dort stammt
+- [x] Eigene Bewertung und eigener Tagebucheintrag, falls vorhanden
+- [x] Durchschnittsbewertung der Community mit Anzahl
+- [x] Öffentliche Reviews, paginiert
+- [x] Aktionen: bewerten, eintragen, auf Watchlist
+- [x] TheTVDB-Attribution, wo Artwork von dort stammt
 
 **Synopsis:** `synopsis_de` ist bei vielen Filmen leer (Wikidata liefert
 keine Fließtexte). Entscheidung für M3: **keine Synopsis anzeigen.** In
@@ -72,26 +74,26 @@ auslösen. Das ist bewusst zu entscheiden, nicht nebenbei einzubauen.
 
 ### 3.4 Logging
 
-- [ ] Bewertung in halben Sternen (Skala 1 bis 10 in der Datenbank,
+- [x] Bewertung in halben Sternen (Skala 1 bis 10 in der Datenbank,
       Anzeige als 0,5 bis 5,0 Sterne)
-- [ ] Datum, Rewatch-Flag, optionaler Review-Text
-- [ ] Privat-Flag pro Eintrag
-- [ ] Mehrere Einträge zum selben Film möglich (Rewatches)
-- [ ] Bearbeiten und Löschen
+- [x] Datum, Rewatch-Flag, optionaler Review-Text
+- [x] Privat-Flag pro Eintrag
+- [x] Mehrere Einträge zum selben Film möglich (Rewatches)
+- [x] Bearbeiten und Löschen
 
 ### 3.4b Facettenbewertung
 
 Siehe ADR-009.
 
-- [ ] Sternebewertung ist Pflicht, Facetten sind optional
-- [ ] Facetten standardmäßig **eingeklappt**. Ein Tap auf "Detailliert
+- [x] Sternebewertung ist Pflicht, Facetten sind optional
+- [x] Facetten standardmäßig **eingeklappt**. Ein Tap auf "Detailliert
       bewerten" klappt sie auf. Der Standardweg bleibt zwei Taps.
-- [ ] Sieben Facetten, jeweils halbe Sterne wie die Gesamtbewertung
-- [ ] Teilweises Ausfüllen ist gültig. Wer nur Schauspiel und Story
+- [x] Sieben Facetten, jeweils halbe Sterne wie die Gesamtbewertung
+- [x] Teilweises Ausfüllen ist gültig. Wer nur Schauspiel und Story
       bewertet, speichert genau diese zwei.
-- [ ] Anzeige auf der Filmdetailseite: Balkendarstellung pro Facette mit
+- [x] Anzeige auf der Filmdetailseite: Balkendarstellung pro Facette mit
       Durchschnitt und Anzahl, **erst ab 5 Bewertungen** sichtbar
-- [ ] Eigene Facettenbewertung neben dem Community-Wert anzeigen
+- [x] Eigene Facettenbewertung neben dem Community-Wert anzeigen
 
 **Nicht tun:**
 
@@ -102,24 +104,45 @@ Siehe ADR-009.
 
 ### 3.5 Design-Grundlagen
 
-- [ ] Dunkles Grundthema, weil Plakate darauf besser wirken
-- [ ] Rastergröße 120 bis 150 px Kachelbreite als Referenz
-- [ ] Typografisches System, das zur generierten Karte passt.
+- [x] Dunkles Grundthema, weil Plakate darauf besser wirken
+- [x] Rastergröße 120 bis 150 px Kachelbreite als Referenz
+- [x] Typografisches System, das zur generierten Karte passt.
       Generierte und echte Plakate stehen nebeneinander im selben
       Raster und dürfen sich nicht beißen.
-- [ ] Responsive ab 360 px Breite
+- [x] Responsive ab 360 px Breite
 
 ---
 
 ## Definition of Done
 
-- [ ] Registrieren, einloggen, Film suchen, bewerten, eintragen
+- [x] Registrieren, einloggen, Film suchen, bewerten, eintragen
       funktioniert Ende zu Ende
-- [ ] Die fünf Such-Testfälle sind grün und laufen in CI
-- [ ] Lighthouse Performance über 85 auf der Filmdetailseite
-- [ ] RLS ist geprüft: Nutzer A kann Einträge von Nutzer B nicht ändern
-- [ ] Private Einträge sind für andere nicht sichtbar, auch nicht über
+- [x] Die fünf Such-Testfälle sind grün und laufen in CI
+- [x] Lighthouse Performance über 85 auf der Filmdetailseite
+- [x] RLS ist geprüft: Nutzer A kann Einträge von Nutzer B nicht ändern
+- [x] Private Einträge sind für andere nicht sichtbar, auch nicht über
       die API
+
+## Stand am 28.08.2026
+
+Abgeschlossen bis auf **Apple Sign-in**, das einen Apple-Developer-Account
+verlangt und daher nicht am Code hängt.
+
+Nachgemessen statt behauptet:
+
+- 218 Tests laufen in CI, darunter die fünf Pflicht-Testfälle der Suche
+  und 92 Zusicherungen zu Policies und Triggern
+- 360 px: kein seitliches Scrollen auf Filmseite, Suche und Registrierung
+- Lighthouse misst die CI bei jedem Push und bricht unter 85 ab
+
+Bewusst nicht enthalten und in M3 3.3 begründet: **Synopsis**. Dazu aus
+demselben Grund — keine Quelle, die zugleich frei, vollständig und sauber
+ist — **Trailer**, **FSK-Plakette** und **Avatare**. Die Anfrage zur
+FSK-API läuft (`docs/betrieb/fsk-anfrage.md`).
+
+Was in M3 nicht vorgesehen war und trotzdem entstand: Sichtbarkeit in
+drei Stufen statt eines Privat-Schalters, die `follows`-Tabelle samt
+Freundschaftsregel, und die Trennung von Teststand und Hauptseite.
 
 ## Fallstricke
 
