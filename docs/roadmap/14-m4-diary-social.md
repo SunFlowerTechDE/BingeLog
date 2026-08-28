@@ -87,21 +87,24 @@ Drei Zustände auf der Filmdetailseite:
 | Bewertet, Thread inaktiv | "Noch keine Diskussion zu diesem Film. Sei die erste Person."                                                                                   |
 | Bewertet, Thread aktiv   | Vollständiger Thread                                                                                                                            |
 
-- [ ] Die Beitragszahl darf angezeigt werden, sie verrät nichts
-- [ ] **Keine Vorschautexte, keine Autorennamen, keine Zeitstempel** im
-      gesperrten Zustand
-- [ ] Ehrliche Formulierung. Nicht "spoilerfrei garantiert", sondern
+- [x] Die Beitragszahl darf angezeigt werden, sie verrät nichts
+- [x] **Keine Vorschautexte, keine Autorennamen, keine Zeitstempel** im
+      gesperrten Zustand — davon steht auch nichts im Quelltext,
+      nachgeprüft am 28.08.2026
+- [x] Ehrliche Formulierung. Nicht "spoilerfrei garantiert", sondern
       "sichtbar nach deiner Bewertung". Das Gate ist absichtlich
       umgehbar, siehe ADR-010.
 
 #### Thread-UI
 
-- [ ] Beiträge chronologisch, älteste zuerst
-- [ ] Eine Antwortebene (`parent_id`), keine tiefere Verschachtelung
-- [ ] Bearbeiten mit sichtbarer "bearbeitet"-Markierung
-- [ ] Löschen setzt `is_removed`, entfernt die Zeile nicht (Moderationsspur)
-- [ ] Markdown minimal: fett, kursiv, Zeilenumbrüche. **Keine Bilder,
-      keine Links** in Version 1, das reduziert Spam erheblich.
+- [x] Beiträge chronologisch, älteste zuerst
+- [x] Eine Antwortebene (`parent_id`), keine tiefere Verschachtelung
+- [x] Bearbeiten mit sichtbarer "bearbeitet"-Markierung
+- [x] Löschen setzt `is_removed`, entfernt die Zeile nicht (Moderationsspur)
+- [x] Markdown minimal: fett, kursiv, Zeilenumbrüche. **Keine Bilder,
+      keine Links** in Version 1, das reduziert Spam erheblich. Der
+      Parser gibt Bausteine aus, kein HTML — was nicht zum Satz gehört,
+      bleibt Text, mit Test.
 - [ ] Live-Aktualisierung eines geöffneten Threads über Supabase Realtime
       ist erlaubt und sinnvoll. Das Datenmodell bleibt asynchron.
 
@@ -110,15 +113,15 @@ Drei Zustände auf der Filmdetailseite:
 Auch unter Leuten, die den Film gesehen haben, gibt es Spoiler für
 **andere** Filme (Fortsetzungen, Vergleiche).
 
-- [ ] Spoiler-Tag im Editor, rendert als verdeckter Block zum Aufdecken
-- [ ] Syntax analog zu gängigen Foren, etwa `||Text||`
+- [x] Spoiler-Tag im Editor, rendert als verdeckter Block zum Aufdecken
+- [x] Syntax analog zu gängigen Foren, etwa `||Text||`
 
 #### Moderation (Pflicht)
 
 - [ ] Melden pro Beitrag, mit Grund
 - [ ] Nutzer blockieren: blockierte Beiträge werden ausgeblendet
 - [ ] Thread sperren (`is_locked`) durch Admin
-- [ ] Rate Limiting serverseitig, maximal 10 Beiträge pro Stunde
+- [x] Rate Limiting serverseitig, maximal 10 Beiträge pro Stunde
 - [ ] Wortfilter für offensichtlich Verbotenes, bewusst schmal halten
 
 Ohne diese vier Punkte ist die App nicht App-Store-fähig und
@@ -126,11 +129,12 @@ DSA-rechtlich angreifbar. Siehe M6.
 
 #### Aktivierungsschwelle
 
-- [ ] `film_threads.is_active` wird gesetzt, sobald 5 Nutzer den Film
+- [x] `film_threads.is_active` wird gesetzt, sobald 5 Nutzer den Film
       eingetragen haben
-- [ ] Trigger auf `diary_entries` pflegt `viewer_count`
-- [ ] Der Schwellenwert liegt in einer Konfigurationstabelle, nicht im
-      Code. Er wird sich mit wachsender Nutzerzahl ändern.
+- [x] Trigger auf `diary_entries` pflegt `viewer_count`
+- [x] Der Schwellenwert liegt in einer Konfigurationstabelle, nicht im
+      Code. Er wird sich mit wachsender Nutzerzahl ändern — `app_settings`,
+      Schlüssel `discussion_threshold`.
 
 ### 4.6 Interaktion
 
