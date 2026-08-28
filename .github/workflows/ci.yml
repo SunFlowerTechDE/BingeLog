@@ -1,0 +1,54 @@
+name: CI
+
+# M3 Definition of Done: die fuenf Such-Testfaelle laufen in CI.
+#
+# Alles hier kommt ohne Zugangsdaten aus. Die Schema- und Suchtests
+# starten ein eigenes Postgres im Arbeitsverzeichnis (embedded-postgres),
+# nicht das Projekt. Was ein echtes Supabase-Projekt braucht — `test:rls`
+# ueber PostgREST und `db:verify` gegen das Schema — laeuft bewusst
+# nicht mit: ein Lauf, der ohne Secrets rot wird, wird nach zwei Wochen
+# ignoriert und schuetzt dann gar nichts mehr.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruefen:
+    name: Typen, Stil und Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Ohne --frozen-lockfile faellt ein veraltetes Lockfile nicht auf,
+      # sondern wird stillschweigend nachgezogen.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typen
+        run: pnpm typecheck
+
+      - name: Stil
+        run: pnpm lint
+
+      - name: Formatierung
+        run: pnpm format:check
+
+      # Zuletzt, weil es am laengsten dauert: hier faehrt Postgres hoch,
+      # alle Migrationen laufen, und darauf die Policies und die fuenf
+      # Such-Testfaelle.
+      - name: Tests
+        run: pnpm test
