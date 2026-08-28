@@ -23,9 +23,13 @@ export function UserMenu({
   username,
   avatarUrl,
   abmelden,
+  moderiert,
 }: {
   username: string;
   avatarUrl: string | null;
+  /** Zeigt den Zugang zur Warteschlange. Nur Anzeige — der Schutz steht
+      in der Policy auf `reports`, nicht in diesem Menue. */
+  moderiert: boolean;
   /** Die Server-Aktion. Als Kind uebergeben, damit dieses Bauteil sie
       nicht kennen muss. */
   abmelden: React.ReactNode;
@@ -108,6 +112,21 @@ export function UserMenu({
           >
             Einstellungen
           </Link>
+          {moderiert ? (
+            <>
+              <div className="border-border my-1 border-t" />
+              <Link
+                role="menuitem"
+                href="/moderation"
+                onClick={() => {
+                  setOffen(false);
+                }}
+                className="hover:bg-background rounded-md px-3 py-2 text-sm"
+              >
+                Moderation
+              </Link>
+            </>
+          ) : null}
           <div className="border-border my-1 border-t" />
           {abmelden}
         </div>

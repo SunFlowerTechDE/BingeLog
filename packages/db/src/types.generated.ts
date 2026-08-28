@@ -443,6 +443,29 @@ export type Database = {
           },
         ]
       }
+      moderators: {
+        Row: {
+          added_at: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           name: string
@@ -496,6 +519,92 @@ export type Database = {
           watchlist_public?: boolean
         }
         Relationships: []
+      }
+      report_images: {
+        Row: {
+          added_at: string
+          path: string
+          report_id: string
+        }
+        Insert: {
+          added_at?: string
+          path: string
+          report_id: string
+        }
+        Update: {
+          added_at?: string
+          path?: string
+          report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_images_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          body: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          id: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reporter_email: string | null
+          reporter_id: string | null
+          status: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_kind: Database["public"]["Enums"]["report_target"]
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reporter_email?: string | null
+          reporter_id?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_kind: Database["public"]["Enums"]["report_target"]
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["report_reason"]
+          reporter_email?: string | null
+          reporter_id?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          target_id?: string
+          target_kind?: Database["public"]["Enums"]["report_target"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reserved_usernames: {
         Row: {
@@ -772,6 +881,7 @@ export type Database = {
           label: string
         }[]
       }
+      is_moderator: { Args: never; Returns: boolean }
       list_is_mine: { Args: { list: string }; Returns: boolean }
       list_is_readable: { Args: { list: string }; Returns: boolean }
       my_facet_ratings: {
@@ -829,6 +939,7 @@ export type Database = {
       }
       prune_lazy_creation_attempts: { Args: never; Returns: undefined }
       refresh_film_facet_averages: { Args: never; Returns: undefined }
+      report_accepts_uploads: { Args: { report: string }; Returns: boolean }
       search_films: {
         Args: { max_results?: number; query: string }
         Returns: {
@@ -861,6 +972,17 @@ export type Database = {
         | "sound"
         | "production_design"
         | "pacing"
+      report_reason:
+        | "spoiler"
+        | "harassment"
+        | "hate"
+        | "sexual"
+        | "violence"
+        | "spam"
+        | "illegal"
+        | "other"
+      report_status: "open" | "in_progress" | "resolved" | "rejected"
+      report_target: "message" | "review" | "profile" | "list" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -998,6 +1120,18 @@ export const Constants = {
         "production_design",
         "pacing",
       ],
+      report_reason: [
+        "spoiler",
+        "harassment",
+        "hate",
+        "sexual",
+        "violence",
+        "spam",
+        "illegal",
+        "other",
+      ],
+      report_status: ["open", "in_progress", "resolved", "rejected"],
+      report_target: ["message", "review", "profile", "list", "other"],
     },
   },
 } as const

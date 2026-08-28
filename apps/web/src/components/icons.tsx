@@ -22,6 +22,10 @@ const PFADE = {
   lupe: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35',
   pfeilRunter: 'M6 9l6 6 6-6',
   schliessen: 'M6 6l12 12 M18 6L6 18',
+  /** Melden: das Fahnchen. */
+  melden: 'M5 21V4h9l.6 2H20l-2 4 2 4h-6.4L13 12H5',
+  /** Moderation: der Schild. */
+  schild: 'M12 3l7 3v6c0 4-3 7.5-7 9-4-1.5-7-5-7-9V6z',
 } as const;
 
 export type Symbolart = keyof typeof PFADE;

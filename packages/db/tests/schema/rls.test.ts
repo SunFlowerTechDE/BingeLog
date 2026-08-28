@@ -1001,6 +1001,128 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.follows where follower_id = $1`, [leser]);
   });
 
+  it('lets anyone file a report and only moderators read it', async () => {
+    const melder = await seedUser(h, 'melder');
+    const moderator = await seedUser(h, 'moderatorin');
+
+    // Ohne Konto melden — Artikel 16 DSA verlangt genau das.
+    await h.as('anon', null).query(
+      `insert into public.reports (target_kind, target_id, reason, body, reporter_email)
+       values ('message', $1, 'harassment', 'Beleidigend.', 'wer@example.org')`,
+      ['00000000-0000-4000-8000-000000000001'],
+    );
+
+    // **Aber nicht mit `returning`.** Wer nicht lesen darf, darf auch
+    // die eigene, gerade geschriebene Zeile nicht zurueklesen. Postgres
+    // meldet das als "new row violates row-level security policy" und
+    // fuehrt damit auf die falsche Faehrte — die Zeile war in Ordnung.
+    //
+    // Deshalb vergibt die Anwendung die Kennung selbst
+    // (`report-actions.ts`), statt sie sich geben zu lassen.
+    await assert.rejects(
+      () =>
+        h.as('anon', null).query(
+          `insert into public.reports (target_kind, target_id, reason, reporter_email)
+           values ('other', 'x', 'spam', 'wer@example.org') returning id`,
+        ),
+      /row-level security/,
+      'zurueklesen darf der Melder nicht',
+    );
+
+    // Angemeldet ebenfalls, unter dem eigenen Namen.
+    await h.as('authenticated', melder).query(
+      `insert into public.reports (target_kind, target_id, reason, reporter_id)
+       values ('review', $1, 'spam', $2)`,
+      ['00000000-0000-4000-8000-000000000002', melder],
+    );
+
+    // Aber nicht in fremdem Namen: das waere ein Weg, ein Konto in
+    // Verruf zu bringen.
+    await assert.rejects(
+      () =>
+        h.as('authenticated', melder).query(
+          `insert into public.reports (target_kind, target_id, reason, reporter_id)
+           values ('review', $1, 'spam', $2)`,
+          ['00000000-0000-4000-8000-000000000003', moderator],
+        ),
+      /row-level security/,
+      'niemand meldet in fremdem Namen',
+    );
+
+    // Lesen darf sie niemand — auch nicht, wer selbst gemeldet hat.
+    const alsMelder = await h.as('authenticated', melder).query(`select id from public.reports`);
+    const alsAnon = await h.as('anon', null).query(`select id from public.reports`);
+    assert.deepEqual(alsMelder, [], 'auch der Melder liest die Warteschlange nicht');
+    assert.deepEqual(alsAnon, [], 'und ohne Konto erst recht nicht');
+
+    // Erst als Moderator.
+    await h.sql.query(`insert into public.moderators (user_id) values ($1)`, [moderator]);
+    const alsModerator = await h
+      .as('authenticated', moderator)
+      .query(`select id from public.reports`);
+    assert.equal(alsModerator.length, 2, 'der Moderator sieht beide');
+
+    await h.sql.query(`delete from public.reports`);
+    await h.sql.query(`delete from public.moderators where user_id = $1`, [moderator]);
+  });
+
+  it('never lets a user make themselves a moderator', async () => {
+    const ehrgeizig = await seedUser(h, 'ehrgeizig');
+
+    // Die Tabelle hat keine Schreib-Policy. Ohne Policy ist die Antwort
+    // nein — und zwar fuer jeden, nicht nur fuer Fremde.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', ehrgeizig)
+          .query(`insert into public.moderators (user_id) values ($1)`, [ehrgeizig]),
+      /row-level security/,
+      'niemand ernennt sich selbst',
+    );
+
+    const drin = await h
+      .as('authenticated', ehrgeizig)
+      .query(`select user_id from public.moderators`);
+    assert.deepEqual(drin, [], 'und steht auch nicht drin');
+  });
+
+  it('keeps a report after the reported content is gone', async () => {
+    const autor = await seedUser(h, 'geloeschter');
+    const moderator = await seedUser(h, 'moderatorzwei');
+    await h.sql.query(`insert into public.moderators (user_id) values ($1)`, [moderator]);
+
+    const eingefuegt = await h.sql.query<{ id: string }>(
+      `insert into public.diary_entries (user_id, film_id, rating, review, visibility)
+       values ($1, $2, 6, 'Steht hier nicht lange.', 'public') returning id`,
+      [autor, FILM],
+    );
+    const eintrag = eingefuegt.rows[0];
+    assert.ok(eintrag);
+
+    await h.as('anon', null).query(
+      `insert into public.reports (target_kind, target_id, reason, reporter_email)
+       values ('review', $1, 'hate', 'weg@example.org')`,
+      [eintrag.id],
+    );
+
+    // Der gemeldete Inhalt verschwindet — die Meldung nicht. Deshalb
+    // steht auf `target_id` kein Fremdschluessel: eine Kaskade wuerde
+    // die Spur mitnehmen, und genau die ist der Zweck.
+    await h.sql.query(`delete from public.diary_entries where id = $1`, [eintrag.id]);
+
+    const uebrig = await h
+      .as('authenticated', moderator)
+      .query<{ target_id: string }>(`select target_id from public.reports`);
+    assert.deepEqual(
+      uebrig.map((r) => r.target_id),
+      [eintrag.id],
+      'die Meldung ueberlebt das Ziel',
+    );
+
+    await h.sql.query(`delete from public.reports`);
+    await h.sql.query(`delete from public.moderators where user_id = $1`, [moderator]);
+  });
+
   it('keeps the watchlist private unless it is opened', async () => {
     await h
       .as('authenticated', rater)

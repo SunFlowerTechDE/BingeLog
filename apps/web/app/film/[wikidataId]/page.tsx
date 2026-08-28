@@ -8,6 +8,7 @@ import { LogPanel, type OwnEntry } from '@/components/log-panel';
 import { WatchlistButton } from '@/components/watchlist-button';
 import { AddToList } from '@/components/add-to-list';
 import { Discussion, type Beitrag } from '@/components/discussion';
+import { ReportButton } from '@/components/report-button';
 import { RewatchButton } from '@/components/rewatch-button';
 import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
@@ -469,9 +470,22 @@ async function Reviews({
                 <span className="text-muted-foreground ml-auto">{formatAge(entry.created_at)}</span>
               </div>
               <p className="whitespace-pre-line text-sm leading-relaxed">{entry.review}</p>
-              {watched ? (
-                <span className="text-muted-foreground text-xs">gesehen am {watched}</span>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-3">
+                {watched ? (
+                  <span className="text-muted-foreground text-xs">gesehen am {watched}</span>
+                ) : null}
+                {/* Melden steht auch hier, und auch ohne Konto: der
+                    Digital Services Act verlangt ein Verfahren, das
+                    jeder benutzen kann. */}
+                <span className="ml-auto">
+                  <ReportButton
+                    targetKind="review"
+                    targetId={entry.id}
+                    angemeldet={signedIn}
+                    was="Rezension"
+                  />
+                </span>
+              </div>
             </li>
           );
         })}

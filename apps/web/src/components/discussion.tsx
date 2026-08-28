@@ -8,6 +8,7 @@ import { postMessage, editMessage, removeMessage } from '@/lib/discussion-action
 import { DiscussionText } from '@/components/discussion-text';
 import { ActionNote } from '@/components/action-note';
 import { Avatar } from '@/components/profile-parts';
+import { ReportButton } from '@/components/report-button';
 
 export interface Beitrag {
   id: string;
@@ -209,6 +210,11 @@ export function Discussion({
         >
           Antworten
         </button>
+      )}
+      {/* Melden steht an jedem fremden Beitrag, immer. Am eigenen
+          nicht: sich selbst zu melden ist kein Fall. */}
+      {b.eigener ? null : (
+        <ReportButton targetKind="message" targetId={b.id} angemeldet was="Beitrag" />
       )}
       {b.eigener && !gesperrt ? (
         <>

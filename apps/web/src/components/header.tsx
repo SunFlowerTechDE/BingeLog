@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Symbol, type Symbolart } from '@/components/icons';
 import { HeaderSearch } from '@/components/header-search';
 import { UserMenu } from '@/components/user-menu';
+import { isModerator } from '@/lib/moderation';
 
 /**
  * Die Kopfleiste in drei Zonen.
@@ -43,6 +44,7 @@ export async function Header() {
   }
 
   const angemeldet = Boolean(viewer?.username);
+  const moderiert = angemeldet ? await isModerator() : false;
 
   return (
     <header className="border-border border-b">
@@ -90,6 +92,7 @@ export async function Header() {
             <UserMenu
               username={viewer.username}
               avatarUrl={avatarUrl}
+              moderiert={moderiert}
               abmelden={
                 <form action={signOut}>
                   <button

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { ListEditor, type Listeneintrag } from '@/components/list-editor';
 import { ShareButton } from '@/components/share-button';
+import { ReportButton } from '@/components/report-button';
 
 /**
  * Eine Binge-Liste (M4 4.3).
@@ -95,11 +96,19 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         {/* Weitergeben nur, was auch ankommt. Ein Teilen-Knopf an einer
             privaten Liste verschickt eine Adresse, hinter der fuer den
             Empfaenger nichts steht. */}
-        {liste.is_public ? (
-          <div className="pt-1">
-            <ShareButton titel={`${liste.title} — BingeLog`} />
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-4 pt-1">
+          {/* Weitergeben nur, was auch ankommt. Melden dagegen immer:
+              eine private Liste sieht ohnehin nur ihr Besitzer. */}
+          {liste.is_public ? <ShareButton titel={`${liste.title} — BingeLog`} /> : null}
+          {eigenes ? null : (
+            <ReportButton
+              targetKind="list"
+              targetId={liste.id}
+              angemeldet={viewer !== null}
+              was="Liste"
+            />
+          )}
+        </div>
       </div>
 
       {eigenes ? (

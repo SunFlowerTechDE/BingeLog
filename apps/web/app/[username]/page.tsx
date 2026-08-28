@@ -10,6 +10,7 @@ import { formatWatchedOn } from '@/lib/dates';
 import { Avatar, StatCard, Panel, Chip, Saeulen, Balken } from '@/components/profile-parts';
 import { Symbol } from '@/components/icons';
 import { ShareButton } from '@/components/share-button';
+import { ReportButton } from '@/components/report-button';
 
 /**
  * M4 4.2 — die oeffentliche Profilseite unter /@username.
@@ -341,6 +342,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                 pfad={`/@${profile.username}`}
                 titel={`@${profile.username} auf BingeLog`}
               />
+              {eigenes ? null : (
+                <ReportButton
+                  targetKind="profile"
+                  targetId={profile.username}
+                  angemeldet={viewer !== null}
+                  was="Profil"
+                />
+              )}
             </div>
 
             {eigenes ? (
