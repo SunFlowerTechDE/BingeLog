@@ -76,11 +76,50 @@ IP-Adressen zu beschränken. Der Kasten klingt nach Sicherheit. Die Mails
 verschickt aber Supabase, dessen Absender-IPs weder fest noch
 dokumentiert sind. Einschalten legt den Versand lahm.
 
+## Empfang: mailbox.org
+
+Maschinenpost und Menschenpost sind getrennt. **Brevo verschickt die
+Anmeldemails, mailbox.org ist das Postfach.** Automatischen Versand
+ueber ein persoenliches Postfach zu leiten heisst, dessen Grenzen und
+dessen Ruf an die Anmeldung zu binden — und einen Posteingang zu fluten,
+sobald etwas schiefgeht.
+
+Cloudflare Email Routing waere kostenlos gewesen, kann aber nur
+weiterleiten. Antworten kaemen dann von einer Gmail-Adresse. Fuer ein
+Impressum und fuer Post an die FSK ist das das falsche Signal, also ein
+echtes Postfach: mailbox.org, 3 EUR/Monat bei Jahreszahlung, Berlin.
+
+| Typ | Name         | Wert                                                    |
+| --- | ------------ | ------------------------------------------------------- |
+| TXT | `57d57faef…` | Eigentumsnachweis von mailbox.org                       |
+| MX  | `@`          | `mxext1.mailbox.org`, Prioritaet 10                     |
+| MX  | `@`          | `mxext2.mailbox.org`, Prioritaet 10                     |
+| MX  | `@`          | `mxext3.mailbox.org`, Prioritaet 10                     |
+| MX  | `@`          | `mxext4.mailbox.org`, Prioritaet 10                     |
+| TXT | `@`          | `v=spf1 include:mailbox.org include:spf.brevo.com ~all` |
+
+Vier MX mit **gleicher** Prioritaet: sie sind gleichwertig, Absender
+verteilen sich und weichen aus, wenn einer schweigt.
+
+Der SPF-Eintrag ist fuer mailbox.org noetig — wer von
+`registrierung@bingelog.eu` schreibt, wird gegen den SPF dieser Domain
+geprueft. Fuer Brevo waere er entbehrlich, weil dort der technische
+Absender auf Brevos eigener Domain steht; er ist trotzdem aufgenommen,
+damit ein Wechsel auf deren Seite den Versand nicht ohne erkennbaren
+Grund kippt. `~all` statt `-all`, solange gebaut wird: ein uebersehener
+Absender landet dann im Spam statt im Nichts.
+
+**Der CNAME `registrierung.bingelog.eu` (Brevos Links) und die Adresse
+`registrierung@bingelog.eu` stoeren sich nicht.** Das eine ist ein
+Hostname, das andere ein Postfach; Mail richtet sich nach dem MX der
+Domain.
+
 ## Was noch fehlt
 
-- **Empfang.** An `registrierung@bingelog.eu` kann derzeit niemand
-  antworten. Cloudflare Email Routing leitet kostenlos weiter; ein
-  deutsches Impressum verlangt ohnehin eine erreichbare Adresse.
-- **Mailtexte.** Mit eigenem SMTP dürfen sie auf dem kostenlosen Tarif
-  frei angepasst werden. Die Vorlagen liegen in `mailvorlagen.md` und
-  sind noch nicht eingetragen.
+- **Versand aus dem Postfach.** Das mailbox.org-Konto ist noch nicht
+  bezahlt, und unbezahlte Testkonten duerfen nicht nach aussen senden:
+  `554 5.7.1 Relay access denied`. Empfang laeuft, Versand erst nach der
+  Aktivierung. Keine Fehlkonfiguration — die Meldung sagt es woertlich.
+- **Mailtexte.** Nur „Confirm signup" ist eingetragen. Magic Link und
+  Passwort-Zuruecksetzen bleiben absichtlich leer, siehe
+  `mailvorlagen.md`.
