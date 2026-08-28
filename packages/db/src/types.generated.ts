@@ -612,6 +612,7 @@ export type Database = {
           score: number
         }[]
       }
+      my_friends: { Args: never; Returns: string[] }
       prune_lazy_creation_attempts: { Args: never; Returns: undefined }
       refresh_film_facet_averages: { Args: never; Returns: undefined }
       search_films: {

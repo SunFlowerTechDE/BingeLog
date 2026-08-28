@@ -65,11 +65,12 @@ export default async function FilmPage({
   searchParams,
 }: {
   params: Promise<{ wikidataId: string }>;
-  searchParams: Promise<{ seite?: string }>;
+  searchParams: Promise<{ seite?: string; von?: string }>;
 }) {
   const { wikidataId } = await params;
-  const { seite } = await searchParams;
+  const { seite, von } = await searchParams;
   const page = Math.max(1, Number(seite) || 1);
+  const scope: ReviewScope = von === 'freunde' ? 'freunde' : 'alle';
 
   if (!/^Q\d+$/.test(wikidataId)) notFound();
 
@@ -297,10 +298,10 @@ export default async function FilmPage({
         {hasFacets ? (
           <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
             <FacetPanel averages={facetAverages} own={ownFacets} />
-            <Reviews wikidataId={wikidataId} page={page} />
+            <Reviews wikidataId={wikidataId} page={page} scope={scope} signedIn={viewer !== null} />
           </div>
         ) : (
-          <Reviews wikidataId={wikidataId} page={page} />
+          <Reviews wikidataId={wikidataId} page={page} scope={scope} signedIn={viewer !== null} />
         )}
       </div>
     </main>
@@ -316,17 +317,42 @@ const REVIEWS_PER_PAGE = 10;
  * the policy on diary_entries decides, and a filter here would be a
  * second opinion that can drift from the first (M0 0.4).
  */
-async function Reviews({ wikidataId, page }: { wikidataId: string; page: number }) {
+type ReviewScope = 'alle' | 'freunde';
+
+async function Reviews({
+  wikidataId,
+  page,
+  scope,
+  signedIn,
+}: {
+  wikidataId: string;
+  page: number;
+  scope: ReviewScope;
+  signedIn: boolean;
+}) {
   const supabase = await createClient();
+
+  // Wer als Freund gilt, entscheidet die Datenbank. Hier wird nur
+  // gefiltert — und ein leeres Ergebnis heisst leere Liste, nicht
+  // "Filter aus": sonst zeigte die Freundesansicht bei niemandem alle.
+  let friendIds: string[] = [];
+  if (scope === 'freunde') {
+    const { data: friends } = await supabase.rpc('my_friends');
+    friendIds = friends ?? [];
+  }
 
   // One more than a page, to find out whether there is a next one without
   // a second count query.
   const from = (page - 1) * REVIEWS_PER_PAGE;
-  const { data } = await supabase
+  let query = supabase
     .from('diary_entries')
     .select('id, rating, review, watched_on, is_rewatch, created_at, profiles(username)')
     .eq('film_id', wikidataId)
-    .not('review', 'is', null)
+    .not('review', 'is', null);
+
+  if (scope === 'freunde') query = query.in('user_id', friendIds);
+
+  const { data } = await query
     .order('created_at', { ascending: false })
     .range(from, from + REVIEWS_PER_PAGE);
 
@@ -340,14 +366,52 @@ async function Reviews({ wikidataId, page }: { wikidataId: string; page: number 
     profiles: { username: string } | null;
   }[];
 
-  if (rows.length === 0 && page === 1) return null;
+  // Fruehes Aussteigen nur in der Gesamtansicht: in der Freundesansicht
+  // ist "niemand" eine Antwort und keine leere Stelle.
+  if (rows.length === 0 && page === 1 && scope === 'alle' && !signedIn) return null;
 
   const hasMore = rows.length > REVIEWS_PER_PAGE;
   const reviews = rows.slice(0, REVIEWS_PER_PAGE);
 
+  const tab = (target: ReviewScope, label: string) => {
+    const href = (
+      target === 'alle' ? `/film/${wikidataId}` : `/film/${wikidataId}?von=freunde`
+    ) as Route;
+    return (
+      <Link
+        key={target}
+        href={href}
+        aria-current={scope === target ? 'true' : undefined}
+        className={`rounded-md px-2.5 py-1 text-sm ${
+          scope === target
+            ? 'bg-primary text-primary-foreground font-medium'
+            : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        {label}
+      </Link>
+    );
+  };
+
   return (
     <section className="border-border bg-card/40 flex flex-col gap-4 rounded-lg border p-5">
-      <h2 className="text-base font-semibold tracking-tight">Neueste Bewertungen</h2>
+      {signedIn ? (
+        // Ohne Konto gibt es keine Freunde, also auch nichts zu wechseln.
+        <div className="border-border flex w-fit gap-1 rounded-lg border p-1">
+          {tab('alle', 'Neueste')}
+          {tab('freunde', 'Von Freunden')}
+        </div>
+      ) : (
+        <h2 className="text-base font-semibold tracking-tight">Neueste Bewertungen</h2>
+      )}
+
+      {reviews.length === 0 ? (
+        <p className="text-muted-foreground text-sm">
+          {scope === 'freunde'
+            ? 'Niemand, dem du folgst und der dir zurückfolgt, hat den Film bewertet.'
+            : 'Noch keine Rezension zu diesem Film.'}
+        </p>
+      ) : null}
 
       <ol className="flex flex-col gap-4">
         {reviews.map((entry) => {

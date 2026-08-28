@@ -537,6 +537,36 @@ describe('friends-only entries', () => {
     await h.sql.query(`delete from public.diary_entries where film_id = $1`, [film]);
   });
 
+  it('lists mutual follows and nobody else', async () => {
+    // rater folgt stranger, stranger folgt zurueck: Freunde.
+    // rater folgt unrated einseitig: kein Freund.
+    await h.sql.query(
+      `insert into public.follows (follower_id, followee_id)
+       values ($1, $2), ($2, $1), ($1, $3)`,
+      [rater, stranger, unrated],
+    );
+
+    const mine = await h
+      .as('authenticated', rater)
+      .query<{ my_friends: string }>(`select * from public.my_friends()`);
+    assert.deepEqual(
+      mine.map((row) => row.my_friends),
+      [stranger],
+      'nur wer zurueckfolgt',
+    );
+
+    // Und aus der Gegenrichtung gesehen ebenso.
+    const theirs = await h
+      .as('authenticated', unrated)
+      .query<{ my_friends: string }>(`select * from public.my_friends()`);
+    assert.deepEqual(theirs, [], 'gefolgt zu werden macht niemanden zum Freund');
+
+    const anonymous = await h.as('anon', null).query(`select * from public.my_friends()`);
+    assert.deepEqual(anonymous, [], 'ohne Konto keine Freunde');
+
+    await h.sql.query(`delete from public.follows`);
+  });
+
   it('refuses a follow of oneself', async () => {
     const error = await h
       .as('authenticated', rater)
