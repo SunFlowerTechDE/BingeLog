@@ -80,6 +80,11 @@ export async function saveAvatar(formData: FormData): Promise<ProfileResult> {
   const datei = formData.get('avatar');
   if (!(datei instanceof File) || datei.size === 0) return { error: 'Kein Bild dabei.' };
 
+  // Was der Browser liefern konnte: WebP, sonst JPEG. Andere Formate
+  // nimmt der Bucket nicht, und die Endung soll zum Inhalt passen.
+  const typ = datei.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp';
+  const endung = typ === 'image/jpeg' ? 'jpg' : 'webp';
+
   // Die Grenze steht auch am Bucket. Hier noch einmal, damit die Antwort
   // eine verstaendliche ist statt eines Speicherfehlers.
   if (datei.size > 262144) return { error: 'Das Bild ist zu groß.' };
@@ -92,11 +97,11 @@ export async function saveAvatar(formData: FormData): Promise<ProfileResult> {
     .eq('id', viewer.id)
     .maybeSingle();
 
-  const pfad = `${viewer.id}/${crypto.randomUUID()}.webp`;
+  const pfad = `${viewer.id}/${crypto.randomUUID()}.${endung}`;
 
   const { error: hochladen } = await supabase.storage
     .from('avatars')
-    .upload(pfad, datei, { contentType: 'image/webp' });
+    .upload(pfad, datei, { contentType: typ });
 
   if (hochladen) {
     console.error('avatar upload failed:', hochladen.message);

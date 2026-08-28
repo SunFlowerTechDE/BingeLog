@@ -36,7 +36,7 @@ export function SettingsForm({
     setBildMeldung(undefined);
 
     const daten = new FormData();
-    daten.set('avatar', z.datei, 'avatar.webp');
+    daten.set('avatar', z.datei, z.typ === 'image/jpeg' ? 'avatar.jpg' : 'avatar.webp');
 
     startTransition(async () => {
       const result = await saveAvatar(daten);

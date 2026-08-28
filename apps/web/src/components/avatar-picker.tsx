@@ -12,8 +12,9 @@ import { useEffect, useRef, useState } from 'react';
  * Verkleinert wird **vor** dem Hochladen, nicht danach. Ein Handyfoto
  * wiegt sechs Megabyte und erscheint als Kreis von 96 Pixeln; wer das
  * ungefiltert durchlaesst, zahlt Speicher und Verkehr fuer Bildpunkte,
- * die nie jemand sieht. Heraus kommen 512 Pixel im Quadrat als WebP,
- * ueblicherweise um die 40 KB.
+ * die nie jemand sieht. Heraus kommen 512 Pixel im Quadrat, ueblicherweise
+ * um die 40 KB — als WebP, und wo der Browser das nicht schreiben kann,
+ * als JPEG.
  *
  * 512 und nicht 256: auf hochaufloesenden Bildschirmen wird ein Kreis
  * von 96 Pixeln mit 192 gezeichnet, und Profile duerfen spaeter groesser
@@ -33,23 +34,53 @@ const STUFEN = [0.82, 0.7, 0.6, 0.5, 0.4];
 const GRENZE = 262144;
 
 /**
- * Als WebP, klein genug — oder null.
+ * WebP, sonst JPEG.
  *
- * `toBlob` faellt bei fehlender WebP-Unterstuetzung **stillschweigend auf
- * PNG zurueck**. Ein PNG mit 512 Pixeln wiegt schnell ein halbes
- * Megabyte, und der Bucket nimmt ohnehin nur WebP. Deshalb wird der Typ
- * geprueft und nicht angenommen.
+ * `toBlob` **ignoriert eine Formatangabe, die es nicht kennt, und liefert
+ * stillschweigend PNG.** Safari konnte lange kein WebP schreiben; ein PNG
+ * mit 512 Pixeln wiegt bei einem Foto ein halbes Megabyte, und der
+ * Bucket nimmt es ohnehin nicht. Der Rueckgabewert wird deshalb auf
+ * seinen Typ geprueft und nicht geglaubt.
+ *
+ * Faellt WebP aus, ist JPEG der Ausweg: aelter, ueberall vorhanden, bei
+ * einem Portraet in diesem Format kaum schlechter. Ein Profilbild nicht
+ * hochladen zu koennen, weil der Browser ein Format nicht kennt, waere
+ * die schlechteste aller Antworten.
  */
-async function alsWebp(leinwand: HTMLCanvasElement): Promise<Blob | null> {
-  for (const guete of STUFEN) {
-    const blob = await new Promise<Blob | null>((auf) => {
-      leinwand.toBlob(auf, 'image/webp', guete);
-    });
+async function verkleinern(
+  leinwand: HTMLCanvasElement,
+): Promise<{ blob: Blob; typ: string } | { fehler: string }> {
+  for (const typ of ['image/webp', 'image/jpeg']) {
+    let kann = true;
 
-    if (blob?.type !== 'image/webp') return null;
-    if (blob.size <= GRENZE) return blob;
+    for (const guete of STUFEN) {
+      const blob = await new Promise<Blob | null>((auf) => {
+        leinwand.toBlob(auf, typ, guete);
+      });
+
+      if (blob?.type !== typ) {
+        // Dieses Format kann der Browser nicht. Naechstes versuchen,
+        // statt fuenfmal dasselbe PNG zu erzeugen.
+        kann = false;
+        break;
+      }
+      if (blob.size <= GRENZE) return { blob, typ };
+    }
+
+    if (kann) {
+      return {
+        fehler:
+          'Das Bild ließ sich nicht klein genug rechnen. Versuch einen engeren Ausschnitt ' +
+          'oder ein anderes Bild.',
+      };
+    }
   }
-  return null;
+
+  return {
+    fehler:
+      'Dein Browser kann das Bild nicht umwandeln. Mit einem aktuellen Chrome, Firefox oder ' +
+      'Safari sollte es gehen.',
+  };
 }
 
 /** Wieviel Breite die Vorschau hat. Der Zuschnitt rechnet in diesem Raum. */
@@ -57,6 +88,8 @@ const BUEHNE = 260;
 
 export interface Zuschnitt {
   datei: Blob;
+  /** image/webp oder image/jpeg — je nachdem, was der Browser konnte. */
+  typ: string;
   vorschau: string;
 }
 
@@ -145,18 +178,19 @@ export function AvatarPicker({
       h,
     );
 
-    const blob = await alsWebp(ziel);
+    const ergebnis = await verkleinern(ziel);
     setRechnet(false);
 
-    if (!blob) {
-      setProblem(
-        'Das Bild ließ sich nicht klein genug umwandeln. Versuch ein anderes oder einen ' +
-          'engeren Ausschnitt.',
-      );
+    if ('fehler' in ergebnis) {
+      setProblem(ergebnis.fehler);
       return;
     }
 
-    onReady({ datei: blob, vorschau: URL.createObjectURL(blob) });
+    onReady({
+      datei: ergebnis.blob,
+      typ: ergebnis.typ,
+      vorschau: URL.createObjectURL(ergebnis.blob),
+    });
   };
 
   return (

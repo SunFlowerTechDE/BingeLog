@@ -4,7 +4,7 @@
 -- gehoert nicht in die Datenbank: es waere in jedem Backup, in jeder
 -- Abfrage auf `select *` und in jedem Dump, den jemand herumschickt.
 --
--- Pfadform: `{user_id}/{zufall}.webp`
+-- Pfadform: `{user_id}/{zufall}.webp` — seit 20260828220000 auch `.jpg`
 --
 -- Der erste Teil traegt die Regel — nur wer die ID besitzt, darf in den
 -- Ordner schreiben. Der zweite sorgt dafuer, dass ein neues Bild eine
