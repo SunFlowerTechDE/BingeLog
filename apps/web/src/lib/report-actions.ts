@@ -32,7 +32,16 @@ async function captchaGeprueft(token: string): Promise<boolean> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ secret, response: token }),
     });
-    const ergebnis = (await antwort.json()) as { success?: boolean };
+    const ergebnis = (await antwort.json()) as {
+      success?: boolean;
+      'error-codes'?: string[];
+    };
+    // Cloudflare sagt genau, was nicht stimmte. Ohne das raet man
+    // zwischen falschem Schluessel, falschem Hostnamen und fehlendem
+    // Token — drei Ursachen, die von aussen gleich aussehen.
+    if (ergebnis.success !== true) {
+      console.error('turnstile refused:', JSON.stringify(ergebnis['error-codes'] ?? []));
+    }
     return ergebnis.success === true;
   } catch (e) {
     // Netzfehler heisst nicht "durchlassen". Cloudflare ist selten weg,
