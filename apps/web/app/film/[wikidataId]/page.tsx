@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { LogPanel, type OwnEntry } from '@/components/log-panel';
 import { WatchlistButton } from '@/components/watchlist-button';
+import { RewatchButton } from '@/components/rewatch-button';
 import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
 import { CastList } from '@/components/cast-list';
@@ -280,7 +281,12 @@ export default async function FilmPage({
         {cast.length > 0 ? <CastList names={cast} /> : null}
 
         {viewer ? (
-          <LogPanel filmId={wikidataId} entry={ownEntry} ownFacets={ownFacets} />
+          <>
+            <LogPanel filmId={wikidataId} entry={ownEntry} ownFacets={ownFacets} />
+            {/* Erst wenn es einen Eintrag gibt, kann es ein zweites Mal
+                geben. Vorher waere der Knopf eine Frage ohne Anlass. */}
+            {ownEntry ? <RewatchButton filmId={wikidataId} /> : null}
+          </>
         ) : (
           <section className="border-border bg-card/40 rounded-lg border p-5">
             <p className="text-muted-foreground text-sm">

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { ResendConfirmation } from '@/components/resend-confirmation';
+
 export const metadata: Metadata = { title: 'Postfach prüfen' };
 
 export default async function CheckMailboxPage({
@@ -22,9 +24,9 @@ export default async function CheckMailboxPage({
           'Wir haben dir eine Bestätigung geschickt. Klick den Link darin, dann geht es weiter.'
         )}
       </p>
-      <p className="text-muted-foreground text-sm">
-        Nichts angekommen? Sieh im Spam-Ordner nach.
-      </p>
+      <p className="text-muted-foreground text-sm">Sieh auch im Spam-Ordner nach.</p>
+
+      <ResendConfirmation email={an} />
     </main>
   );
 }
