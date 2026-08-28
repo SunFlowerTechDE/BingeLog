@@ -1,4 +1,28 @@
-# FSK-Freigaben: Anfrage zur API
+# FSK-Freigaben: abgelehnt am 28.08.2026
+
+> **Entschieden.** Das Angebot der FSK lautet **850 EUR Einrichtung plus
+> 250 EUR im Monat**, jeweils netto — 3.850 EUR im ersten Jahr. Das ist
+> das Sechsfache dessen, woran TMDB gescheitert ist (ADR-005), fuer eine
+> Plakette neben dem Titel.
+>
+> Zwei weitere Gruende, unabhaengig vom Preis:
+>
+> Angeboten wurde die **FSK-API Kino** — ausdruecklich fuer
+> Kinoveroeffentlichungen und an Kinobetreiber gerichtet. Ein
+> Filmtagebuch deckt vor allem aeltere Filme und Heimkino ab; ein
+> Gutteil des Katalogs waere auch bezahlt nicht abgedeckt.
+>
+> Am Abgleich lag es nicht: der laeuft ueber Rentrak- und IMDb-ID und
+> haette zu ADR-003 gepasst.
+>
+> **Es bleibt bei Wikidata**, also bei 24 % Abdeckung. Die Plakette
+> erscheint, wo ein Wert vorliegt, und sonst gar nicht — nie geschaetzt,
+> nie als Platzhalter. Die Messung dazu steht unten.
+>
+> Sollte die FSK je ein Produkt fuer nicht-kommerzielle oder kleine
+> Anbieter auflegen, ist der Kontakt unten der richtige.
+
+## Der urspruengliche Vorgang
 
 ## Warum diese Quelle
 
