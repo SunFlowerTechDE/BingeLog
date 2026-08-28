@@ -11,6 +11,38 @@ export interface ReportResult {
 }
 
 /**
+ * Das Turnstile-Token gegen Cloudflare pruefen.
+ *
+ * **Schlaegt fehl, wenn das Secret fehlt.** Ein Captcha, das ohne
+ * Schluessel stillschweigend durchwinkt, ist schlimmer als keins: es
+ * sieht nach Schutz aus und ist keiner. Lieber steht das Melden ohne
+ * Konto still, und im Log steht warum.
+ */
+async function captchaGeprueft(token: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET;
+  if (!secret) {
+    console.error('TURNSTILE_SECRET is not set — anonymous reports are refused.');
+    return false;
+  }
+  if (token === '') return false;
+
+  try {
+    const antwort = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret, response: token }),
+    });
+    const ergebnis = (await antwort.json()) as { success?: boolean };
+    return ergebnis.success === true;
+  } catch (e) {
+    // Netzfehler heisst nicht "durchlassen". Cloudflare ist selten weg,
+    // und wenn doch, ist eine ausgefallene Meldung das kleinere Uebel.
+    console.error('turnstile unreachable:', e);
+    return false;
+  }
+}
+
+/**
  * Eine Meldung aufnehmen (M4 4.7, DSA Art. 16).
  *
  * Auch ohne Konto. Dann tritt die Adresse an die Stelle des Kontos —
@@ -41,6 +73,24 @@ export async function fileReport(formData: FormData): Promise<ReportResult> {
   // niemanden erreichen.
   if (!viewer && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return { error: 'Gib eine E-Mail-Adresse an, damit wir dir antworten können.' };
+  }
+
+  // Das Captcha, **vor** allem anderen.
+  //
+  // Vor dem Rate-Limit in der Datenbank: eine abgewiesene Maschine soll
+  // gar nicht erst in die Zaehlung kommen, sonst sperrt sie mit zehn
+  // Versuchen die Stunde fuer eine echte Meldung von derselben Adresse.
+  //
+  // Nur fuer Abgemeldete. Angemeldet haengt jede Meldung an einem Konto,
+  // das man schliessen kann; ein Captcha davor waere eine Huerde ohne
+  // Gegenwert.
+  if (!viewer) {
+    const geprueft = await captchaGeprueft(feld('cf-turnstile-response'));
+    if (!geprueft) {
+      return {
+        error: 'Die Prüfung ist nicht durchgegangen. Lad die Seite neu und versuch es noch einmal.',
+      };
+    }
   }
 
   const supabase = await createClient();

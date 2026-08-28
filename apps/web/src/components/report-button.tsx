@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { fileReport, attachReportImage } from '@/lib/report-actions';
 import { ActionNote } from '@/components/action-note';
 import { Symbol } from '@/components/icons';
+import { Turnstile } from '@/components/turnstile';
 
 /**
  * Melden — ueberall, wo Menschen etwas hinterlassen (M4 4.7).
@@ -33,12 +34,16 @@ export function ReportButton({
   targetId,
   angemeldet,
   was,
+  siteKey,
 }: {
   targetKind: 'message' | 'review' | 'profile' | 'list' | 'other';
   targetId: string;
   angemeldet: boolean;
   /** Wofuer der Knopf steht, fuer die Vorlesehilfe. */
   was: string;
+  /** Der oeffentliche Turnstile-Schluessel. Nur fuer Abgemeldete
+      gebraucht — angemeldet haengt jede Meldung an einem Konto. */
+  siteKey?: string | undefined;
 }) {
   const [offen, setOffen] = useState(false);
   const [bilder, setBilder] = useState<File[]>([]);
@@ -200,6 +205,8 @@ export function ReportButton({
                     </span>
                   </label>
                 )}
+
+                {!angemeldet && siteKey ? <Turnstile siteKey={siteKey} /> : null}
 
                 <label className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium">Bilder</span>

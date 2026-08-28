@@ -69,6 +69,10 @@ packages/pipeline/data/
 
 # wrangler local secrets
 .dev.vars
+# Zum einmaligen Hochladen von Secrets. Wird nach dem Hochladen
+# geloescht; steht hier, damit ein vergessenes Exemplar nicht im Repo
+# landet.
+secrets-upload.json
 .open-next/
 .wrangler/
 

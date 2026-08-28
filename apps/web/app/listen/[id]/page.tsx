@@ -106,6 +106,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
               targetId={liste.id}
               angemeldet={viewer !== null}
               was="Liste"
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
             />
           )}
         </div>

@@ -348,6 +348,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                   targetId={profile.username}
                   angemeldet={viewer !== null}
                   was="Profil"
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
                 />
               )}
             </div>

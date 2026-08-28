@@ -498,6 +498,7 @@ async function Reviews({
                     targetId={entry.id}
                     angemeldet={signedIn}
                     was="Rezension"
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
                   />
                 </span>
               </div>

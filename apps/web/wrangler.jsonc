@@ -27,6 +27,9 @@
   "vars": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm",
+    // Oeffentlich, steht im Quelltext der Seite. Der zugehoerige
+    // TURNSTILE_SECRET ist ein Secret und steht nicht hier.
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEfz-jXb5Hbs761s",
   },
   // Die Testumgebung haengt an keiner Domain.
   "workers_dev": true,
@@ -58,6 +61,7 @@
       "vars": {
         "NEXT_PUBLIC_SUPABASE_URL": "https://rbgofrgstnotgpnnvehb.supabase.co",
         "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm",
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEfz-jXb5Hbs761s",
       },
       "observability": {
         "enabled": true,
