@@ -7,6 +7,7 @@ import { getViewer } from '@/lib/session';
 import { FollowButton } from '@/components/follow-button';
 import { PopcornRating, formatRating } from '@/components/popcorn';
 import { formatWatchedOn } from '@/lib/dates';
+import { Avatar, StatCard } from '@/components/profile-parts';
 
 /**
  * M4 4.2 — die oeffentliche Profilseite unter /@username.
@@ -23,6 +24,27 @@ import { formatWatchedOn } from '@/lib/dates';
  */
 
 const ENTRIES_SHOWN = 20;
+
+const MONATE = [
+  'Januar',
+  'Februar',
+  'März',
+  'April',
+  'Mai',
+  'Juni',
+  'Juli',
+  'August',
+  'September',
+  'Oktober',
+  'November',
+  'Dezember',
+];
+
+/** "Mai 2024" — auf den Tag genau interessiert bei einem Beitritt niemanden. */
+function monatJahr(wert: string): string {
+  const d = new Date(wert);
+  return `${MONATE[d.getMonth()] ?? ''} ${String(d.getFullYear())}`;
+}
 
 function nameAus(segment: string): string | null {
   const decoded = decodeURIComponent(segment);
@@ -50,7 +72,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, display_name, bio, created_at')
+    .select('id, username, display_name, bio, created_at, watchlist_public')
     .eq('username', name)
     .maybeSingle();
 
@@ -87,6 +109,34 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       .eq('followee_id', profile.id),
   ]);
 
+  const [{ data: statRows }, { data: genreRows }] = await Promise.all([
+    supabase.rpc('profile_stats', { profile: profile.id }),
+    supabase.rpc('profile_genres', { profile: profile.id, max_results: 5 }),
+  ]);
+  const stats = statRows?.[0];
+  const genres = genreRows ?? [];
+
+  // Die Watchlist entscheidet die Policy: privat sieht nur der Besitzer,
+  // offen sehen alle ausser den einzeln ausgeblendeten Titeln. Die Seite
+  // fragt und zeigt, was zurueckkommt.
+  const { data: watchRows, count: watchCount } = await supabase
+    .from('watchlist')
+    .select('film_id, films(wikidata_id, title_de, title_original, release_year)', {
+      count: 'exact',
+    })
+    .eq('user_id', profile.id)
+    .order('added_at', { ascending: false })
+    .limit(6);
+
+  const watchlist = (watchRows ?? []) as unknown as {
+    films: {
+      wikidata_id: string;
+      title_de: string | null;
+      title_original: string;
+      release_year: number | null;
+    };
+  }[];
+
   const { data: rows } = await supabase
     .from('diary_entries')
     .select(
@@ -116,42 +166,99 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-8 px-5 py-8">
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {profile.display_name ?? `@${profile.username}`}
-          </h1>
-          {profile.display_name ? (
-            <p className="text-muted-foreground text-sm">@{profile.username}</p>
-          ) : null}
+      <header className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
+          {/* Vorlaeufig: Initialen. Echte Bilder brauchen Speicher,
+              Upload und eine Groessenbeschraenkung — ein eigener
+              Schritt. */}
+          <Avatar name={profile.username} size={96} />
+
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-0.5">
+              <h1 className="text-3xl font-semibold tracking-tight">{profile.username}</h1>
+              {profile.display_name ? (
+                <p className="text-muted-foreground">{profile.display_name}</p>
+              ) : null}
+            </div>
+
+            {profile.bio ? (
+              <p className="max-w-prose text-sm leading-relaxed">{profile.bio}</p>
+            ) : null}
+
+            <p className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-1 text-xs">
+              <span>Mitglied seit {monatJahr(profile.created_at)}</span>
+              {genres.length > 0 ? (
+                <span>Lieblingsgenres: {genres.map((g) => g.label).join(', ')}</span>
+              ) : null}
+            </p>
+
+            <dl className="text-muted-foreground flex gap-6 pt-1 text-sm">
+              <div className="flex gap-1.5">
+                <dt>Folgt</dt>
+                <dd className="text-foreground tabular-nums">{folgt ?? 0}</dd>
+              </div>
+              <div className="flex gap-1.5">
+                <dt>Folgen</dt>
+                <dd className="text-foreground tabular-nums">{folgen ?? 0}</dd>
+              </div>
+            </dl>
+
+            {viewer && !eigenes ? (
+              <div className="pt-1">
+                <FollowButton
+                  username={profile.username}
+                  initiallyFollowing={folgtIhm}
+                  followsBack={folgtZurueck}
+                />
+              </div>
+            ) : null}
+
+            {eigenes ? (
+              <p className="text-muted-foreground pt-1 text-sm">
+                So sehen andere dein Profil. Was hier fehlt, hast du auf „Nur für mich" gestellt.
+              </p>
+            ) : null}
+          </div>
         </div>
 
-        {profile.bio ? <p className="max-w-prose text-sm leading-relaxed">{profile.bio}</p> : null}
-
-        <dl className="text-muted-foreground flex gap-6 text-sm">
-          <div className="flex gap-1.5">
-            <dt>Folgt</dt>
-            <dd className="text-foreground tabular-nums">{folgt ?? 0}</dd>
-          </div>
-          <div className="flex gap-1.5">
-            <dt>Folgen</dt>
-            <dd className="text-foreground tabular-nums">{folgen ?? 0}</dd>
-          </div>
-        </dl>
-
-        {viewer && !eigenes ? (
-          <FollowButton
-            username={profile.username}
-            initiallyFollowing={folgtIhm}
-            followsBack={folgtZurueck}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Gesehene Filme"
+            value={String(stats?.films ?? 0)}
+            note="Filme insgesamt"
           />
-        ) : null}
-
-        {eigenes ? (
-          <p className="text-muted-foreground text-sm">
-            So sehen andere dein Profil. Was hier fehlt, hast du auf „Nur für mich" gestellt.
-          </p>
-        ) : null}
+          <StatCard
+            label="Bewertungen"
+            value={String(stats?.ratings ?? 0)}
+            note="Popcorn vergeben"
+          />
+          {/* Fuer Fremde nur, wenn die Liste offen steht. Sonst stuende
+              dort eine Null, die "verborgen" heisst und nicht "leer" —
+              eine Zahl, die etwas anderes bedeutet als sie sagt. */}
+          {eigenes || profile.watchlist_public ? (
+            <StatCard
+              label="Watchlist"
+              value={String(watchCount ?? 0)}
+              note={
+                eigenes
+                  ? profile.watchlist_public
+                    ? 'Filme auf der Liste, öffentlich'
+                    : 'Filme auf der Liste, nur für dich'
+                  : 'Filme auf der Liste'
+              }
+            />
+          ) : null}
+          {stats?.average ? (
+            <StatCard
+              label="Ø Bewertung"
+              value=""
+              rating={stats.average}
+              note={`aus ${String(stats.ratings)} Bewertungen`}
+            />
+          ) : (
+            <StatCard label="Ø Bewertung" value="—" note="noch nichts bewertet" />
+          )}
+        </div>
       </header>
 
       <section className="flex flex-col gap-4">
@@ -221,6 +328,46 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           </ol>
         )}
       </section>
+
+      {watchlist.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-base font-semibold tracking-tight">
+            Watchlist
+            {/* Auf dem eigenen Profil steht dabei, was Fremde sehen — sonst
+                merkt man erst an fremden Reaktionen, dass die Liste offen
+                ist. */}
+            {eigenes ? (
+              <span className="text-muted-foreground ml-2 text-xs font-normal">
+                {watchCount === watchlist.length
+                  ? 'nur für dich sichtbar, solange du sie nicht freigibst'
+                  : ''}
+              </span>
+            ) : null}
+          </h2>
+
+          <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+            {watchlist.map((eintrag) => (
+              <li key={eintrag.films.wikidata_id}>
+                <Link
+                  href={`/film/${eintrag.films.wikidata_id}` as Route}
+                  className="text-sm hover:underline"
+                >
+                  {eintrag.films.title_de ?? eintrag.films.title_original}
+                  {eintrag.films.release_year ? (
+                    <span className="text-muted-foreground"> {eintrag.films.release_year}</span>
+                  ) : null}
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          {(watchCount ?? 0) > watchlist.length ? (
+            <p className="text-muted-foreground text-sm">
+              und {String((watchCount ?? 0) - watchlist.length)} weitere
+            </p>
+          ) : null}
+        </section>
+      ) : null}
     </main>
   );
 }
