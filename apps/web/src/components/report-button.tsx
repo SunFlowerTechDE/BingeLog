@@ -72,7 +72,7 @@ export function ReportButton({
     startTransition(async () => {
       const r = await fileReport(formData);
       if (r.error) {
-        setProblem(r.error);
+        setProblem(r.detail ? `${r.error} (${r.detail})` : r.error);
         return;
       }
 
@@ -206,8 +206,6 @@ export function ReportButton({
                   </label>
                 )}
 
-                {!angemeldet && siteKey ? <Turnstile siteKey={siteKey} /> : null}
-
                 <label className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium">Bilder</span>
                   <input
@@ -223,6 +221,12 @@ export function ReportButton({
                     Bis zu vier, je höchstens 2 MB. Sieht nur die Moderation.
                   </span>
                 </label>
+
+                {/* Direkt ueber dem Knopf und nicht mitten im Formular:
+                    dort erwartet man sie, und ein Token gilt fuenf
+                    Minuten — wer oben abhakt und dann in Ruhe schreibt
+                    und Bilder aussucht, kommt dem nahe. */}
+                {!angemeldet && siteKey ? <Turnstile siteKey={siteKey} /> : null}
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button

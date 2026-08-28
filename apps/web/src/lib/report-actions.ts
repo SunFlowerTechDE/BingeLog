@@ -8,6 +8,14 @@ export interface ReportResult {
   message?: string;
   /** Fuer die Bilder: sie kommen erst nach der Meldung. */
   id?: string;
+  /**
+   * Der technische Grund, falls einer anfaellt.
+   *
+   * Nur waehrend der Fehlersuche sichtbar. Er steht hier, weil ein
+   * Absturz ohne Text niemandem hilft — und ein Lauscher am Worker sich
+   * als unzuverlaessig erwiesen hat.
+   */
+  detail?: string;
 }
 
 /**
@@ -62,6 +70,27 @@ async function captchaGeprueft(token: string): Promise<boolean> {
  * Meldung spaeter liest, steht in der Datenbank.
  */
 export async function fileReport(formData: FormData): Promise<ReportResult> {
+  // **Nichts darf hier hinausfliegen.**
+  //
+  // Eine Serveraktion, die wirft, ersetzt in Next die ganze Seite durch
+  // "A server error occurred" — mitsamt dem ausgefuellten Formular. Wer
+  // gerade einen Vorfall beschrieben hat, tippt ihn dann noch einmal,
+  // und was schiefging erfaehrt niemand.
+  //
+  // Aufgefallen am 29.08.2026: angemeldet ging das Melden durch,
+  // abgemeldet zeigte es genau diese Seite.
+  try {
+    return await meldungAufnehmen(formData);
+  } catch (e) {
+    console.error('fileReport threw:', e);
+    return {
+      error: 'Da ist etwas schiefgegangen. Der Text steht noch da, versuch es gleich noch einmal.',
+      detail: e instanceof Error ? `${e.name}: ${e.message}` : String(e),
+    };
+  }
+}
+
+async function meldungAufnehmen(formData: FormData): Promise<ReportResult> {
   const feld = (name: string) => {
     const wert = formData.get(name);
     return typeof wert === 'string' ? wert.trim() : '';

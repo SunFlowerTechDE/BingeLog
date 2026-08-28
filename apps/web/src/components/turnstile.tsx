@@ -84,7 +84,23 @@ export function Turnstile({ siteKey }: { siteKey: string }) {
     return () => {
       abgebrochen = true;
       clearInterval(uhr);
-      if (widgetId !== null) window.turnstile?.remove(widgetId);
+
+      // **`remove()` wirft, wenn das Widget schon weg ist.**
+      //
+      // Genau das passierte nach einer erfolgreichen Meldung: die
+      // Dankeschoen-Ansicht ersetzt das Formular, React raeumt den
+      // Knoten ab, und dieses Aufraeumen laeuft danach. Turnstile findet
+      // sein Widget nicht mehr und wirft — ein Fehler im Aufraeumen
+      // reisst den ganzen Baum mit, und der Nutzer sah "A server error
+      // occurred", obwohl seine Meldung gespeichert war.
+      //
+      // Die schlimmste Sorte Fehler: sieht kaputt aus, hat funktioniert.
+      // Wer sie sieht, meldet ein zweites Mal.
+      try {
+        if (widgetId !== null) window.turnstile?.remove(widgetId);
+      } catch {
+        // Schon weg. Nichts zu tun und nichts zu melden.
+      }
     };
   }, [siteKey]);
 
