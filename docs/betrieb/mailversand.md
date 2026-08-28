@@ -114,12 +114,24 @@ Absender landet dann im Spam statt im Nichts.
 Hostname, das andere ein Postfach; Mail richtet sich nach dem MX der
 Domain.
 
+## Nachgeprueft am 28.08.2026
+
+Beide Richtungen, mit echten Mails:
+
+|                              |                                                |
+| ---------------------------- | ---------------------------------------------- |
+| Anmeldemail von Brevo        | Posteingang, DKIM signiert mit `bingelog.eu`   |
+| Bestaetigungslink            | fuehrt auf `/willkommen`, Konto bestaetigt     |
+| Empfang an `registrierung@`  | kam im mailbox.org-Postfach an                 |
+| Antwort von `registrierung@` | kam bei Gmail im Posteingang an, nicht im Spam |
+
+Unterwegs ist ein Zwischenstand aufgetreten, der wie ein Fehler aussah
+und keiner war: **unbezahlte mailbox.org-Testkonten duerfen nicht nach
+aussen senden** (`554 5.7.1 Relay access denied`). Empfang lief da
+laengst. Wer die Meldung nicht liest, sucht den Fehler in der DNS.
+
 ## Was noch fehlt
 
-- **Versand aus dem Postfach.** Das mailbox.org-Konto ist noch nicht
-  bezahlt, und unbezahlte Testkonten duerfen nicht nach aussen senden:
-  `554 5.7.1 Relay access denied`. Empfang laeuft, Versand erst nach der
-  Aktivierung. Keine Fehlkonfiguration — die Meldung sagt es woertlich.
 - **Mailtexte.** Nur „Confirm signup" ist eingetragen. Magic Link und
   Passwort-Zuruecksetzen bleiben absichtlich leer, siehe
   `mailvorlagen.md`.
