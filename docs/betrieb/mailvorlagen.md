@@ -205,3 +205,41 @@ dafür, dass sie in Outlook 2016 aussieht wie gedacht.
 Die Texte sagen, was zu tun ist, und was passiert, wenn man nichts tut.
 Der letzte Absatz ist jeweils der wichtigste: Wer eine Mail bekommt, die
 er nicht erwartet hat, will wissen, ob er handeln muss.
+
+---
+
+## Änderung an einem Konto
+
+> **Nicht in Supabase eintragen.** Diese Mail verschickt die Edge
+> Function `admin-account` selbst — sie ist keine Auth-Mail und hat
+> keinen Platz unter _Authentication → Emails_.
+
+**Betreff:** `Änderung an deinem BingeLog-Konto`
+
+Gleiche Bauart wie oben: Tabellen, Stile inline, Farben als Hex. Zwei
+Unterschiede.
+
+**Die Begründung steht abgesetzt**, mit goldener Linie links und in
+Textfarbe statt gedämpft. Sie ist der Grund, warum die Mail geschrieben
+wurde, und nicht das Kleingedruckte darunter. Der Text kommt wörtlich
+aus dem Feld im Dashboard — was dort steht, liest der Nutzer.
+
+**Ein vollständiges Dokument mit `charset`**, nicht nur die Tabelle. Über
+die Brevo-API kommt der Zeichensatz aus dem Transport, und die Umlaute
+kämen wohl auch so an. „Wohl" ist bei einer Mail, die jemandem eine
+Kontoschließung mitteilt, keine gute Grundlage — und wer sie weiterleitet
+oder als Datei speichert, verliert den Transport-Header.
+
+Verschickt wird immer **HTML und Text**. Wer sein Programm auf Nur-Text
+stellt, bekommt sonst eine leere Nachricht, und ausgerechnet diese darf
+nicht leer ankommen.
+
+Die Vorlage steht in
+`packages/db/supabase/functions/admin-account/index.ts`, Funktion
+`vorlage()`. Sie wird dort erzeugt und nicht hier gepflegt — zwei
+Fassungen desselben Textes laufen auseinander.
+
+Die vorgefertigten Begründungen stehen in
+`apps/web/src/components/account-tools.tsx` als `BAUSTEINE`, nach
+Eingriff sortiert. Sie sind ein Anfang, kein Ende: der gewählte Text
+landet im Feld und lässt sich weiterschreiben.
