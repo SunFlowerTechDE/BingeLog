@@ -7,7 +7,8 @@ import { getViewer } from '@/lib/session';
 import { FollowButton } from '@/components/follow-button';
 import { PopcornRating, formatRating } from '@/components/popcorn';
 import { formatWatchedOn } from '@/lib/dates';
-import { Avatar, StatCard } from '@/components/profile-parts';
+import { Avatar, StatCard, Panel, Chip, Symbol } from '@/components/profile-parts';
+import { ShareButton } from '@/components/share-button';
 
 /**
  * M4 4.2 — die oeffentliche Profilseite unter /@username.
@@ -113,11 +114,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const [{ data: statRows }, { data: genreRows }] = await Promise.all([
     supabase.rpc('profile_stats', { profile: profile.id }),
-    // Drei, nicht fuenf: Wikidata haengt einem Film gern ein halbes
+    // Drei, nicht fuenf. Wikidata haengt einem Film gern ein halbes
     // Dutzend Genres an — Titanic fuehrt dort Monumentalfilm,
-    // Historienfilm, Katastrophenfilm, Melodram und Liebesfilm. Eine
-    // lange Liste liest sich wie eine Datenabschrift, drei wie eine
-    // Aussage.
+    // Historienfilm, Katastrophenfilm, Melodram und Liebesfilm.
+    //
+    // Auf fuenf gestellt kam bei sieben Filmen prompt wieder
+    // "Monumentalfilm" heraus, weil dort alles bei zwei Filmen
+    // gleichauf liegt. Die Untergrenze in der Funktion allein reicht
+    // dagegen nicht; die kurze Liste gehoert dazu.
     supabase.rpc('profile_genres', { profile: profile.id, max_results: 3 }),
   ]);
   const stats = statRows?.[0];
@@ -175,265 +179,319 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     ? supabase.storage.from('banners').getPublicUrl(profile.banner_path).data.publicUrl
     : null;
 
+  const avatar = profile.avatar_path
+    ? supabase.storage.from('avatars').getPublicUrl(profile.avatar_path).data.publicUrl
+    : null;
+
+  // Zwei Auszuege aus denselben Eintraegen. Getrennt, weil ein Film
+  // bewertet sein kann ohne ein Wort dazu, und ein Wort ohne Note.
+  const bewertet = eintraege.filter((e) => e.rating !== null).slice(0, 4);
+  const rezensionen = eintraege.filter((e) => e.review).slice(0, 3);
+
   return (
     <>
-      {/* Das Kopfbild laeuft ueber die volle Breite und nach unten ins
-          Dunkle aus: oben ist es ganz zu sehen, unten geht es in den
-          Seitengrund ueber. Ein harter Schnitt waere eine Kante quer
-          durch die Seite; so gibt es keine.
+      {/* Das Kopfbild laeuft ueber die volle Breite und an zwei Seiten
+          ins Dunkle aus: nach unten in den Seitengrund, nach links unter
+          den Text. Ein Bild mit hellem Motiv genau dort, wo der Name
+          steht, macht den Namen unlesbar — und welches Bild jemand
+          hochlaedt, weiss die Seite nicht.
 
-          Der Verlauf endet auf --color-background und nicht auf Schwarz.
-          Ein spaeteres helles Thema wuerde sonst einen schwarzen Balken
-          bekommen, den niemand mehr zuordnen kann.
+          Beide Verlaeufe enden auf --color-background und nicht auf
+          Schwarz. Ein spaeteres helles Thema wuerde sonst einen
+          schwarzen Balken bekommen, den niemand mehr zuordnen kann.
 
           Kein next/image: das Bild liegt schon in der richtigen Groesse
           im Speicher. */}
       {banner ? (
-        <div aria-hidden="true" className="relative h-[220px] w-full overflow-hidden sm:h-[320px]">
+        <div aria-hidden="true" className="relative h-[260px] w-full overflow-hidden sm:h-[420px]">
           <img src={banner} alt="" className="h-full w-full object-cover" />
-          <div className="from-background via-background/75 from-18% via-48% absolute inset-0 bg-gradient-to-t to-transparent" />
+          <div className="from-background via-background/70 from-12% absolute inset-0 bg-gradient-to-t via-45% to-transparent" />
+          <div className="from-background from-8% via-background/60 via-38% to-72% absolute inset-0 bg-gradient-to-r to-transparent" />
         </div>
       ) : null}
 
       <main
-        className={`relative mx-auto flex max-w-4xl flex-col gap-8 px-5 pb-8 ${
+        className={`relative mx-auto flex max-w-7xl flex-col gap-5 px-5 pb-12 ${
           // Das Profil rutscht in den dunklen Teil des Bildes hinein,
           // statt darunter anzufangen. Genau so weit, dass der Name auf
           // dem gedeckten Grund steht und nicht auf dem Motiv.
-          banner ? '-mt-[120px] sm:-mt-[150px]' : 'pt-8'
+          banner ? '-mt-[168px] sm:-mt-[290px]' : 'pt-8'
         }`}
       >
-        <header className="flex flex-col gap-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
-            {/* Vorlaeufig: Initialen. Echte Bilder brauchen Speicher,
-              Upload und eine Groessenbeschraenkung — ein eigener
-              Schritt. */}
-            {profile.avatar_path ? (
-              // Kein next/image: das Bild liegt bereits in der richtigen
-              // Groesse im Speicher, ein Proxy davor waere Arbeit ohne
-              // Wirkung.
-              <img
-                src={
-                  supabase.storage.from('avatars').getPublicUrl(profile.avatar_path).data.publicUrl
-                }
-                alt=""
-                width={96}
-                height={96}
-                className="h-24 w-24 shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <Avatar name={profile.username} size={96} />
-            )}
+        <header className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
+          {avatar ? (
+            // Kein next/image: das Bild liegt bereits in der richtigen
+            // Groesse im Speicher, ein Proxy davor waere Arbeit ohne
+            // Wirkung.
+            <img
+              src={avatar}
+              alt=""
+              width={176}
+              height={176}
+              className="ring-border bg-card h-28 w-28 shrink-0 rounded-full object-cover ring-4 sm:h-44 sm:w-44"
+            />
+          ) : (
+            <div className="ring-border shrink-0 rounded-full ring-4">
+              <Avatar name={profile.username} size={176} />
+            </div>
+          )}
 
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <div className="flex flex-col gap-0.5">
-                <h1 className="text-3xl font-semibold tracking-tight">{profile.username}</h1>
-                {profile.display_name ? (
-                  <p className="text-muted-foreground">{profile.display_name}</p>
-                ) : null}
-              </div>
-
-              {profile.bio ? (
-                <p className="max-w-prose text-sm leading-relaxed">{profile.bio}</p>
-              ) : null}
-
-              <p className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-1 text-xs">
-                <span>Mitglied seit {monatJahr(profile.created_at)}</span>
-                {genres.length > 0 ? (
-                  <span>Lieblingsgenres: {genres.map((g) => g.label).join(', ')}</span>
-                ) : null}
-              </p>
-
-              <dl className="text-muted-foreground flex gap-6 pt-1 text-sm">
-                <div className="flex gap-1.5">
-                  <dt>Folgt</dt>
-                  <dd className="text-foreground tabular-nums">{folgt ?? 0}</dd>
-                </div>
-                <div className="flex gap-1.5">
-                  <dt>Folgen</dt>
-                  <dd className="text-foreground tabular-nums">{folgen ?? 0}</dd>
-                </div>
-              </dl>
-
-              {viewer && !eigenes ? (
-                <div className="pt-1">
-                  <FollowButton
-                    username={profile.username}
-                    initiallyFollowing={folgtIhm}
-                    followsBack={folgtZurueck}
-                  />
-                </div>
-              ) : null}
-
-              {eigenes ? (
-                <div className="pt-1">
-                  <Link
-                    href="/einstellungen"
-                    className="border-border hover:bg-card inline-block rounded-md border px-3 py-1.5 text-sm"
-                  >
-                    Profil bearbeiten
-                  </Link>
-                </div>
-              ) : null}
-
-              {eigenes ? (
-                <p className="text-muted-foreground pt-1 text-sm">
-                  So sehen andere dein Profil. Was hier fehlt, hast du auf „Nur für mich" gestellt.
-                </p>
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:pt-6">
+            <div className="flex flex-col gap-0.5">
+              <h1 className="text-4xl font-semibold tracking-tight">{profile.username}</h1>
+              {profile.display_name ? (
+                <p className="text-muted-foreground">{profile.display_name}</p>
               ) : null}
             </div>
-          </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Gesehene Filme"
-              value={String(stats?.films ?? 0)}
-              note="Filme insgesamt"
-            />
-            <StatCard
-              label="Bewertungen"
-              value={String(stats?.ratings ?? 0)}
-              note="Popcorn vergeben"
-            />
-            {/* Fuer Fremde nur, wenn die Liste offen steht. Sonst stuende
-              dort eine Null, die "verborgen" heisst und nicht "leer" —
-              eine Zahl, die etwas anderes bedeutet als sie sagt. */}
-            {eigenes || profile.watchlist_public ? (
-              <StatCard
-                label="Watchlist"
-                value={String(watchCount ?? 0)}
-                note={
-                  eigenes
-                    ? profile.watchlist_public
-                      ? 'Filme auf der Liste, öffentlich'
-                      : 'Filme auf der Liste, nur für dich'
-                    : 'Filme auf der Liste'
-                }
-              />
+            {profile.bio ? (
+              <p className="max-w-prose text-sm leading-relaxed">{profile.bio}</p>
             ) : null}
-            {stats?.average ? (
-              <StatCard
-                label="Ø Bewertung"
-                value=""
-                rating={stats.average}
-                note={`aus ${String(stats.ratings)} Bewertungen`}
-              />
-            ) : (
-              <StatCard label="Ø Bewertung" value="—" note="noch nichts bewertet" />
-            )}
+
+            <div className="text-muted-foreground flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+              <span className="flex items-center gap-1.5">
+                <Symbol art="stern" size={14} />
+                Mitglied seit {monatJahr(profile.created_at)}
+              </span>
+              <span className="flex items-center gap-3">
+                <span>
+                  Folgt <span className="text-foreground tabular-nums">{folgt ?? 0}</span>
+                </span>
+                <span>
+                  Folgen <span className="text-foreground tabular-nums">{folgen ?? 0}</span>
+                </span>
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              {eigenes ? (
+                <Link
+                  href="/einstellungen"
+                  className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-semibold"
+                >
+                  Profil bearbeiten
+                </Link>
+              ) : null}
+              {viewer && !eigenes ? (
+                <FollowButton
+                  username={profile.username}
+                  initiallyFollowing={folgtIhm}
+                  followsBack={folgtZurueck}
+                />
+              ) : null}
+              <ShareButton username={profile.username} />
+            </div>
+
+            {eigenes ? (
+              <p className="text-muted-foreground text-sm">
+                So sehen andere dein Profil. Was hier fehlt, hast du auf „Nur für mich" gestellt.
+              </p>
+            ) : null}
           </div>
         </header>
 
-        <section className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold tracking-tight">Zuletzt gesehen</h2>
-
-          {eintraege.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              {eigenes
-                ? 'Noch nichts eingetragen.'
-                : 'Hier ist nichts zu sehen. Entweder wurde noch nichts eingetragen, oder es ist nicht für dich bestimmt.'}
-            </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            art="film"
+            label="Gesehene Filme"
+            value={String(stats?.films ?? 0)}
+            note="Filme insgesamt"
+          />
+          <StatCard
+            art="popcorn"
+            label="Bewertungen"
+            value={String(stats?.ratings ?? 0)}
+            note="Popcorn vergeben"
+          />
+          {/* Fuer Fremde nur, wenn die Liste offen steht. Sonst stuende
+              dort eine Null, die "verborgen" heisst und nicht "leer" —
+              eine Zahl, die etwas anderes bedeutet als sie sagt. */}
+          {eigenes || profile.watchlist_public ? (
+            <StatCard
+              art="merken"
+              label="Watchlist"
+              value={String(watchCount ?? 0)}
+              note={
+                eigenes
+                  ? profile.watchlist_public
+                    ? 'Filme auf der Liste, öffentlich'
+                    : 'Filme auf der Liste, nur für dich'
+                  : 'Filme auf der Liste'
+              }
+            />
+          ) : null}
+          {stats?.average ? (
+            <StatCard
+              art="stern"
+              label="Ø Bewertung"
+              value=""
+              rating={stats.average}
+              note={`aus ${String(stats.ratings)} Bewertungen`}
+            />
           ) : (
-            <ol className="flex flex-col gap-5">
-              {eintraege.map((eintrag) => {
-                const titel = eintrag.films.title_de ?? eintrag.films.title_original;
-                const gesehen = formatWatchedOn(eintrag.watched_on);
-                const plakat =
-                  eintrag.films.poster_source === 'tvdb' && eintrag.films.poster_url
-                    ? eintrag.films.poster_url
-                    : `/poster/${eintrag.films.wikidata_id}`;
+            <StatCard art="stern" label="Ø Bewertung" value="—" note="noch nichts bewertet" />
+          )}
+        </div>
 
-                return (
-                  <li key={eintrag.id} className="flex gap-4">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Panel titel="Lieblingsgenres" art="herz">
+            {genres.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                {eigenes
+                  ? 'Trag ein paar Filme ein, dann steht hier was.'
+                  : 'Noch zu wenig eingetragen.'}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {genres.map((g) => (
+                  <Chip key={g.label}>{g.label}</Chip>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel titel="Zuletzt bewertet" art="stern" mehr={eigenes ? '/tagebuch' : undefined}>
+            {bewertet.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                {eigenes ? 'Noch nichts bewertet.' : 'Hier ist nichts zu sehen.'}
+              </p>
+            ) : (
+              <ol className="grid grid-cols-4 gap-3">
+                {bewertet.map((e) => (
+                  <li key={e.id} className="flex min-w-0 flex-col gap-1.5">
                     <Link
-                      href={`/film/${eintrag.films.wikidata_id}` as Route}
-                      className="bg-card w-[64px] shrink-0 overflow-hidden rounded"
+                      href={`/film/${e.films.wikidata_id}` as Route}
+                      className="bg-card block overflow-hidden rounded"
                     >
                       <img
-                        src={plakat}
+                        src={
+                          e.films.poster_source === 'tvdb' && e.films.poster_url
+                            ? e.films.poster_url
+                            : `/poster/${e.films.wikidata_id}`
+                        }
                         alt=""
-                        className="aspect-[2/3] h-full w-full object-cover"
+                        className="aspect-[2/3] w-full object-cover"
                       />
                     </Link>
+                    <Link
+                      href={`/film/${e.films.wikidata_id}` as Route}
+                      className="truncate text-xs font-medium hover:underline"
+                    >
+                      {e.films.title_de ?? e.films.title_original}
+                    </Link>
+                    {e.rating === null ? null : (
+                      <span className="flex items-center gap-1.5">
+                        <PopcornRating rating={e.rating} size={11} />
+                        <span className="text-muted-foreground text-xs tabular-nums">
+                          {formatRating(e.rating)}
+                        </span>
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Panel>
 
+          <Panel titel="Letzte Rezensionen" art="feder" mehr={eigenes ? '/tagebuch' : undefined}>
+            {rezensionen.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                {eigenes
+                  ? 'Noch nichts geschrieben.'
+                  : 'Hier ist nichts zu sehen. Entweder wurde noch nichts geschrieben, oder es ist nicht für dich bestimmt.'}
+              </p>
+            ) : (
+              <ol className="flex flex-col gap-4">
+                {rezensionen.map((e) => (
+                  <li key={e.id} className="flex gap-3">
+                    <Link
+                      href={`/film/${e.films.wikidata_id}` as Route}
+                      className="bg-card w-10 shrink-0 overflow-hidden rounded"
+                    >
+                      <img
+                        src={
+                          e.films.poster_source === 'tvdb' && e.films.poster_url
+                            ? e.films.poster_url
+                            : `/poster/${e.films.wikidata_id}`
+                        }
+                        alt=""
+                        className="aspect-[2/3] w-full object-cover"
+                      />
+                    </Link>
                     <div className="flex min-w-0 flex-col gap-1">
-                      <Link
-                        href={`/film/${eintrag.films.wikidata_id}` as Route}
-                        className="font-medium hover:underline"
-                      >
-                        {titel}
-                        {eintrag.films.release_year ? (
-                          <span className="text-muted-foreground font-normal">
-                            {' '}
-                            {eintrag.films.release_year}
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <Link
+                          href={`/film/${e.films.wikidata_id}` as Route}
+                          className="text-sm font-medium hover:underline"
+                        >
+                          {e.films.title_de ?? e.films.title_original}
+                        </Link>
+                        {e.rating === null ? null : (
+                          <span className="text-muted-foreground text-xs tabular-nums">
+                            {formatRating(e.rating)}
+                          </span>
+                        )}
+                        {formatWatchedOn(e.watched_on) ? (
+                          <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                            {formatWatchedOn(e.watched_on)}
                           </span>
                         ) : null}
-                      </Link>
-
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                        {eintrag.rating === null ? null : (
-                          <>
-                            <PopcornRating rating={eintrag.rating} size={16} />
-                            <span className="tabular-nums">{formatRating(eintrag.rating)}</span>
-                          </>
-                        )}
-                        {gesehen ? <span className="text-muted-foreground">{gesehen}</span> : null}
-                        {eintrag.is_rewatch ? (
-                          <span className="text-muted-foreground">Wiedersehen</span>
-                        ) : null}
                       </div>
+                      {/* Gekuerzt, nicht abgeschnitten: der ganze Text
+                          steht auf der Filmseite. */}
+                      <p className="text-muted-foreground line-clamp-3 text-xs leading-relaxed">
+                        {e.review}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Panel>
+        </div>
 
-                      {eintrag.review ? (
-                        <p className="whitespace-pre-line text-sm leading-relaxed">
-                          {eintrag.review}
-                        </p>
+        {/* Favoriten fehlen hier noch: sie brauchen eine eigene Tabelle
+            und eine Auswahl, keine Ableitung aus den Noten. Ein Platz,
+            der schon jetzt "Favoriten" heisst und die bestbewerteten
+            Filme zeigt, waere etwas anderes als das, was drauf steht. */}
+        {eigenes || profile.watchlist_public ? (
+          <Panel titel="Watchlist" art="merken" mehr={eigenes ? '/watchlist' : undefined}>
+            {watchlist.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                {eigenes ? 'Noch nichts vorgemerkt.' : 'Nichts zu sehen.'}
+              </p>
+            ) : (
+              <ul className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                {watchlist.map((e) => (
+                  <li key={e.films.wikidata_id} className="flex items-center gap-3">
+                    <Link
+                      href={`/film/${e.films.wikidata_id}` as Route}
+                      className="bg-card w-9 shrink-0 overflow-hidden rounded"
+                    >
+                      <img
+                        src={`/poster/${e.films.wikidata_id}`}
+                        alt=""
+                        className="aspect-[2/3] w-full object-cover"
+                      />
+                    </Link>
+                    <div className="flex min-w-0 flex-col">
+                      <Link
+                        href={`/film/${e.films.wikidata_id}` as Route}
+                        className="truncate text-sm hover:underline"
+                      >
+                        {e.films.title_de ?? e.films.title_original}
+                      </Link>
+                      {e.films.release_year ? (
+                        <span className="text-muted-foreground text-xs">
+                          {e.films.release_year}
+                        </span>
                       ) : null}
                     </div>
                   </li>
-                );
-              })}
-            </ol>
-          )}
-        </section>
-
-        {watchlist.length > 0 ? (
-          <section className="flex flex-col gap-4">
-            <h2 className="text-base font-semibold tracking-tight">
-              Watchlist
-              {/* Auf dem eigenen Profil steht dabei, was Fremde sehen — sonst
-                merkt man erst an fremden Reaktionen, dass die Liste offen
-                ist. */}
-              {eigenes ? (
-                <span className="text-muted-foreground ml-2 text-xs font-normal">
-                  {watchCount === watchlist.length
-                    ? 'nur für dich sichtbar, solange du sie nicht freigibst'
-                    : ''}
-                </span>
-              ) : null}
-            </h2>
-
-            <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-              {watchlist.map((eintrag) => (
-                <li key={eintrag.films.wikidata_id}>
-                  <Link
-                    href={`/film/${eintrag.films.wikidata_id}` as Route}
-                    className="text-sm hover:underline"
-                  >
-                    {eintrag.films.title_de ?? eintrag.films.title_original}
-                    {eintrag.films.release_year ? (
-                      <span className="text-muted-foreground"> {eintrag.films.release_year}</span>
-                    ) : null}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            {(watchCount ?? 0) > watchlist.length ? (
-              <p className="text-muted-foreground text-sm">
-                und {String((watchCount ?? 0) - watchlist.length)} weitere
-              </p>
-            ) : null}
-          </section>
+                ))}
+              </ul>
+            )}
+          </Panel>
         ) : null}
       </main>
     </>
