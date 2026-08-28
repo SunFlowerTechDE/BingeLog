@@ -175,6 +175,35 @@ describe('loading', () => {
     assert.equal(rows[0]?.title_de, 'Der dritte Mann (neu)');
   });
 
+  it('leaves a hand-corrected field alone on re-import, and only that one', async () => {
+    // Der eigentliche Grund fuer manual_fields: eine Korrektur im
+    // Dashboard darf beim naechsten Import nicht still verschwinden.
+    await h.sql.query(
+      `update public.films
+          set title_de = 'Der dritte Mann (von Hand)',
+              manual_fields = array['title_de']
+        where wikidata_id = 'Q271830'`,
+    );
+
+    const wikidata = extracted.map((e) =>
+      e.film.wikidataId === 'Q271830'
+        ? { ...e.film, titleDe: 'Aus Wikidata', runtimeMin: 111 }
+        : e.film,
+    );
+    await loadFilms(h.sql, wikidata);
+
+    const { rows } = await h.sql.query<{ title_de: string; runtime_min: number }>(
+      `select title_de, runtime_min from public.films where wikidata_id = 'Q271830'`,
+    );
+
+    assert.equal(rows[0]?.title_de, 'Der dritte Mann (von Hand)', 'die Korrektur bleibt');
+    // Und der Rest laeuft weiter: wer einen Titel richtigstellt, will
+    // trotzdem die neue Laufzeit. Deshalb je Feld und nicht je Zeile.
+    assert.equal(rows[0]?.runtime_min, 111, 'ungesperrte Felder folgen Wikidata weiter');
+
+    await h.sql.query(`update public.films set manual_fields = '{}' where wikidata_id = 'Q271830'`);
+  });
+
   it('drops a credit whose person is not in the catalog', async () => {
     const before = await count('film_credits');
 

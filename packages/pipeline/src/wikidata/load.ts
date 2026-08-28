@@ -146,15 +146,29 @@ export async function loadFilms(client: Client, films: ExtractedFilm[]): Promise
     from deduped
     on conflict (wikidata_id) do update set
       imdb_id        = excluded.imdb_id,
-      title_original = excluded.title_original,
-      title_de       = excluded.title_de,
-      title_en       = excluded.title_en,
-      release_year   = excluded.release_year,
-      runtime_min    = excluded.runtime_min,
+      -- A field a human corrected stays corrected. manual_fields records
+      -- which ones, per field rather than per row: someone who fixes a
+      -- title still wants the new runtime from Wikidata (M4, migration
+      -- 20260828390000).
+      --
+      -- Without this the next import silently reverted every correction,
+      -- and silently is the bad part — nobody would have seen why the
+      -- wrong title was back.
+      title_original = case when 'title_original' = any(f.manual_fields)
+                            then f.title_original else excluded.title_original end,
+      title_de       = case when 'title_de' = any(f.manual_fields)
+                            then f.title_de else excluded.title_de end,
+      title_en       = case when 'title_en' = any(f.manual_fields)
+                            then f.title_en else excluded.title_en end,
+      release_year   = case when 'release_year' = any(f.manual_fields)
+                            then f.release_year else excluded.release_year end,
+      runtime_min    = case when 'runtime_min' = any(f.manual_fields)
+                            then f.runtime_min else excluded.runtime_min end,
       sitelink_count = excluded.sitelink_count,
       updated_at     = now()
     -- poster_source, poster_url and tvdb_id belong to M2 and are never
-    -- touched here: a re-import must not discard resolved artwork.
+    -- touched here: a re-import must not discard resolved artwork. The
+    -- same now goes for fsk, which has no source but a person.
   `);
 
   return rowCount ?? 0;

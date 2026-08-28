@@ -9,6 +9,7 @@ import { WatchlistButton } from '@/components/watchlist-button';
 import { AddToList } from '@/components/add-to-list';
 import { Discussion, type Beitrag } from '@/components/discussion';
 import { ReportButton } from '@/components/report-button';
+import { FskLabel, fskStufe } from '@/components/fsk';
 import { RewatchButton } from '@/components/rewatch-button';
 import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
@@ -34,6 +35,7 @@ interface FilmDetail {
   title_en: string | null;
   release_year: number | null;
   runtime_min: number | null;
+  fsk: number | null;
   poster_source: string | null;
   poster_url: string | null;
 }
@@ -43,7 +45,7 @@ async function loadFilm(wikidataId: string): Promise<FilmDetail | null> {
   const { data } = await supabase
     .from('films')
     .select(
-      'wikidata_id, title_de, title_original, title_en, release_year, runtime_min, poster_source, poster_url',
+      'wikidata_id, title_de, title_original, title_en, release_year, runtime_min, poster_source, poster_url, fsk',
     )
     .eq('wikidata_id', wikidataId)
     .maybeSingle();
@@ -200,6 +202,19 @@ export default async function FilmPage({
               <dd>{film.release_year}</dd>
             </div>
           ) : null}
+          {/* Die Altersfreigabe steht bei den harten Angaben und nicht
+              als Hinweis irgendwo: sie ist eine Tatsache ueber den Film,
+              keine Warnung an den Leser. */}
+          <div className="flex flex-col gap-1">
+            <dt className="text-muted-foreground text-xs">Altersfreigabe</dt>
+            <dd className="flex items-center gap-2">
+              <FskLabel wert={film.fsk} />
+              <span className="text-muted-foreground text-xs">
+                {fskStufe(film.fsk)?.text ?? 'nicht bekannt'}
+              </span>
+            </dd>
+          </div>
+
           {film.runtime_min ? (
             <div>
               <dt className="text-muted-foreground text-xs">Laufzeit</dt>

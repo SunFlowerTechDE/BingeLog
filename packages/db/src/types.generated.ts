@@ -306,7 +306,12 @@ export type Database = {
       films: {
         Row: {
           created_at: string | null
+          edited_at: string | null
+          edited_by: string | null
+          fsk: number | null
+          fsk_note: string | null
           imdb_id: string | null
+          manual_fields: string[]
           poster_source: string | null
           poster_url: string | null
           release_year: number | null
@@ -322,7 +327,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          fsk?: number | null
+          fsk_note?: string | null
           imdb_id?: string | null
+          manual_fields?: string[]
           poster_source?: string | null
           poster_url?: string | null
           release_year?: number | null
@@ -338,7 +348,12 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          fsk?: number | null
+          fsk_note?: string | null
           imdb_id?: string | null
+          manual_fields?: string[]
           poster_source?: string | null
           poster_url?: string | null
           release_year?: number | null
@@ -352,7 +367,15 @@ export type Database = {
           updated_at?: string
           wikidata_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "films_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       follows: {
         Row: {

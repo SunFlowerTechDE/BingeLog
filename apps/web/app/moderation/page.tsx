@@ -6,6 +6,7 @@ import { isModerator } from '@/lib/moderation';
 import { ReportQueue, type Meldung } from '@/components/report-queue';
 import { AdminNumbers, type Zahlen } from '@/components/admin-numbers';
 import { AccountTools } from '@/components/account-tools';
+import { FilmTools } from '@/components/film-tools';
 
 export const metadata: Metadata = { title: 'Moderation' };
 
@@ -117,6 +118,17 @@ export default async function ModerationPage() {
       <section className="border-border flex flex-col gap-4 border-t pt-8">
         <h2 className="text-base font-semibold tracking-tight">Meldungen</h2>
         <ReportQueue meldungen={meldungen} />
+      </section>
+
+      <section className="border-border flex flex-col gap-4 border-t pt-8">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-base font-semibold tracking-tight">Filme</h2>
+          <p className="text-muted-foreground text-sm">
+            Korrekturen am Katalog und die Altersfreigabe. Geänderte Felder folgen danach nicht mehr
+            Wikidata.
+          </p>
+        </div>
+        <FilmTools />
       </section>
 
       <section className="border-border flex flex-col gap-4 border-t pt-8">
