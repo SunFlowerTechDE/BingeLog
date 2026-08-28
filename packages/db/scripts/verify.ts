@@ -132,6 +132,43 @@ const CHECKS: Check[] = [
     sql: `select public.refresh_film_facet_averages() as done`,
     verdict: () => null,
   },
+  {
+    // The buckets are created inside a `do` block that skips when the
+    // storage schema is missing, so the local harness never sees them.
+    // Here they either exist or the upload fails in front of a user.
+    name: 'the image buckets carry their size and format limits',
+    sql: `select coalesce(
+              string_agg(
+                id || ':' || coalesce(file_size_limit::text, 'none') || ':' ||
+                coalesce(array_to_string(allowed_mime_types, ','), 'none'),
+                ' ' order by id),
+              '') as shape
+          from storage.buckets where id in ('avatars', 'banners')`,
+    verdict: (row) => {
+      const expected = 'avatars:262144:image/webp,image/jpeg banners:409600:image/webp,image/jpeg';
+      return row?.shape === expected
+        ? null
+        : `buckets are ${String(row?.shape)}, expected ${expected}`;
+    },
+  },
+  {
+    // A bucket that is world-readable is fine — a profile picture sits on
+    // a public profile. A bucket anyone may *write* is not. Every write
+    // policy has to pin the first path segment to the caller.
+    name: 'nobody writes into another user folder',
+    sql: `select coalesce(array_agg(policyname::text order by policyname), '{}') as offenders
+          from pg_policies
+          where schemaname = 'storage' and tablename = 'objects'
+            and cmd <> 'SELECT'
+            and (qual is null or qual not like '%foldername%')
+            and (with_check is null or with_check not like '%foldername%')`,
+    verdict: (row) => {
+      const offenders = list(row, 'offenders');
+      return offenders.length === 0
+        ? null
+        : `write policies without a folder check: ${offenders.join(', ')}`;
+    },
+  },
 ];
 
 const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });

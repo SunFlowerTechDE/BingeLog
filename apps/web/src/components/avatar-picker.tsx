@@ -5,23 +5,22 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Bild waehlen, zuschneiden, verkleinern — alles im Browser.
  *
- * Der Zuschnitt ist quadratisch, weil das Bild als Kreis erscheint. Wer
- * ein Hochformat hochlaedt, soll selbst bestimmen, welcher Ausschnitt
- * das wird, statt dass die Mitte genommen wird und der Kopf oben fehlt.
+ * Zwei Zuschnitte laufen hier durch: der runde fuer das Profilbild und
+ * der breite Streifen fuer das Kopfbild. Beide brauchen dasselbe —
+ * Ausschnitt bestimmen, herunterrechnen, unter eine Groessengrenze
+ * bringen — und unterscheiden sich nur in Seitenverhaeltnis, Zielbreite
+ * und Maske. Deshalb ein Bauteil mit Kennwerten und nicht zwei fast
+ * gleiche.
+ *
+ * Wer ein Hochformat hochlaedt, soll selbst bestimmen, welcher
+ * Ausschnitt das wird, statt dass die Mitte genommen wird und der Kopf
+ * oben fehlt.
  *
  * Verkleinert wird **vor** dem Hochladen, nicht danach. Ein Handyfoto
  * wiegt sechs Megabyte und erscheint als Kreis von 96 Pixeln; wer das
  * ungefiltert durchlaesst, zahlt Speicher und Verkehr fuer Bildpunkte,
- * die nie jemand sieht. Heraus kommen 512 Pixel im Quadrat, ueblicherweise
- * um die 40 KB — als WebP, und wo der Browser das nicht schreiben kann,
- * als JPEG.
- *
- * 512 und nicht 256: auf hochaufloesenden Bildschirmen wird ein Kreis
- * von 96 Pixeln mit 192 gezeichnet, und Profile duerfen spaeter groesser
- * werden, ohne dass alle Bilder neu muessen.
+ * die nie jemand sieht.
  */
-
-const AUSGABE = 512;
 
 /**
  * Absteigende Qualitaetsstufen. Ein Foto wird bei 0.82 fast immer klein
@@ -30,25 +29,23 @@ const AUSGABE = 512;
  */
 const STUFEN = [0.82, 0.7, 0.6, 0.5, 0.4];
 
-/** Was der Bucket annimmt. Hier schon prüfen, nicht erst dort. */
-const GRENZE = 262144;
-
 /**
  * WebP, sonst JPEG.
  *
  * `toBlob` **ignoriert eine Formatangabe, die es nicht kennt, und liefert
  * stillschweigend PNG.** Safari konnte lange kein WebP schreiben; ein PNG
- * mit 512 Pixeln wiegt bei einem Foto ein halbes Megabyte, und der
- * Bucket nimmt es ohnehin nicht. Der Rueckgabewert wird deshalb auf
- * seinen Typ geprueft und nicht geglaubt.
+ * in dieser Groesse wiegt bei einem Foto ein Vielfaches, und der Bucket
+ * nimmt es ohnehin nicht. Der Rueckgabewert wird deshalb auf seinen Typ
+ * geprueft und nicht geglaubt.
  *
  * Faellt WebP aus, ist JPEG der Ausweg: aelter, ueberall vorhanden, bei
- * einem Portraet in diesem Format kaum schlechter. Ein Profilbild nicht
- * hochladen zu koennen, weil der Browser ein Format nicht kennt, waere
- * die schlechteste aller Antworten.
+ * einem Foto kaum schlechter. Ein Bild nicht hochladen zu koennen, weil
+ * der Browser ein Format nicht kennt, waere die schlechteste aller
+ * Antworten.
  */
 async function verkleinern(
   leinwand: HTMLCanvasElement,
+  grenze: number,
 ): Promise<{ blob: Blob; typ: string } | { fehler: string }> {
   for (const typ of ['image/webp', 'image/jpeg']) {
     let kann = true;
@@ -64,7 +61,7 @@ async function verkleinern(
         kann = false;
         break;
       }
-      if (blob.size <= GRENZE) return { blob, typ };
+      if (blob.size <= grenze) return { blob, typ };
     }
 
     if (kann) {
@@ -84,7 +81,7 @@ async function verkleinern(
 }
 
 /** Wieviel Breite die Vorschau hat. Der Zuschnitt rechnet in diesem Raum. */
-const BUEHNE = 260;
+const BUEHNE = 300;
 
 export interface Zuschnitt {
   datei: Blob;
@@ -96,9 +93,25 @@ export interface Zuschnitt {
 export function AvatarPicker({
   onReady,
   onCancel,
+  seiten = 1,
+  ausgabe = 512,
+  rund = true,
+  grenze = 262144,
 }: {
   onReady: (z: Zuschnitt) => void;
   onCancel: () => void;
+  /** Breite geteilt durch Hoehe. 1 ist das Quadrat, 8/3 der Streifen. */
+  seiten?: number;
+  /**
+   * Zielbreite in Bildpunkten.
+   *
+   * 512 fuer den Kreis und nicht 256: auf hochaufloesenden Bildschirmen
+   * wird ein Kreis von 96 Pixeln mit 192 gezeichnet, und Profile duerfen
+   * spaeter groesser werden, ohne dass alle Bilder neu muessen.
+   */
+  ausgabe?: number;
+  rund?: boolean;
+  grenze?: number;
 }) {
   const [bild, setBild] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -107,8 +120,11 @@ export function AvatarPicker({
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const leinwand = useRef<HTMLCanvasElement | null>(null);
 
+  const buehneH = Math.round(BUEHNE / seiten);
+  const ausgabeH = Math.round(ausgabe / seiten);
+
   /** Der Faktor, bei dem das Bild die Buehne gerade fuellt. */
-  const deckung = bild ? Math.max(BUEHNE / bild.width, BUEHNE / bild.height) : 1;
+  const deckung = bild ? Math.max(BUEHNE / bild.width, buehneH / bild.height) : 1;
 
   // Zeichnen, sooft sich etwas bewegt. Ein Canvas statt CSS, weil daraus
   // am Ende dieselbe Rechnung die Datei erzeugt — was man sieht, ist
@@ -122,9 +138,9 @@ export function AvatarPicker({
     const b = bild.width * f;
     const h = bild.height * f;
 
-    ctx.clearRect(0, 0, BUEHNE, BUEHNE);
-    ctx.drawImage(bild, (BUEHNE - b) / 2 + versatz.x, (BUEHNE - h) / 2 + versatz.y, b, h);
-  }, [bild, zoom, versatz, deckung]);
+    ctx.clearRect(0, 0, BUEHNE, buehneH);
+    ctx.drawImage(bild, (BUEHNE - b) / 2 + versatz.x, (buehneH - h) / 2 + versatz.y, b, h);
+  }, [bild, zoom, versatz, deckung, buehneH]);
 
   const laden = (datei: File) => {
     setProblem(undefined);
@@ -155,30 +171,30 @@ export function AvatarPicker({
     setRechnet(true);
     setProblem(undefined);
 
-    // Dieselbe Rechnung wie in der Vorschau, nur auf 512 hochskaliert.
+    // Dieselbe Rechnung wie in der Vorschau, nur hochskaliert.
     const ziel = document.createElement('canvas');
-    ziel.width = AUSGABE;
-    ziel.height = AUSGABE;
+    ziel.width = ausgabe;
+    ziel.height = ausgabeH;
     const ctx = ziel.getContext('2d');
     if (!ctx) {
       setRechnet(false);
       return;
     }
 
-    const massstab = AUSGABE / BUEHNE;
+    const massstab = ausgabe / BUEHNE;
     const f = deckung * zoom * massstab;
     const b = bild.width * f;
     const h = bild.height * f;
 
     ctx.drawImage(
       bild,
-      (AUSGABE - b) / 2 + versatz.x * massstab,
-      (AUSGABE - h) / 2 + versatz.y * massstab,
+      (ausgabe - b) / 2 + versatz.x * massstab,
+      (ausgabeH - h) / 2 + versatz.y * massstab,
       b,
       h,
     );
 
-    const ergebnis = await verkleinern(ziel);
+    const ergebnis = await verkleinern(ziel, grenze);
     setRechnet(false);
 
     if ('fehler' in ergebnis) {
@@ -208,17 +224,20 @@ export function AvatarPicker({
             className="text-muted-foreground file:border-border file:bg-card text-sm file:mr-3 file:rounded-md file:border file:px-3 file:py-1.5 file:text-sm"
           />
           <span className="text-muted-foreground text-xs">
-            Wird auf 512 Pixel verkleinert. Was du hochlädst, verlässt deinen Rechner erst danach.
+            Wird auf {ausgabe} Pixel verkleinert. Was du hochlädst, verlässt deinen Rechner erst
+            danach.
           </span>
         </label>
       ) : (
         <>
           <div className="flex flex-col items-center gap-3">
-            {/* Rund maskiert, damit man sieht, was hinterher zu sehen ist —
-                und nicht das Quadrat, aus dem es geschnitten wird. */}
+            {/* So maskiert, wie es hinterher zu sehen ist — und nicht als
+                das Rechteck, aus dem es geschnitten wird. */}
             <div
-              style={{ width: BUEHNE, height: BUEHNE }}
-              className="border-border relative cursor-move overflow-hidden rounded-full border"
+              style={{ width: BUEHNE, height: buehneH }}
+              className={`border-border relative cursor-move overflow-hidden border ${
+                rund ? 'rounded-full' : 'rounded-md'
+              }`}
               onPointerDown={(e) => {
                 e.currentTarget.setPointerCapture(e.pointerId);
                 setZieht({ x: e.clientX - versatz.x, y: e.clientY - versatz.y });
@@ -231,7 +250,7 @@ export function AvatarPicker({
                 setZieht(null);
               }}
             >
-              <canvas ref={leinwand} width={BUEHNE} height={BUEHNE} className="touch-none" />
+              <canvas ref={leinwand} width={BUEHNE} height={buehneH} className="touch-none" />
             </div>
 
             <label className="flex w-full max-w-xs items-center gap-3 text-sm">

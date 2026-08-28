@@ -23,13 +23,16 @@ export default async function SettingsPage() {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, display_name, bio, avatar_path, watchlist_public')
+    .select('username, display_name, bio, avatar_path, banner_path, watchlist_public')
     .eq('id', viewer.id)
     .maybeSingle();
 
   if (!profile) redirect('/willkommen');
 
   const { data: bild } = supabase.storage.from('avatars').getPublicUrl(profile.avatar_path ?? '');
+  const { data: streifen } = supabase.storage
+    .from('banners')
+    .getPublicUrl(profile.banner_path ?? '');
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-5 py-8">
@@ -45,6 +48,7 @@ export default async function SettingsPage() {
         displayName={profile.display_name}
         bio={profile.bio}
         avatarUrl={profile.avatar_path ? bild.publicUrl : null}
+        bannerUrl={profile.banner_path ? streifen.publicUrl : null}
         watchlistPublic={profile.watchlist_public}
       />
     </main>

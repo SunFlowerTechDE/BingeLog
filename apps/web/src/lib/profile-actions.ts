@@ -64,7 +64,11 @@ export async function saveProfile(
 }
 
 /**
- * Das zugeschnittene Bild ablegen und den Pfad vermerken.
+ * Ein zugeschnittenes Bild ablegen und den Pfad vermerken.
+ *
+ * Profilbild und Kopfbild sind derselbe Vorgang mit anderem Bucket,
+ * anderer Spalte und anderer Grenze — eine Kopie waere zweimal derselbe
+ * Fehler zu beheben.
  *
  * Neuer Zufallsname bei jedem Mal: dieselbe Adresse waere tagelang aus
  * Zwischenspeichern beantwortet, und wer sein Bild wechselt, saehe
@@ -73,11 +77,16 @@ export async function saveProfile(
  * Das alte wird danach entfernt. Nicht davor: bricht das Hochladen ab,
  * steht sonst gar keins mehr da.
  */
-export async function saveAvatar(formData: FormData): Promise<ProfileResult> {
+async function bildAblegen(
+  formData: FormData,
+  bucket: 'avatars' | 'banners',
+  spalte: 'avatar_path' | 'banner_path',
+  grenze: number,
+): Promise<ProfileResult> {
   const viewer = await getViewer();
   if (!viewer?.username) return { error: 'Melde dich an.' };
 
-  const datei = formData.get('avatar');
+  const datei = formData.get('bild');
   if (!(datei instanceof File) || datei.size === 0) return { error: 'Kein Bild dabei.' };
 
   // Was der Browser liefern konnte: WebP, sonst JPEG. Andere Formate
@@ -87,51 +96,55 @@ export async function saveAvatar(formData: FormData): Promise<ProfileResult> {
 
   // Die Grenze steht auch am Bucket. Hier noch einmal, damit die Antwort
   // eine verstaendliche ist statt eines Speicherfehlers.
-  if (datei.size > 262144) return { error: 'Das Bild ist zu groß.' };
+  if (datei.size > grenze) return { error: 'Das Bild ist zu groß.' };
 
   const supabase = await createClient();
 
   const { data: vorher } = await supabase
     .from('profiles')
-    .select('avatar_path')
+    .select(spalte)
     .eq('id', viewer.id)
     .maybeSingle();
 
+  const alt = (vorher as Record<string, string | null> | null)?.[spalte] ?? null;
   const pfad = `${viewer.id}/${crypto.randomUUID()}.${endung}`;
 
   const { error: hochladen } = await supabase.storage
-    .from('avatars')
+    .from(bucket)
     .upload(pfad, datei, { contentType: typ });
 
   if (hochladen) {
-    console.error('avatar upload failed:', hochladen.message);
+    console.error(`${bucket} upload failed:`, hochladen.message);
     return { error: 'Das Bild ließ sich nicht speichern.' };
   }
 
   const { error: vermerken } = await supabase
     .from('profiles')
-    .update({ avatar_path: pfad })
+    // Ein berechneter Schluessel verliert seinen Typ, und die Tabelle
+    // naehme dann jedes Feld an. Zwei Zweige, dafuer geprueft.
+    .update(spalte === 'avatar_path' ? { avatar_path: pfad } : { banner_path: pfad })
     .eq('id', viewer.id);
 
   if (vermerken) {
     // Die Datei liegt, der Verweis fehlt: aufraeumen, sonst bleibt eine
     // Waise im Speicher, die niemand je findet.
-    await supabase.storage.from('avatars').remove([pfad]);
-    console.error('avatar path not stored:', vermerken.message);
+    await supabase.storage.from(bucket).remove([pfad]);
+    console.error(`${bucket} path not stored:`, vermerken.message);
     return { error: 'Das Bild ließ sich nicht speichern.' };
   }
 
-  if (vorher?.avatar_path) {
-    await supabase.storage.from('avatars').remove([vorher.avatar_path]);
-  }
+  if (alt) await supabase.storage.from(bucket).remove([alt]);
 
   revalidatePath(`/@${viewer.username}`);
   revalidatePath('/einstellungen');
   return { message: 'Bild gespeichert' };
 }
 
-/** Zurueck zu den Initialen. */
-export async function removeAvatar(): Promise<ProfileResult> {
+/** Das Bild wieder loeschen. */
+async function bildEntfernen(
+  bucket: 'avatars' | 'banners',
+  spalte: 'avatar_path' | 'banner_path',
+): Promise<ProfileResult> {
   const viewer = await getViewer();
   if (!viewer?.username) return { error: 'Melde dich an.' };
 
@@ -139,25 +152,47 @@ export async function removeAvatar(): Promise<ProfileResult> {
 
   const { data: vorher } = await supabase
     .from('profiles')
-    .select('avatar_path')
+    .select(spalte)
     .eq('id', viewer.id)
     .maybeSingle();
 
   const { error } = await supabase
     .from('profiles')
-    .update({ avatar_path: null })
+    .update(spalte === 'avatar_path' ? { avatar_path: null } : { banner_path: null })
     .eq('id', viewer.id);
 
   if (error) {
-    console.error('removeAvatar failed:', error.message);
+    console.error(`${bucket} removal failed:`, error.message);
     return { error: 'Das hat nicht geklappt.' };
   }
 
-  if (vorher?.avatar_path) {
-    await supabase.storage.from('avatars').remove([vorher.avatar_path]);
-  }
+  const alt = (vorher as Record<string, string | null> | null)?.[spalte] ?? null;
+  if (alt) await supabase.storage.from(bucket).remove([alt]);
 
   revalidatePath(`/@${viewer.username}`);
   revalidatePath('/einstellungen');
   return { message: 'Bild entfernt' };
+}
+
+/** 512 Pixel im Quadrat, hoechstens 256 KB. */
+export async function saveAvatar(formData: FormData): Promise<ProfileResult> {
+  return bildAblegen(formData, 'avatars', 'avatar_path', 262144);
+}
+
+export async function removeAvatar(): Promise<ProfileResult> {
+  return bildEntfernen('avatars', 'avatar_path');
+}
+
+/**
+ * Der Streifen ueber dem Profil: 1600 Pixel breit, hoechstens 400 KB.
+ *
+ * Er steht ueber der Seite und wird als erstes geladen; was hier zu
+ * schwer ist, verzoegert alles Uebrige.
+ */
+export async function saveBanner(formData: FormData): Promise<ProfileResult> {
+  return bildAblegen(formData, 'banners', 'banner_path', 409600);
+}
+
+export async function removeBanner(): Promise<ProfileResult> {
+  return bildEntfernen('banners', 'banner_path');
 }
