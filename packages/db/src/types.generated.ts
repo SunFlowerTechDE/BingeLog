@@ -251,6 +251,7 @@ export type Database = {
       }
       films: {
         Row: {
+          created_at: string | null
           imdb_id: string | null
           poster_source: string | null
           poster_url: string | null
@@ -266,6 +267,7 @@ export type Database = {
           wikidata_id: string
         }
         Insert: {
+          created_at?: string | null
           imdb_id?: string | null
           poster_source?: string | null
           poster_url?: string | null
@@ -281,6 +283,7 @@ export type Database = {
           wikidata_id: string
         }
         Update: {
+          created_at?: string | null
           imdb_id?: string | null
           poster_source?: string | null
           poster_url?: string | null
@@ -838,6 +841,23 @@ export type Database = {
       }
     }
     Functions: {
+      admin_overview: {
+        Args: never
+        Returns: {
+          active_7d: number
+          dormant: number
+          entries: number
+          entries_7d: number
+          films: number
+          films_7d: number
+          lists: number
+          members: number
+          members_7d: number
+          open_reports: number
+          open_threads: number
+          reviews: number
+        }[]
+      }
       are_friends: { Args: { a: string; b: string }; Returns: boolean }
       claim_lazy_creation: {
         Args: { per_minute?: number; search_term: string }

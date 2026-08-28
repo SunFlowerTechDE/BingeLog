@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { isModerator } from '@/lib/moderation';
 import { ReportQueue, type Meldung } from '@/components/report-queue';
+import { AdminNumbers, type Zahlen } from '@/components/admin-numbers';
 
 export const metadata: Metadata = { title: 'Moderation' };
 
@@ -22,6 +23,12 @@ export default async function ModerationPage() {
   if (!(await isModerator())) notFound();
 
   const supabase = await createClient();
+
+  // Die Funktion prueft die Rolle selbst — sie zaehlt an der RLS vorbei
+  // und waere ohne diese Pruefung ein Leck (20260828360000).
+  const { data: zahlenRows } = await supabase.rpc('admin_overview');
+  const zahlen: Zahlen | null = zahlenRows?.[0] ?? null;
+
   const { data: rows } = await supabase
     .from('reports')
     .select(
@@ -71,11 +78,16 @@ export default async function ModerationPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Moderation</h1>
         <p className="text-muted-foreground text-sm">
-          Offene Meldungen zuerst, älteste oben. Jede Entscheidung wird festgehalten.
+          Zahlen, Meldungen, Eingriffe. Jede Entscheidung wird festgehalten.
         </p>
       </div>
 
-      <ReportQueue meldungen={meldungen} />
+      {zahlen ? <AdminNumbers z={zahlen} /> : null}
+
+      <section className="border-border flex flex-col gap-4 border-t pt-8">
+        <h2 className="text-base font-semibold tracking-tight">Meldungen</h2>
+        <ReportQueue meldungen={meldungen} />
+      </section>
     </main>
   );
 }
