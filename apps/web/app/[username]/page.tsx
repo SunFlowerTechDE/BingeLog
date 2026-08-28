@@ -149,6 +149,26 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     };
   }[];
 
+  const { data: favRows } = await supabase
+    .from('favourites')
+    .select(
+      'position, films(wikidata_id, title_de, title_original, release_year, poster_source, poster_url)',
+    )
+    .eq('user_id', profile.id)
+    .order('position');
+
+  const favoriten = (favRows ?? []) as unknown as {
+    position: number;
+    films: {
+      wikidata_id: string;
+      title_de: string | null;
+      title_original: string;
+      release_year: number | null;
+      poster_source: string | null;
+      poster_url: string | null;
+    };
+  }[];
+
   const { data: rows } = await supabase
     .from('diary_entries')
     .select(
@@ -451,10 +471,55 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           </Panel>
         </div>
 
-        {/* Favoriten fehlen hier noch: sie brauchen eine eigene Tabelle
-            und eine Auswahl, keine Ableitung aus den Noten. Ein Platz,
-            der schon jetzt "Favoriten" heisst und die bestbewerteten
-            Filme zeigt, waere etwas anderes als das, was drauf steht. */}
+        {/* Die vier Plaetze stehen nur, wenn jemand sie besetzt hat. Vier
+            leere Rahmen auf einem fremden Profil sind eine Aufgabe, die
+            den Besucher nichts angeht. Auf dem eigenen Profil ist es
+            eine — deshalb dort der Hinweis. */}
+        {favoriten.length > 0 || eigenes ? (
+          <Panel
+            titel="Favoriten"
+            art="herz"
+            mehr={eigenes ? '/einstellungen' : undefined}
+            mehrText={eigenes ? 'Bearbeiten' : undefined}
+          >
+            {favoriten.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Vier Filme, die für dich stehen. Such sie dir in den Einstellungen aus.
+              </p>
+            ) : (
+              <ol className="grid grid-cols-4 gap-4 sm:max-w-lg">
+                {favoriten.map((f) => (
+                  <li key={f.position} className="flex min-w-0 flex-col gap-1.5">
+                    <Link
+                      href={`/film/${f.films.wikidata_id}` as Route}
+                      className="bg-card block overflow-hidden rounded"
+                    >
+                      <img
+                        src={
+                          f.films.poster_source === 'tvdb' && f.films.poster_url
+                            ? f.films.poster_url
+                            : `/poster/${f.films.wikidata_id}`
+                        }
+                        alt=""
+                        className="aspect-[2/3] w-full object-cover"
+                      />
+                    </Link>
+                    <Link
+                      href={`/film/${f.films.wikidata_id}` as Route}
+                      className="truncate text-xs font-medium hover:underline"
+                    >
+                      {f.films.title_de ?? f.films.title_original}
+                    </Link>
+                    {f.films.release_year ? (
+                      <span className="text-muted-foreground text-xs">{f.films.release_year}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Panel>
+        ) : null}
+
         {eigenes || profile.watchlist_public ? (
           <Panel titel="Watchlist" art="merken" mehr={eigenes ? '/watchlist' : undefined}>
             {watchlist.length === 0 ? (

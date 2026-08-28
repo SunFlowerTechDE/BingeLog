@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { SettingsForm } from './settings-form';
+import { FavouriteEditor, type Favorit } from '@/components/favourite-editor';
 
 export const metadata: Metadata = { title: 'Profil bearbeiten' };
 
@@ -30,6 +31,20 @@ export default async function SettingsPage() {
   if (!profile) redirect('/willkommen');
 
   const { data: bild } = supabase.storage.from('avatars').getPublicUrl(profile.avatar_path ?? '');
+  // Die vier Plaetze. Nach Platz sortiert, nicht nach Aufnahme: Platz
+  // eins ist Platz eins.
+  const { data: favRows } = await supabase
+    .from('favourites')
+    .select(
+      'position, films(wikidata_id, title_de, title_original, release_year, poster_source, poster_url)',
+    )
+    .eq('user_id', viewer.id)
+    .order('position');
+
+  const favoriten = (
+    (favRows ?? []) as unknown as { position: number; films: Favorit['film'] }[]
+  ).map((f) => ({ position: f.position, film: f.films }));
+
   const { data: streifen } = supabase.storage
     .from('banners')
     .getPublicUrl(profile.banner_path ?? '');
@@ -51,6 +66,10 @@ export default async function SettingsPage() {
         bannerUrl={profile.banner_path ? streifen.publicUrl : null}
         watchlistPublic={profile.watchlist_public}
       />
+
+      <div className="border-border border-t pt-8">
+        <FavouriteEditor anfang={favoriten} />
+      </div>
     </main>
   );
 }

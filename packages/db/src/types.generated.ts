@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -90,6 +90,39 @@ export type Database = {
             columns: ["entry_id"]
             isOneToOne: false
             referencedRelation: "diary_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      favourites: {
+        Row: {
+          film_id: string
+          position: number
+          user_id: string
+        }
+        Insert: {
+          film_id: string
+          position: number
+          user_id: string
+        }
+        Update: {
+          film_id?: string
+          position?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favourites_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "favourites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -662,6 +695,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      swap_favourites: { Args: { a: number; b: number }; Returns: undefined }
       username_available: { Args: { candidate: string }; Returns: boolean }
       watchlist_is_public: { Args: { profile: string }; Returns: boolean }
     }

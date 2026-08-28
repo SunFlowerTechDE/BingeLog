@@ -739,6 +739,139 @@ describe('diary and facet visibility', () => {
     assert.equal(ownRows.length, 1);
   });
 
+  it('lets everyone read the four favourites but only the owner set them', async () => {
+    const eigner = await seedUser(h, 'favoritler');
+
+    await h
+      .as('authenticated', eigner)
+      .query(`insert into public.favourites (user_id, film_id, position) values ($1, $2, 1)`, [
+        eigner,
+        FILM,
+      ]);
+
+    // Sie sind eine Visitenkarte: jeder liest sie, auch ohne Konto.
+    const fremd = await h
+      .as('authenticated', stranger)
+      .query(`select film_id from public.favourites where user_id = $1`, [eigner]);
+    const anonym = await h
+      .as('anon', null)
+      .query(`select film_id from public.favourites where user_id = $1`, [eigner]);
+    assert.equal(fremd.length, 1, 'Favoriten sind oeffentlich');
+    assert.equal(anonym.length, 1, 'auch ohne Anmeldung');
+
+    // Aber niemand schreibt in ein fremdes Profil.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', stranger)
+          .query(`insert into public.favourites (user_id, film_id, position) values ($1, $2, 2)`, [
+            eigner,
+            QUIET_FILM,
+          ]),
+      /row-level security/,
+      'ein Fremder darf keinen Platz belegen',
+    );
+
+    // Ein DELETE, das per RLS keine Zeile sieht, wirft nicht — es
+    // loescht nichts. Der Nachweis ist deshalb die Zeile danach und
+    // nicht die Ausnahme.
+    await h
+      .as('authenticated', stranger)
+      .query(`delete from public.favourites where user_id = $1`, [eigner]);
+    const nachDelete = await h
+      .as('anon', null)
+      .query(`select film_id from public.favourites where user_id = $1`, [eigner]);
+    assert.equal(nachDelete.length, 1, 'der fremde Loeschversuch hat nichts getroffen');
+
+    await h.sql.query(`delete from public.favourites where user_id = $1`, [eigner]);
+  });
+
+  it('holds four places, each once, each film once', async () => {
+    const eigner = await seedUser(h, 'favoritgrenzen');
+
+    await h
+      .as('authenticated', eigner)
+      .query(`insert into public.favourites (user_id, film_id, position) values ($1, $2, 4)`, [
+        eigner,
+        FILM,
+      ]);
+
+    // Platz fuenf gibt es nicht.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', eigner)
+          .query(`insert into public.favourites (user_id, film_id, position) values ($1, $2, 5)`, [
+            eigner,
+            QUIET_FILM,
+          ]),
+      /favourites_position_check/,
+      'vier Plaetze, nicht fuenf',
+    );
+
+    // Derselbe Film nicht zweimal.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', eigner)
+          .query(`insert into public.favourites (user_id, film_id, position) values ($1, $2, 3)`, [
+            eigner,
+            FILM,
+          ]),
+      /favourites_pkey/,
+      'ein Film belegt hoechstens einen Platz',
+    );
+
+    // Und ein Platz nicht zweimal.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', eigner)
+          .query(`insert into public.favourites (user_id, film_id, position) values ($1, $2, 4)`, [
+            eigner,
+            QUIET_FILM,
+          ]),
+      /favourites_one_film_per_place/,
+      'ein Platz traegt hoechstens einen Film',
+    );
+
+    await h.sql.query(`delete from public.favourites where user_id = $1`, [eigner]);
+  });
+
+  it('swaps two places in one statement', async () => {
+    const eigner = await seedUser(h, 'favorittausch');
+
+    await h.sql.query(
+      `insert into public.favourites (user_id, film_id, position)
+       values ($1, $2, 1), ($1, $3, 2)`,
+      [eigner, FILM, QUIET_FILM],
+    );
+
+    // Der eigentliche Grund fuer die aufgeschobene Bedingung: sofort
+    // geprueft schluege der Zwischenschritt fehl, obwohl das Ergebnis
+    // gueltig ist.
+    await h.as('authenticated', eigner).query(
+      `update public.favourites
+          set position = case position when 1 then 2::smallint else 1::smallint end
+        where user_id = $1 and position in (1, 2)`,
+      [eigner],
+    );
+
+    const danach = await h
+      .as('anon', null)
+      .query<{ film_id: string; position: number }>(
+        `select film_id, position from public.favourites where user_id = $1 order by position`,
+        [eigner],
+      );
+    assert.deepEqual(
+      danach.map((r) => r.film_id),
+      [QUIET_FILM, FILM],
+      'die beiden Plaetze haben getauscht',
+    );
+
+    await h.sql.query(`delete from public.favourites where user_id = $1`, [eigner]);
+  });
+
   it('keeps the watchlist private unless it is opened', async () => {
     await h
       .as('authenticated', rater)
