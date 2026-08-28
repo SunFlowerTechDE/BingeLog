@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Route } from 'next';
 
 import { getViewer } from '@/lib/session';
 import { signOut } from '@/lib/auth-actions';
@@ -36,9 +37,12 @@ export async function Header() {
               <Link href="/watchlist" className="text-muted-foreground hover:text-foreground">
                 Watchlist
               </Link>
-              {/* Profilseiten kommen mit M4. Bis dahin steht der Name da,
-                  ohne ins Leere zu führen. */}
-              <span className="text-muted-foreground">{viewer.username}</span>
+              <Link
+                href={`/@${viewer.username}` as Route}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {viewer.username}
+              </Link>
               <form action={signOut}>
                 <button type="submit" className="text-muted-foreground hover:text-foreground">
                   Abmelden

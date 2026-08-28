@@ -437,7 +437,16 @@ async function Reviews({
           return (
             <li key={entry.id} className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                <span className="font-medium">{entry.profiles?.username ?? 'jemand'}</span>
+                {entry.profiles?.username ? (
+                  <Link
+                    href={`/@${entry.profiles.username}` as Route}
+                    className="font-medium hover:underline"
+                  >
+                    {entry.profiles.username}
+                  </Link>
+                ) : (
+                  <span className="font-medium">jemand</span>
+                )}
                 {entry.rating === null ? null : <PopcornRating rating={entry.rating} size={16} />}
                 {entry.is_rewatch ? (
                   <span className="text-muted-foreground">Wiedersehen</span>
