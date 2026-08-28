@@ -1123,6 +1123,62 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.moderators where user_id = $1`, [moderator]);
   });
 
+  it('shows the account log to moderators and to the person it is about', async () => {
+    const betroffen = await seedUser(h, 'betroffener');
+    const fremd = await seedUser(h, 'unbeteiligter');
+    const moderator = await seedUser(h, 'moderatordrei');
+    await h.sql.query(`insert into public.moderators (user_id) values ($1)`, [moderator]);
+
+    await h.sql.query(
+      `insert into public.account_actions
+         (target_id, target_name, actor_id, actor_name, action, reason)
+       values ($1, 'betroffener', $2, 'moderatordrei', 'account_closed', 'Wiederholte Belaestigung.')`,
+      [betroffen, moderator],
+    );
+
+    // Transparenz heisst: der Betroffene sieht, was mit seinem Konto
+    // geschehen ist. Nicht nur der, der es getan hat.
+    const eigene = await h
+      .as('authenticated', betroffen)
+      .query(`select id from public.account_actions`);
+    assert.equal(eigene.length, 1, 'der Betroffene sieht seine Zeile');
+
+    const alsModerator = await h
+      .as('authenticated', moderator)
+      .query(`select id from public.account_actions`);
+    assert.equal(alsModerator.length, 1, 'der Moderator auch');
+
+    const alsFremder = await h
+      .as('authenticated', fremd)
+      .query(`select id from public.account_actions`);
+    assert.deepEqual(alsFremder, [], 'sonst niemand');
+
+    // **Und niemand loescht.** Es gibt keine Delete-Policy, auch nicht
+    // fuer Moderatoren: ein Logbuch mit Radiergummi ist keins.
+    await h.as('authenticated', moderator).query(`delete from public.account_actions`);
+    const danach = await h
+      .as('authenticated', moderator)
+      .query(`select id from public.account_actions`);
+    assert.equal(danach.length, 1, 'die Zeile steht noch');
+
+    // Und schreiben kann sie aus dem Browser auch niemand: die Eintraege
+    // kommen ausschliesslich aus der Edge Function.
+    await assert.rejects(
+      () =>
+        h.as('authenticated', moderator).query(
+          `insert into public.account_actions
+             (target_id, target_name, actor_id, actor_name, action, reason)
+           values ($1, 'x', $2, 'y', 'note', 'Von Hand.')`,
+          [betroffen, moderator],
+        ),
+      /row-level security/,
+      'auch ein Moderator schreibt nicht direkt hinein',
+    );
+
+    await h.sql.query(`delete from public.account_actions`);
+    await h.sql.query(`delete from public.moderators where user_id = $1`, [moderator]);
+  });
+
   it('keeps the watchlist private unless it is opened', async () => {
     await h
       .as('authenticated', rater)

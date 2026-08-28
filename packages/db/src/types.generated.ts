@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_actions: {
+        Row: {
+          action: Database["public"]["Enums"]["account_action"]
+          actor_id: string | null
+          actor_name: string
+          created_at: string
+          details: Json | null
+          id: string
+          notified: boolean
+          reason: string
+          target_id: string
+          target_name: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["account_action"]
+          actor_id?: string | null
+          actor_name: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          notified?: boolean
+          reason: string
+          target_id: string
+          target_name: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["account_action"]
+          actor_id?: string | null
+          actor_name?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          notified?: boolean
+          reason?: string
+          target_id?: string
+          target_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_actions_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           description: string
@@ -492,6 +546,8 @@ export type Database = {
           avatar_path: string | null
           banner_path: string | null
           bio: string | null
+          closed_at: string | null
+          closed_reason: string | null
           created_at: string
           display_name: string | null
           id: string
@@ -503,6 +559,8 @@ export type Database = {
           avatar_path?: string | null
           banner_path?: string | null
           bio?: string | null
+          closed_at?: string | null
+          closed_reason?: string | null
           created_at?: string
           display_name?: string | null
           id: string
@@ -514,6 +572,8 @@ export type Database = {
           avatar_path?: string | null
           banner_path?: string | null
           bio?: string | null
+          closed_at?: string | null
+          closed_reason?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -983,6 +1043,14 @@ export type Database = {
       watchlist_is_public: { Args: { profile: string }; Returns: boolean }
     }
     Enums: {
+      account_action:
+        | "password_reset"
+        | "username_reset"
+        | "email_change"
+        | "account_closed"
+        | "account_restored"
+        | "content_removed"
+        | "note"
       entry_visibility: "public" | "friends" | "private"
       facet_kind:
         | "acting"
@@ -1130,6 +1198,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_action: [
+        "password_reset",
+        "username_reset",
+        "email_change",
+        "account_closed",
+        "account_restored",
+        "content_removed",
+        "note",
+      ],
       entry_visibility: ["public", "friends", "private"],
       facet_kind: [
         "acting",

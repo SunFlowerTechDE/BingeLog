@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isModerator } from '@/lib/moderation';
 import { ReportQueue, type Meldung } from '@/components/report-queue';
 import { AdminNumbers, type Zahlen } from '@/components/admin-numbers';
+import { AccountTools } from '@/components/account-tools';
 
 export const metadata: Metadata = { title: 'Moderation' };
 
@@ -19,6 +20,27 @@ export const metadata: Metadata = { title: 'Moderation' };
  * die API direkt ansprechen oder den anon-Schluessel aus dem Bundle
  * nehmen. Diese Pruefung erspart nur die leere Seite.
  */
+const EINGRIFF: Record<string, string> = {
+  password_reset: 'Passwort zurückgesetzt',
+  username_reset: 'Benutzername geändert',
+  email_change: 'E-Mail geändert',
+  account_closed: 'Konto geschlossen',
+  account_restored: 'Konto geöffnet',
+  content_removed: 'Inhalt entfernt',
+  note: 'Vermerk',
+};
+
+/** Auf die Minute genau: bei einem Eingriff zaehlt die Uhrzeit. */
+function zeitpunkt(wert: string): string {
+  return new Date(wert).toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default async function ModerationPage() {
   if (!(await isModerator())) notFound();
 
@@ -28,6 +50,14 @@ export default async function ModerationPage() {
   // und waere ohne diese Pruefung ein Leck (20260828360000).
   const { data: zahlenRows } = await supabase.rpc('admin_overview');
   const zahlen: Zahlen | null = zahlenRows?.[0] ?? null;
+
+  // Das Logbuch. Neueste zuerst — hier sucht man, was gerade passiert
+  // ist, nicht was am Anfang war.
+  const { data: logbuch } = await supabase
+    .from('account_actions')
+    .select('id, target_name, actor_name, action, reason, details, notified, created_at')
+    .order('created_at', { ascending: false })
+    .limit(50);
 
   const { data: rows } = await supabase
     .from('reports')
@@ -87,6 +117,58 @@ export default async function ModerationPage() {
       <section className="border-border flex flex-col gap-4 border-t pt-8">
         <h2 className="text-base font-semibold tracking-tight">Meldungen</h2>
         <ReportQueue meldungen={meldungen} />
+      </section>
+
+      <section className="border-border flex flex-col gap-4 border-t pt-8">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-base font-semibold tracking-tight">Konten</h2>
+          <p className="text-muted-foreground text-sm">
+            Eingriffe in fremde Konten. Jeder wird protokolliert und dem Nutzer gemailt.
+          </p>
+        </div>
+        <AccountTools />
+      </section>
+
+      <section className="border-border flex flex-col gap-4 border-t pt-8">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-base font-semibold tracking-tight">Logbuch</h2>
+          <p className="text-muted-foreground text-sm">
+            Was wann von wem an welchem Konto getan wurde. Wird nie gelöscht.
+          </p>
+        </div>
+
+        {(logbuch ?? []).length === 0 ? (
+          <p className="text-muted-foreground text-sm">Noch kein Eintrag.</p>
+        ) : (
+          <ol className="flex flex-col gap-3">
+            {(logbuch ?? []).map((z) => (
+              <li
+                key={z.id}
+                className="border-border bg-card/40 flex flex-col gap-1 rounded-lg border p-4"
+              >
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className="font-medium">{EINGRIFF[z.action] ?? z.action}</span>
+                  <span className="text-muted-foreground">an @{z.target_name}</span>
+                  <span className="text-muted-foreground">durch @{z.actor_name}</span>
+                  {/* Eine ausstehende Benachrichtigung muss auffallen —
+                      sie ist das, was nachgeholt werden muss. */}
+                  {z.notified ? null : (
+                    <span className="border-destructive text-destructive rounded-full border px-2 py-0.5">
+                      nicht benachrichtigt
+                    </span>
+                  )}
+                  <span className="text-muted-foreground ml-auto">{zeitpunkt(z.created_at)}</span>
+                </div>
+                <p className="text-sm leading-relaxed">{z.reason}</p>
+                {z.details ? (
+                  <p className="text-muted-foreground text-xs">
+                    {JSON.stringify(z.details).replace(/[{}"]/g, '').replace(/,/g, ' · ')}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        )}
       </section>
     </main>
   );
