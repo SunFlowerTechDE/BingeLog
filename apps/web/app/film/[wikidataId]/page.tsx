@@ -373,14 +373,26 @@ async function Reviews({
   const hasMore = rows.length > REVIEWS_PER_PAGE;
   const reviews = rows.slice(0, REVIEWS_PER_PAGE);
 
+  // Ein Ort fuer die Adresse, damit die Blaetterlinks den Reiter nicht
+  // verlieren: "Weitere" aus der Freundesansicht landete sonst wieder
+  // bei allen.
+  const linkTo = (target: ReviewScope, toPage: number) => {
+    const query = new URLSearchParams();
+    if (target === 'freunde') query.set('von', 'freunde');
+    if (toPage > 1) query.set('seite', String(toPage));
+    const suffix = query.size > 0 ? `?${query.toString()}` : '';
+    return `/film/${wikidataId}${suffix}` as Route;
+  };
+
   const tab = (target: ReviewScope, label: string) => {
-    const href = (
-      target === 'alle' ? `/film/${wikidataId}` : `/film/${wikidataId}?von=freunde`
-    ) as Route;
     return (
       <Link
         key={target}
-        href={href}
+        href={linkTo(target, 1)}
+        // Der Reiter wechselt eine Liste weit unten auf der Seite. Ohne
+        // dies springt Next zum Seitenanfang, und man scrollt jedes Mal
+        // wieder dorthin zurueck, wo man schon war.
+        scroll={false}
         aria-current={scope === target ? 'true' : undefined}
         className={`rounded-md px-2.5 py-1 text-sm ${
           scope === target
@@ -441,7 +453,8 @@ async function Reviews({
         <div className="flex gap-4 text-sm">
           {page > 1 ? (
             <Link
-              href={`/film/${wikidataId}?seite=${String(page - 1)}` as Route}
+              href={linkTo(scope, page - 1)}
+              scroll={false}
               className="text-muted-foreground hover:text-foreground underline underline-offset-4"
             >
               Zurück
@@ -449,7 +462,8 @@ async function Reviews({
           ) : null}
           {hasMore ? (
             <Link
-              href={`/film/${wikidataId}?seite=${String(page + 1)}` as Route}
+              href={linkTo(scope, page + 1)}
+              scroll={false}
               className="text-muted-foreground hover:text-foreground underline underline-offset-4"
             >
               Weitere
