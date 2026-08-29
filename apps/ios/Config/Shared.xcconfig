@@ -1,0 +1,45 @@
+// Gemeinsame Einstellungen fuer alle Konfigurationen.
+//
+// Die Supabase-Adresse und der publishable Key stehen hier und nicht im
+// Quelltext (M5 5.1). Beide sind oeffentlich — derselbe Schluessel liegt
+// im Browser-Bundle der Webseite. Was geheim ist, liegt in der
+// Datenbank hinter RLS; ein Client-Schluessel traegt keine Rechte,
+// sondern nur die Identitaet "niemand".
+//
+// Der Service-Role-Schluessel hat hier nichts verloren und wird es nie
+// haben (M0 0.2).
+
+MARKETING_VERSION = 0.1.0
+
+// Die Bundle-ID steht im Projekt (de.sunflowertech.BingeLog) und
+// gehoert zum bestehenden Entwicklerkonto. Sie hier zu ueberschreiben
+// waere eine Entscheidung ohne Anlass.
+CURRENT_PROJECT_VERSION = 1
+
+IPHONEOS_DEPLOYMENT_TARGET = 17.0
+TARGETED_DEVICE_FAMILY = 1,2
+SWIFT_VERSION = 5.0
+
+// Auf 5.0, wie das Projekt es angelegt hat. Der Schritt auf 6 ist
+// eine eigene Entscheidung mit eigenen Folgen fuer die Nebenlaeufigkeit
+// und gehoert nicht nebenbei in eine Konfigurationsdatei.
+
+// iOS 17 wegen @Observable und der neueren SwiftUI-Bausteine. Aeltere
+// Versionen kosten Komfort, den man an dieser Stelle nicht opfern
+// sollte.
+
+SUPABASE_URL = https:/$()/rbgofrgstnotgpnnvehb.supabase.co
+SUPABASE_ANON_KEY = sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm
+
+// Die beiden Werte gehen ueber BingeLog/Resources/Info.plist in die
+// App. `INFOPLIST_KEY_…` kann das nicht: es reicht nur Schluessel
+// durch, die Xcode kennt, und eigene fallen still unter den Tisch.
+//
+// `INFOPLIST_FILE` steht **nicht** hier, sondern am App-Target. Aus
+// einer gemeinsamen Konfiguration erbten es auch die beiden
+// Testbuendel, und die bekamen damit die Supabase-Werte in ihre eigene
+// Info.plist — folgenlos, aber falsch.
+
+// Das $() zwischen den Schraegstrichen ist kein Tippfehler: xcconfig
+// liest // als Kommentaranfang, auch mitten in einem Wert. Ein leerer
+// Variablenausdruck trennt die beiden Zeichen, ohne etwas einzufuegen.

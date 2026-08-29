@@ -86,8 +86,23 @@ Plätze) und Binge-Listen stehen. Der Header hat drei Zonen: Ziele in der
 Mitte, Suche als Lupe, das eigene Konto rechts hinter einem Klappmenü.
 Entdecken ist für Angemeldete die Startseite: Genre-Kacheln als
 Schieber, der chronologische Feed der gefolgten Profile, die neuesten
-Filme. Offen sind die spoilergeschützte Diskussion (4.5) und die
-Melde-Funktion (4.7).
+Filme. Diskussion, Melden, Blockieren, Thread sperren und das
+Moderations-Dashboard stehen. **M4 ist abgeschlossen.**
+
+Laufend ist M5, die iOS-App unter `apps/ios`. Projektaufbau (5.1) und
+Architektur (5.2) stehen: Xcode-Projekt mit synchronisierten Ordnern,
+Supabase-SDK über SPM, Konfiguration in `Config/*.xcconfig`,
+Repository-Schicht, `@Observable`, typisierte Fehler. Anmelden und
+Filmsuche laufen im Simulator.
+
+Vor dem Bauen für iOS:
+
+- `xcodebuild -project apps/ios/BingeLog.xcodeproj -scheme BingeLog \
+ -destination 'platform=iOS Simulator,name=iPhone 17' build`
+- Die Info.plist liegt unter `Config/`, **nicht** unter `BingeLog/` —
+  der Ordner dort ist eine synchronisierte Gruppe, und eine Datei, die
+  zugleich kopiert und als Info.plist erzeugt wird, bricht den Build.
+- Eigene Info.plist-Schlüssel gehen nicht über `INFOPLIST_KEY_…`.
 
 Die Bilder liegen im Objektspeicher, nicht in der Datenbank. **Beim
 Löschen eines Kontos müssen beide Ordner mit** — `avatars` und

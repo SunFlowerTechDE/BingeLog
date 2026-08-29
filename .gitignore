@@ -32,6 +32,10 @@ xcuserdata/
 /apps/ios/**/Packages/
 *.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 
+# Package.resolved gehoert **nicht** hierher: die aufgeloesten Versionen
+# der Swift-Pakete sind Teil des Bauplans, so wie pnpm-lock.yaml. Ohne
+# sie baut morgen jemand gegen ein anderes SDK.
+
 # --- Python (pipeline) ---
 __pycache__/
 *.py[cod]

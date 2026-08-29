@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Nur die eigenen Schluessel.
+	     `INFOPLIST_KEY_…` reicht Werte aus einer xcconfig in die
+	     erzeugte Info.plist durch, aber **nur fuer Schluessel, die
+	     Xcode kennt**. Eigene fallen still unter den Tisch — genau das
+	     ist passiert: die Datei war da, die beiden Eintraege fehlten.
+	     Deshalb diese Datei als Grundlage; alles Uebrige erzeugt Xcode
+	     weiterhin selbst (GENERATE_INFOPLIST_FILE bleibt YES). -->
+	<key>SupabaseURL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>SupabaseAnonKey</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+
+	<!-- Dunkel als Voreinstellung, wie im Web. Dass Light Mode
+	     ordentlich unterstuetzt wird (M5 5.4), steht noch aus — dann
+	     faellt dieser Eintrag wieder weg. Bis dahin ist ein
+	     durchgaengig dunkles Bild ehrlicher als eins, das halb
+	     umgestellt ist. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
+</dict>
+</plist>

@@ -33,19 +33,25 @@ Datenmodelle ändern sich nicht mehr grundlegend.
 
 ### 5.1 Projektaufbau
 
-- [ ] Xcode-Projekt unter `/apps/ios`
-- [ ] Supabase Swift SDK einbinden
+- [x] Xcode-Projekt unter `/apps/ios`
+- [x] Supabase Swift SDK einbinden
 - [ ] Bundle ID unter dem bestehenden SunFlower-Tech-Account registrieren
 - [ ] App-Name "BingeLog" in App Store Connect reservieren
       (Markenrecherche vorher, siehe `02-product.md`)
-- [ ] Konfiguration über `.xcconfig`, keine Keys im Quelltext
+- [x] Konfiguration über `.xcconfig`, keine Keys im Quelltext — die
+      Werte gehen über `Config/Info.plist` in die App. `INFOPLIST_KEY_…`
+      kann das **nicht**: es reicht nur Schlüssel durch, die Xcode
+      kennt, eigene fallen still unter den Tisch.
 
 ### 5.2 Architektur
 
-- [ ] MVVM mit `@Observable` (nicht `ObservableObject`, ab iOS 17)
-- [ ] Repository-Schicht kapselt Supabase, Views kennen kein SDK
-- [ ] `async/await` durchgehend, keine Completion Handler
-- [ ] Fehler als typisierte `enum`, nicht als `Error`-Strings
+- [x] MVVM mit `@Observable` (nicht `ObservableObject`, ab iOS 17)
+- [x] Repository-Schicht kapselt Supabase, Views kennen kein SDK
+- [x] `async/await` durchgehend, keine Completion Handler
+- [x] Fehler als typisierte `enum`, nicht als `Error`-Strings — Vorsicht:
+      durch ein Protokoll gerufen verliert `throws(BackendError)` seinen
+      Typ, der Aufrufer sieht `any Error`. Deshalb einmal
+      `BackendError.from(…)` am Fangpunkt.
 
 ### 5.3 Offline-Verhalten
 
