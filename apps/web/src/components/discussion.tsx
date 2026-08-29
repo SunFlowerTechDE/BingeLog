@@ -9,6 +9,7 @@ import { DiscussionText } from '@/components/discussion-text';
 import { ActionNote } from '@/components/action-note';
 import { Avatar } from '@/components/profile-parts';
 import { ReportButton } from '@/components/report-button';
+import { BlockButton } from '@/components/block-button';
 
 export interface Beitrag {
   id: string;
@@ -214,7 +215,13 @@ export function Discussion({
       {/* Melden steht an jedem fremden Beitrag, immer. Am eigenen
           nicht: sich selbst zu melden ist kein Fall. */}
       {b.eigener ? null : (
-        <ReportButton targetKind="message" targetId={b.id} angemeldet was="Beitrag" />
+        <>
+          <ReportButton targetKind="message" targetId={b.id} angemeldet was="Beitrag" />
+          {/* Blockieren direkt am Beitrag: hier faellt auf, dass jemand
+              stoert, nicht auf seinem Profil. Die Seite laedt danach
+              neu, weil die Policy die Beitraege filtert. */}
+          <BlockButton username={b.username} blockiert={false} />
+        </>
       )}
       {b.eigener && !gesperrt ? (
         <>
@@ -315,11 +322,11 @@ export function Discussion({
         </ol>
       )}
 
-      {gesperrt ? (
-        <p className="text-muted-foreground border-border rounded-md border border-dashed p-4 text-sm">
-          Diese Diskussion ist geschlossen. Lesen geht weiter, schreiben nicht.
-        </p>
-      ) : (
+      {/* Bei einer Sperre steht der Hinweis samt Grund ueber der
+          Diskussion (film/[wikidataId]/page.tsx). Ihn hier zu
+          wiederholen sagte dasselbe zweimal und das zweite Mal ohne
+          Grund. */}
+      {gesperrt ? null : (
         <Editor
           knopf="Beitrag schreiben"
           laeuft={laeuft}

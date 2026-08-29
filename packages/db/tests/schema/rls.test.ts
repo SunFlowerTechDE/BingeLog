@@ -1179,6 +1179,117 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.moderators where user_id = $1`, [moderator]);
   });
 
+  it('hides a blocked person from the discussion, for the blocker only', async () => {
+    const stoerer = await seedUser(h, 'stoerer');
+    const genervt = await seedUser(h, 'genervt');
+    const unbeteiligt = await seedUser(h, 'unbeteiligt');
+
+    // Alle drei haben den Film bewertet — sonst greift schon das
+    // Spoiler-Gate und der Test bewiese das Falsche.
+    for (const wer of [stoerer, genervt, unbeteiligt]) {
+      await h.sql.query(
+        `insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 8)`,
+        [wer, FILM],
+      );
+    }
+    await h.sql.query(`update public.film_threads set is_active = true where film_id = $1`, [FILM]);
+
+    // Auf diesem Film liegen aus frueheren Tests schon Beitraege.
+    // Geprueft wird deshalb dieser eine, nicht die Gesamtzahl.
+    const eingefuegt = await h.sql.query<{ id: string }>(
+      `insert into public.thread_messages (film_id, user_id, body)
+       values ($1, $2, 'Provokation.') returning id`,
+      [FILM, stoerer],
+    );
+    const beitrag = eingefuegt.rows[0];
+    assert.ok(beitrag);
+
+    const sieht = async (wer: string) =>
+      (
+        await h
+          .as('authenticated', wer)
+          .query(`select id from public.thread_messages where id = $1`, [beitrag.id])
+      ).length;
+
+    assert.equal(await sieht(genervt), 1, 'vor dem Blockieren sichtbar');
+
+    await h
+      .as('authenticated', genervt)
+      .query(`insert into public.blocks (blocker_id, blocked_id) values ($1, $2)`, [
+        genervt,
+        stoerer,
+      ]);
+
+    assert.equal(await sieht(genervt), 0, 'nach dem Blockieren nicht mehr');
+
+    // **Einseitig.** Fuer alle anderen aendert sich nichts, und der
+    // Blockierte sieht seinen Beitrag weiter.
+    assert.equal(await sieht(unbeteiligt), 1, 'andere sehen den Beitrag weiter');
+    assert.equal(await sieht(stoerer), 1, 'der Blockierte merkt nichts');
+
+    // Und niemand sieht, wer wen blockiert hat.
+    const fremdeSicht = await h
+      .as('authenticated', stoerer)
+      .query(`select blocker_id from public.blocks`);
+    assert.deepEqual(fremdeSicht, [], 'Blockierungen sind privat');
+
+    await h.sql.query(`delete from public.blocks`);
+    await h.sql.query(`delete from public.thread_messages where id = $1`, [beitrag.id]);
+    await h.sql.query(`delete from public.diary_entries where user_id = any($1::uuid[])`, [
+      [stoerer, genervt, unbeteiligt],
+    ]);
+  });
+
+  it('lets nobody write in a locked thread, and still lets everyone read', async () => {
+    const schreiber = await seedUser(h, 'schreiber');
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 7)`,
+      [schreiber, QUIET_FILM],
+    );
+    await h.sql.query(`update public.film_threads set is_active = true where film_id = $1`, [
+      QUIET_FILM,
+    ]);
+    const vorSperre = await h.sql.query<{ id: string }>(
+      `insert into public.thread_messages (film_id, user_id, body)
+       values ($1, $2, 'Vor der Sperre.') returning id`,
+      [QUIET_FILM, schreiber],
+    );
+    const alt = vorSperre.rows[0];
+    assert.ok(alt);
+
+    await h.sql.query(
+      `update public.film_threads set is_locked = true, locked_reason = 'Zu hitzig.'
+        where film_id = $1`,
+      [QUIET_FILM],
+    );
+
+    await assert.rejects(
+      () =>
+        h.as('authenticated', schreiber).query(
+          `insert into public.thread_messages (film_id, user_id, body)
+           values ($1, $2, 'Nach der Sperre.')`,
+          [QUIET_FILM, schreiber],
+        ),
+      /row-level security/,
+      'in einem gesperrten Thread schreibt niemand',
+    );
+
+    // Lesen bleibt. Was dasteht, bleibt stehen — es kommt nur nichts
+    // mehr dazu.
+    const lesbar = await h
+      .as('authenticated', schreiber)
+      .query(`select id from public.thread_messages where id = $1`, [alt.id]);
+    assert.equal(lesbar.length, 1, 'lesen geht weiter');
+
+    await h.sql.query(
+      `update public.film_threads set is_locked = false, locked_reason = null where film_id = $1`,
+      [QUIET_FILM],
+    );
+    await h.sql.query(`delete from public.thread_messages where id = $1`, [alt.id]);
+    await h.sql.query(`delete from public.diary_entries where user_id = $1`, [schreiber]);
+  });
+
   it('keeps the watchlist private unless it is opened', async () => {
     await h
       .as('authenticated', rater)

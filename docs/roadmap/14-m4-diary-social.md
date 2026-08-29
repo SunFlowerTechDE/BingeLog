@@ -118,9 +118,13 @@ Auch unter Leuten, die den Film gesehen haben, gibt es Spoiler für
 
 #### Moderation (Pflicht)
 
-- [ ] Melden pro Beitrag, mit Grund
-- [ ] Nutzer blockieren: blockierte Beiträge werden ausgeblendet
-- [ ] Thread sperren (`is_locked`) durch Admin
+- [x] Melden pro Beitrag, mit Grund
+- [x] Nutzer blockieren: blockierte Beiträge werden ausgeblendet — per
+      RLS auf `thread_messages`, nicht in der Anzeige. Bewusst **nicht**
+      auf `diary_entries`: eine Sperre dort liefe durch
+      `film_rating_summary` und verschöbe den Schnitt eines Films, sobald
+      man jemanden blockiert.
+- [x] Thread sperren (`is_locked`) durch Admin
 - [x] Rate Limiting serverseitig, maximal 10 Beiträge pro Stunde
 - [ ] Wortfilter für offensichtlich Verbotenes, bewusst schmal halten
 

@@ -6,8 +6,11 @@ import {
   loadFilm,
   saveFilm,
   listFilms,
+  loadThread,
+  lockThread,
   type FilmDetails,
   type Filmzeile,
+  type Threadlage,
 } from '@/lib/film-admin-actions';
 import { FSK_STUFEN, FskLabel } from '@/components/fsk';
 import { ActionNote } from '@/components/action-note';
@@ -136,6 +139,8 @@ function Filmliste({ onWaehlen }: { onWaehlen: (id: string) => void }) {
 
 export function FilmTools() {
   const [film, setFilm] = useState<FilmDetails | null>(null);
+  const [thread, setThread] = useState<Threadlage | null>(null);
+  const [sperrgrund, setSperrgrund] = useState('');
   const [werte, setWerte] = useState<Record<string, string>>({});
   const [fsk, setFsk] = useState<string>('');
   const [fskNote, setFskNote] = useState('');
@@ -163,6 +168,10 @@ export function FilmTools() {
       setEntsperren([]);
       setProblem(undefined);
       setMeldung(undefined);
+    });
+    void loadThread(id).then((t) => {
+      setThread(t);
+      setSperrgrund(t?.locked_reason ?? '');
     });
   };
 
@@ -320,6 +329,78 @@ export function FilmTools() {
           />
         </label>
       </div>
+
+      {/* Die Diskussion. Sie steht unter den Filmdaten und nicht
+          dazwischen: das eine ist eine Angabe ueber den Film, das andere
+          ein Eingriff in das, was Leute dort tun. */}
+      {thread?.is_active ? (
+        <div className="border-border flex flex-col gap-3 border-t pt-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium">Diskussion</span>
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {thread.message_count} Beiträge · {thread.viewer_count} haben den Film eingetragen
+            </span>
+            {thread.is_locked ? (
+              <span className="border-destructive text-destructive rounded-full border px-2 py-0.5 text-xs">
+                geschlossen
+              </span>
+            ) : null}
+          </div>
+
+          {thread.is_locked ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-muted-foreground text-sm">Grund: {thread.locked_reason ?? '—'}</p>
+              <button
+                type="button"
+                disabled={laeuft}
+                onClick={() => {
+                  startTransition(async () => {
+                    const r = await lockThread(film.wikidata_id, false, '');
+                    if (r.error) setProblem(r.error);
+                    else {
+                      setMeldung(r.message);
+                      oeffnen(film.wikidata_id);
+                    }
+                  });
+                }}
+                className="border-border hover:bg-card ml-auto rounded-md border px-3 py-1.5 text-sm"
+              >
+                Wieder öffnen
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={sperrgrund}
+                onChange={(e) => {
+                  setSperrgrund(e.target.value);
+                }}
+                maxLength={500}
+                placeholder="Warum wird geschlossen? Steht danach auf der Filmseite."
+                className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
+              />
+              <button
+                type="button"
+                disabled={laeuft || sperrgrund.trim().length < 3}
+                onClick={() => {
+                  startTransition(async () => {
+                    const r = await lockThread(film.wikidata_id, true, sperrgrund);
+                    if (r.error) setProblem(r.error);
+                    else {
+                      setMeldung(r.message);
+                      oeffnen(film.wikidata_id);
+                    }
+                  });
+                }}
+                className="border-border hover:bg-card text-muted-foreground hover:text-destructive self-start rounded-md border px-3 py-1.5 text-sm disabled:opacity-40"
+              >
+                Diskussion schließen
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <button

@@ -39,6 +39,8 @@ interface RequestBody {
   changes?: Partial<Record<Feld, string | number | null>>;
   /** Felder, die wieder der Quelle folgen sollen. */
   unlock?: Feld[];
+  /** Die Diskussion schliessen oder wieder oeffnen. */
+  thread?: { locked: boolean; reason?: string };
 }
 
 function json(body: unknown, status = 200): Response {
@@ -119,8 +121,42 @@ Deno.serve(async (request: Request) => {
     gesetzt.push(feld);
   }
 
-  if (gesetzt.length === 0 && (body.unlock ?? []).length === 0) {
+  // --- Die Diskussion schliessen oder oeffnen ---------------------
+  //
+  // Das trifft einen **Ort**, nicht eine Aeusserung und nicht eine
+  // Person: geschlossen kann niemand mehr schreiben, auch die
+  // dreissig Unbeteiligten nicht. Deshalb ist der Grund Pflicht — wer
+  // eine geschlossene Tuer sieht, soll wissen warum, sonst wirkt es
+  // wie ein Fehler.
+  if (body.thread) {
+    const grund = (body.thread.reason ?? '').trim();
+    if (body.thread.locked && grund.length < 3) {
+      return json({ error: 'lock_reason_required' }, 400);
+    }
+
+    const { error } = await admin
+      .from('film_threads')
+      .update(
+        body.thread.locked
+          ? {
+              is_locked: true,
+              locked_at: new Date().toISOString(),
+              locked_by: wer,
+              locked_reason: grund,
+            }
+          : { is_locked: false, locked_at: null, locked_by: null, locked_reason: null },
+      )
+      .eq('film_id', id);
+
+    if (error) return json({ error: 'lock_failed', detail: error.message }, 500);
+  }
+
+  if (gesetzt.length === 0 && (body.unlock ?? []).length === 0 && !body.thread) {
     return json({ error: 'nothing_to_do' }, 400);
+  }
+
+  if (gesetzt.length === 0 && (body.unlock ?? []).length === 0) {
+    return json({ ok: true, manual_fields: film.manual_fields ?? [] });
   }
 
   // fsk und fsk_note kennt die Pipeline nicht — sie zu sperren waere

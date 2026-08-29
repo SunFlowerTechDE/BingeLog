@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { SettingsForm } from './settings-form';
 import { FavouriteEditor, type Favorit } from '@/components/favourite-editor';
+import { BlockButton } from '@/components/block-button';
+import { myBlocks } from '@/lib/block-actions';
+import { Avatar } from '@/components/profile-parts';
 
 export const metadata: Metadata = { title: 'Profil bearbeiten' };
 
@@ -45,6 +48,9 @@ export default async function SettingsPage() {
     (favRows ?? []) as unknown as { position: number; films: Favorit['film'] }[]
   ).map((f) => ({ position: f.position, film: f.films }));
 
+  // Wen ich blockiert habe. Die Policy gibt diese Liste nur mir.
+  const blockiert = await myBlocks();
+
   const { data: streifen } = supabase.storage
     .from('banners')
     .getPublicUrl(profile.banner_path ?? '');
@@ -70,6 +76,47 @@ export default async function SettingsPage() {
       <div className="border-border border-t pt-8">
         <FavouriteEditor anfang={favoriten} />
       </div>
+
+      <section className="border-border flex flex-col gap-4 border-t pt-8">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-base font-semibold tracking-tight">Blockiert</h2>
+          <p className="text-muted-foreground text-xs">
+            Ihre Beiträge in Diskussionen siehst du nicht mehr. Sie erfahren davon nichts, und für
+            alle anderen ändert sich nichts.
+          </p>
+        </div>
+
+        {blockiert.length === 0 ? (
+          <p className="text-muted-foreground text-sm">Niemand.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {blockiert.map((b) => (
+              <li key={b.username} className="flex items-center gap-3">
+                {b.avatar_path ? (
+                  <img
+                    src={
+                      supabase.storage.from('avatars').getPublicUrl(b.avatar_path).data.publicUrl
+                    }
+                    alt=""
+                    className="h-8 w-8 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <Avatar name={b.username} size={32} />
+                )}
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-medium">@{b.username}</span>
+                  {b.display_name ? (
+                    <span className="text-muted-foreground truncate text-xs">{b.display_name}</span>
+                  ) : null}
+                </span>
+                <span className="ml-auto">
+                  <BlockButton username={b.username} blockiert />
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }

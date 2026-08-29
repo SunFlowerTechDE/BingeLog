@@ -45,6 +45,25 @@ export async function findFilm(term: string): Promise<FilmTreffer[]> {
   }));
 }
 
+export interface Threadlage {
+  is_active: boolean;
+  is_locked: boolean;
+  locked_reason: string | null;
+  message_count: number;
+  viewer_count: number;
+}
+
+/** Der Zustand der Diskussion zu einem Film. */
+export async function loadThread(wikidataId: string): Promise<Threadlage | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('film_threads')
+    .select('is_active, is_locked, locked_reason, message_count, viewer_count')
+    .eq('film_id', wikidataId)
+    .maybeSingle();
+  return data;
+}
+
 export interface FilmDetails {
   wikidata_id: string;
   title_de: string | null;
@@ -83,6 +102,53 @@ export async function loadFilm(wikidataId: string): Promise<FilmDetails | null> 
  * nicht aus `apps/web` geschrieben, und die Pruefung "catalog tables
  * carry SELECT policies only" soll gueltig bleiben.
  */
+/**
+ * Die Diskussion zu einem Film schliessen oder wieder oeffnen.
+ *
+ * Ein Ort, keine Aeusserung und keine Person: geschlossen kann niemand
+ * mehr schreiben, auch die Unbeteiligten nicht. Deshalb ist der Grund
+ * Pflicht — er steht danach auf der Filmseite.
+ */
+export async function lockThread(
+  wikidataId: string,
+  locked: boolean,
+  reason: string,
+): Promise<FilmAdminResult> {
+  const supabase = await createClient();
+  const { data: sitzung } = await supabase.auth.getSession();
+  const token = sitzung.session?.access_token;
+  if (!token) return { error: 'Melde dich an.' };
+
+  const basis = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+
+  let antwort: Response;
+  try {
+    antwort = await fetch(`${basis}/functions/v1/admin-film`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wikidataId, thread: { locked, reason } }),
+    });
+  } catch (e) {
+    console.error('admin-film unreachable:', e);
+    return { error: 'Die Funktion antwortet nicht.' };
+  }
+
+  const ergebnis = (await antwort.json()) as { error?: string };
+  if (!antwort.ok) {
+    const texte: Record<string, string> = {
+      forbidden: 'Das darfst du nicht.',
+      not_found: 'Diesen Film gibt es nicht.',
+      lock_reason_required: 'Schreib einen Grund. Er steht danach auf der Filmseite.',
+      lock_failed: 'Zu diesem Film gibt es noch keine Diskussion.',
+    };
+    return { error: texte[ergebnis.error ?? ''] ?? 'Das hat nicht geklappt.' };
+  }
+
+  revalidatePath(`/film/${wikidataId}`);
+  revalidatePath('/moderation');
+  return { message: locked ? 'Diskussion geschlossen' : 'Diskussion geöffnet' };
+}
+
 export async function saveFilm(
   wikidataId: string,
   changes: Record<string, string | number | null>,

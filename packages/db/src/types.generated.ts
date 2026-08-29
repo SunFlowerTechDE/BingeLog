@@ -89,6 +89,39 @@ export type Database = {
         }
         Relationships: []
       }
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diary_entries: {
         Row: {
           created_at: string
@@ -274,6 +307,9 @@ export type Database = {
           is_active: boolean
           is_locked: boolean
           last_activity_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          locked_reason: string | null
           message_count: number
           viewer_count: number
         }
@@ -282,6 +318,9 @@ export type Database = {
           is_active?: boolean
           is_locked?: boolean
           last_activity_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          locked_reason?: string | null
           message_count?: number
           viewer_count?: number
         }
@@ -290,6 +329,9 @@ export type Database = {
           is_active?: boolean
           is_locked?: boolean
           last_activity_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          locked_reason?: string | null
           message_count?: number
           viewer_count?: number
         }
@@ -300,6 +342,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "films"
             referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "film_threads_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -985,6 +1034,7 @@ export type Database = {
         }[]
       }
       are_friends: { Args: { a: string; b: string }; Returns: boolean }
+      blocks_me: { Args: { autor: string }; Returns: boolean }
       claim_lazy_creation: {
         Args: { per_minute?: number; search_term: string }
         Returns: boolean

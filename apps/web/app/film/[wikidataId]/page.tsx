@@ -561,7 +561,7 @@ async function DiscussionSection({
 
   const { data: thread } = await supabase
     .from('film_threads')
-    .select('message_count, viewer_count, is_active, is_locked')
+    .select('message_count, viewer_count, is_active, is_locked, locked_reason')
     .eq('film_id', filmId)
     .maybeSingle();
 
@@ -644,11 +644,22 @@ async function DiscussionSection({
   const eigenesBild = beitraege.find((b) => b.eigener)?.avatar_url ?? null;
 
   return rahmen(
-    <Discussion
-      filmId={filmId}
-      anfang={beitraege}
-      gesperrt={thread?.is_locked ?? false}
-      ich={{ username: viewer?.username ?? '', avatarUrl: eigenesBild }}
-    />,
+    <>
+      {/* Eine geschlossene Tuer mit Schild. Ohne den Grund wirkt eine
+          Sperre wie ein Fehler, und die Leute schreiben Support-Mails
+          statt zu verstehen. */}
+      {thread?.is_locked ? (
+        <p className="border-border text-muted-foreground max-w-prose rounded-md border border-dashed p-4 text-sm">
+          <span className="text-foreground font-medium">Diese Diskussion ist geschlossen.</span>{' '}
+          {thread.locked_reason ?? 'Lesen geht weiter, schreiben nicht.'}
+        </p>
+      ) : null}
+      <Discussion
+        filmId={filmId}
+        anfang={beitraege}
+        gesperrt={thread?.is_locked ?? false}
+        ich={{ username: viewer?.username ?? '', avatarUrl: eigenesBild }}
+      />
+    </>,
   );
 }

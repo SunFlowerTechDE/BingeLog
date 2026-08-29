@@ -11,6 +11,7 @@ import { Avatar, StatCard, Panel, Chip, Saeulen, Balken } from '@/components/pro
 import { Symbol } from '@/components/icons';
 import { ShareButton } from '@/components/share-button';
 import { ReportButton } from '@/components/report-button';
+import { BlockButton } from '@/components/block-button';
 
 /**
  * M4 4.2 — die oeffentliche Profilseite unter /@username.
@@ -85,6 +86,19 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const viewer = await getViewer();
   const eigenes = viewer?.id === profile.id;
+
+  // Habe ich diesen Menschen blockiert? Nur ich sehe das — die Policy
+  // auf `blocks` gibt niemandem sonst diese Zeile.
+  let blockiert = false;
+  if (viewer && !eigenes) {
+    const { data } = await supabase
+      .from('blocks')
+      .select('blocked_id')
+      .eq('blocker_id', viewer.id)
+      .eq('blocked_id', profile.id)
+      .maybeSingle();
+    blockiert = data !== null;
+  }
 
   // Wer folgt wem. Zwei Zeilen statt einer Freundschaftsabfrage, weil
   // die Seite beide Richtungen einzeln anzeigt: "du folgst" und "folgt
@@ -351,6 +365,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                   siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
                 />
               )}
+              {/* Blockieren braucht ein Konto: ohne eines gibt es kein
+                  "fuer mich", auf das es sich beziehen koennte. */}
+              {viewer && !eigenes ? (
+                <BlockButton username={profile.username} blockiert={blockiert} />
+              ) : null}
             </div>
 
             {eigenes ? (
