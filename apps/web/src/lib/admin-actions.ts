@@ -148,7 +148,10 @@ export async function actOnAccount(
       forbidden: 'Das darfst du nicht.',
       not_found: 'Kein Konto mit diesem Namen.',
       not_yourself: 'Am eigenen Konto greifst du hier nicht ein.',
-      bad_username: 'Der Name passt nicht: drei bis zwanzig Zeichen, a–z, 0–9 und _.',
+      bad_username:
+        'Der Name passt nicht: drei bis zwanzig Zeichen, nur Kleinbuchstaben, Ziffern und _.',
+      name_reserved: 'Dieser Name ist reserviert und kann nicht vergeben werden.',
+      name_taken: 'Diesen Namen hat schon jemand.',
       bad_email: 'Die Adresse sieht nicht wie eine Adresse aus.',
       reason_required: 'Schreib eine Begründung.',
       // Der eine Fall, der laut sein muss: der Eingriff ist passiert,

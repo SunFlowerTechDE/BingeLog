@@ -320,7 +320,7 @@ Deno.serve(async (request: Request) => {
   }
 
   // Schritt 3: Logbuch und Benachrichtigung.
-  const name = aktion === 'username_reset' ? wert : ziel.username;
+  const name = aktion === 'username_reset' ? wert.toLowerCase() : ziel.username;
   let benachrichtigt = false;
   if (zielMail !== '') {
     benachrichtigt = await benachrichtigen(zielMail, name, aktion, grund);

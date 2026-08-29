@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 
 import { createClient } from '@/lib/supabase/server';
+import { NAME_MUSTER, bereinigen, type Namenslage } from '@/lib/username';
 
 /**
  * M3 3.1 — sign-up, sign-in and choosing a username.
@@ -202,4 +203,33 @@ export async function resendConfirmation(
   }
 
   return { message: 'Die Mail ist unterwegs. Sieh auch im Spam-Ordner nach.' };
+}
+
+/**
+ * Ist dieser Name noch zu haben?
+ *
+ * Waehrend des Tippens gefragt, nicht erst beim Absenden. Einen Namen zu
+ * waehlen, ihn wegzuschicken und dann „schon vergeben" zu lesen, ist ein
+ * vermeidbarer Umweg — und beim Benutzernamen ein besonders aergerlicher,
+ * weil man sich einen ausgedacht hat.
+ *
+ * Die Antwort ist ein Hinweis, keine Zusage: zwischen Pruefung und
+ * Absenden kann jemand schneller sein. Die Eindeutigkeit steht in der
+ * Datenbank, hier steht nur die Hoeflichkeit.
+ */
+export async function checkUsername(eingabe: string): Promise<Namenslage> {
+  const name = bereinigen(eingabe);
+  if (name === '') return { lage: 'leer' };
+  if (!NAME_MUSTER.test(name)) return { lage: 'zu_kurz' };
+
+  const supabase = await createClient();
+
+  const [{ data: reserviert }, { data: vergeben }] = await Promise.all([
+    supabase.from('reserved_usernames').select('reason').eq('username', name).maybeSingle(),
+    supabase.from('profiles').select('username').eq('username', name).maybeSingle(),
+  ]);
+
+  if (reserviert) return { lage: 'reserviert', grund: reserviert.reason };
+  if (vergeben) return { lage: 'vergeben' };
+  return { lage: 'frei' };
 }

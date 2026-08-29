@@ -11,6 +11,7 @@ import {
 } from '@/lib/admin-actions';
 import { ActionNote } from '@/components/action-note';
 import { AdminTable, useListe, type Spalte } from '@/components/admin-table';
+import { UsernameField } from '@/components/username-field';
 import { Avatar } from '@/components/profile-parts';
 
 const EINGRIFFE = [
@@ -294,7 +295,19 @@ export function AccountTools({ avatarBasis }: { avatarBasis: string }) {
             <span className="text-muted-foreground text-xs">{gewaehlterEingriff?.hinweis}</span>
           </label>
 
-          {gewaehlterEingriff?.braucht ? (
+          {/* Beim Benutzernamen dasselbe Feld wie bei der Anmeldung:
+              es schreibt klein und prueft, ob der Name frei ist. Einen
+              reservierten oder vergebenen Namen zu setzen scheitert
+              sonst erst an der Datenbank, nachdem die Mail schon
+              geschrieben ist. */}
+          {eingriff === 'username_reset' ? (
+            <UsernameField
+              name="neuerName"
+              label="Neuer Benutzername"
+              startwert={wert}
+              onChange={setWert}
+            />
+          ) : gewaehlterEingriff?.braucht ? (
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">{gewaehlterEingriff.braucht}</span>
               <input
