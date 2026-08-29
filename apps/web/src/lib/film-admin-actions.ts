@@ -124,3 +124,41 @@ export async function saveFilm(
   revalidatePath('/moderation');
   return { message: 'Gespeichert' };
 }
+
+export interface Filmzeile {
+  wikidata_id: string;
+  title: string;
+  release_year: number | null;
+  runtime_min: number | null;
+  fsk: number | null;
+  poster_source: string | null;
+  poster_url: string | null;
+  entries: number;
+  ratings: number;
+  avg_rating: number | null;
+  manual: number;
+  edited_at: string | null;
+  gesamt: number;
+}
+
+/** Die Filmliste fuers Dashboard. Wie `listAccounts`. */
+export async function listFilms(
+  such: string,
+  sortieren: string,
+  absteigend: boolean,
+  seite: number,
+): Promise<Filmzeile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_films', {
+    such,
+    sortieren,
+    absteigend,
+    seite,
+  });
+
+  if (error) {
+    console.error('listFilms failed:', error.message);
+    return [];
+  }
+  return data;
+}

@@ -9,6 +9,53 @@ export interface AdminResult {
   message?: string;
 }
 
+export interface Kontozeile {
+  username: string;
+  display_name: string | null;
+  avatar_path: string | null;
+  created_at: string;
+  closed_at: string | null;
+  entries: number;
+  ratings: number;
+  reviews: number;
+  lists: number;
+  gesamt: number;
+}
+
+/**
+ * Die Kontoliste fuers Dashboard.
+ *
+ * Sortiert und geblaettert in der Datenbank, nicht hier: eine Sortierung
+ * ueber die gerade sichtbaren zwanzig sieht aus wie eine Sortierung und
+ * ist keine.
+ */
+export async function listAccounts(
+  such: string,
+  sortieren: string,
+  absteigend: boolean,
+  seite: number,
+): Promise<Kontozeile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_users', {
+    such,
+    sortieren,
+    absteigend,
+    seite,
+  });
+
+  if (error) {
+    console.error('listAccounts failed:', error.message);
+    return [];
+  }
+  return data;
+}
+
+/** Die oeffentliche Adresse eines Profilbildes. */
+export async function avatarBasis(): Promise<string> {
+  const supabase = await createClient();
+  return supabase.storage.from('avatars').getPublicUrl('').data.publicUrl;
+}
+
 export interface Kontotreffer {
   username: string;
   display_name: string | null;

@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import {
-  findFilm,
   loadFilm,
   saveFilm,
-  type FilmTreffer,
+  listFilms,
   type FilmDetails,
+  type Filmzeile,
 } from '@/lib/film-admin-actions';
 import { FSK_STUFEN, FskLabel } from '@/components/fsk';
 import { ActionNote } from '@/components/action-note';
+import { AdminTable, useListe, type Spalte } from '@/components/admin-table';
 
 const FELDER = [
   { name: 'title_de', label: 'Titel (deutsch)', art: 'text' },
@@ -30,9 +31,110 @@ const FELDER = [
  * loesen: wer einen Titel richtigstellt, will trotzdem die neue
  * Laufzeit aus der Quelle.
  */
+/**
+ * Die Filmliste.
+ *
+ * Voreingestellt nach Eintraegen absteigend: die Filme, die viele
+ * eingetragen haben, sind die, bei denen ein falscher Titel oder eine
+ * fehlende Freigabe am meisten Leute trifft.
+ *
+ * Die Spalte "von Hand" zaehlt die gesperrten Felder. Sie steht hier,
+ * weil man sonst nirgends sieht, welche Filme dem Import nicht mehr
+ * folgen.
+ */
+function Filmliste({ onWaehlen }: { onWaehlen: (id: string) => void }) {
+  const l = useListe<Filmzeile>(listFilms, 'entries');
+  // Erstes Laden im Effekt und nicht beim Rendern — siehe
+  // account-tools.tsx.
+  useEffect(() => {
+    l.holen('', 'entries', true, 1);
+  }, []); // bewusst einmalig: `holen` waere bei jedem Rendern neu
+
+  const spalten: Spalte<Filmzeile>[] = [
+    {
+      key: 'title',
+      label: 'Film',
+      zelle: (z) => (
+        <button
+          type="button"
+          onClick={() => {
+            onWaehlen(z.wikidata_id);
+          }}
+          className="flex items-center gap-3 text-left"
+        >
+          <img
+            src={
+              z.poster_source === 'tvdb' && z.poster_url ? z.poster_url : `/poster/${z.wikidata_id}`
+            }
+            alt=""
+            loading="lazy"
+            className="bg-card h-12 w-8 shrink-0 rounded object-cover"
+          />
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate font-medium">{z.title}</span>
+            <span className="text-muted-foreground text-xs">{z.wikidata_id}</span>
+          </span>
+        </button>
+      ),
+    },
+    { key: 'release_year', label: 'Jahr', zahl: true, zelle: (z) => z.release_year ?? '—' },
+    { key: 'fsk', label: 'FSK', zelle: (z) => <FskLabel wert={z.fsk} size="sm" /> },
+    { key: 'entries', label: 'Einträge', zahl: true, zelle: (z) => z.entries },
+    {
+      key: 'avg_rating',
+      label: 'Ø',
+      zahl: true,
+      // Intern 1–10, angezeigt 0,5–5,0. Umgerechnet wird erst hier.
+      zelle: (z) => (z.avg_rating === null ? '—' : (z.avg_rating / 2).toFixed(1).replace('.', ',')),
+    },
+    {
+      key: null,
+      label: 'von Hand',
+      zahl: true,
+      zelle: (z) =>
+        z.manual === 0 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <span className="border-primary text-primary rounded-full border px-2 py-0.5 text-xs">
+            {z.manual}
+          </span>
+        ),
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium">Film suchen</span>
+        <input
+          type="search"
+          defaultValue=""
+          onChange={(e) => {
+            l.suchen(e.target.value);
+          }}
+          placeholder="Titel eingeben"
+          autoComplete="off"
+          className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
+        />
+      </label>
+
+      <AdminTable
+        spalten={spalten}
+        zeilen={l.zeilen}
+        gesamt={l.zeilen[0]?.gesamt ?? 0}
+        seite={l.seite}
+        sortieren={l.sortieren}
+        absteigend={l.absteigend}
+        laedt={l.laedt}
+        onSortieren={l.umschalten}
+        onSeite={l.blaettern}
+        schluessel={(z) => z.wikidata_id}
+      />
+    </div>
+  );
+}
+
 export function FilmTools() {
-  const [term, setTerm] = useState('');
-  const [treffer, setTreffer] = useState<FilmTreffer[]>([]);
   const [film, setFilm] = useState<FilmDetails | null>(null);
   const [werte, setWerte] = useState<Record<string, string>>({});
   const [fsk, setFsk] = useState<string>('');
@@ -42,15 +144,6 @@ export function FilmTools() {
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [meldung, setMeldung] = useState<string | undefined>(undefined);
   const [laeuft, startTransition] = useTransition();
-
-  const suchen = (v: string) => {
-    setTerm(v);
-    if (v.trim().length < 2) {
-      setTreffer([]);
-      return;
-    }
-    void findFilm(v).then(setTreffer);
-  };
 
   const oeffnen = (id: string) => {
     void loadFilm(id).then((f) => {
@@ -115,45 +208,7 @@ export function FilmTools() {
   };
 
   if (!film) {
-    return (
-      <div className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Film suchen</span>
-          <input
-            type="search"
-            value={term}
-            onChange={(e) => {
-              suchen(e.target.value);
-            }}
-            placeholder="Titel eingeben"
-            autoComplete="off"
-            className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
-          />
-        </label>
-
-        <ul className="flex flex-col gap-1">
-          {treffer.map((t) => (
-            <li key={t.wikidata_id}>
-              <button
-                type="button"
-                onClick={() => {
-                  oeffnen(t.wikidata_id);
-                }}
-                className="hover:bg-card flex w-full items-center gap-3 rounded-md p-2 text-left"
-              >
-                <FskLabel wert={t.fsk} size="sm" />
-                <span className="min-w-0 flex-1 truncate text-sm">
-                  {t.title_de ?? t.title_original}
-                </span>
-                <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-                  {t.release_year ?? '—'}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
+    return <Filmliste onWaehlen={oeffnen} />;
   }
 
   const gesperrt = (name: string) =>
@@ -169,8 +224,6 @@ export function FilmTools() {
           type="button"
           onClick={() => {
             setFilm(null);
-            setTerm('');
-            setTreffer([]);
           }}
           className="text-muted-foreground hover:text-foreground ml-auto text-sm underline underline-offset-4"
         >

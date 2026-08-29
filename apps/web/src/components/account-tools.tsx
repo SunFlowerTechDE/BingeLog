@@ -1,9 +1,17 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
-import { findAccount, actOnAccount, type Kontotreffer } from '@/lib/admin-actions';
+import {
+  findAccount,
+  actOnAccount,
+  listAccounts,
+  type Kontotreffer,
+  type Kontozeile,
+} from '@/lib/admin-actions';
 import { ActionNote } from '@/components/action-note';
+import { AdminTable, useListe, type Spalte } from '@/components/admin-table';
+import { Avatar } from '@/components/profile-parts';
 
 const EINGRIFFE = [
   {
@@ -94,9 +102,121 @@ const BAUSTEINE: Record<string, string[]> = {
  * Nutzer, und was man aufschreiben muss, bevor man handelt, ueberlegt
  * man sich zweimal.
  */
-export function AccountTools() {
-  const [term, setTerm] = useState('');
-  const [treffer, setTreffer] = useState<Kontotreffer[]>([]);
+/** Datum ohne Uhrzeit — bei einem Beitritt zaehlt die Minute nicht. */
+function tag(wert: string): string {
+  return new Date(wert).toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Die Kontoliste.
+ *
+ * Zwanzig je Seite, jede Spalte sortierbar, Suche daneben. Die
+ * Schnellinfo ist bewusst knapp: Bild, Name, wieviel eingetragen und
+ * wieviel geschrieben. Das reicht, um zu sehen, mit wem man es zu tun
+ * hat, bevor man in ein Konto greift.
+ */
+function Kontoliste({
+  avatarBasis,
+  onWaehlen,
+}: {
+  avatarBasis: string;
+  onWaehlen: (username: string) => void;
+}) {
+  const l = useListe<Kontozeile>(listAccounts, 'created_at');
+  // Erstes Laden im Effekt und nicht beim Rendern: waehrend des
+  // Renderns Zustand zu setzen ist nicht erlaubt, und der Server warf
+  // dafuer eine 500 mit leerer Seite. Die Liste haengt an nichts, was
+  // sich aendert — deshalb genau einmal.
+  useEffect(() => {
+    l.holen('', 'created_at', true, 1);
+  }, []); // bewusst einmalig: `holen` waere bei jedem Rendern neu
+
+  const spalten: Spalte<Kontozeile>[] = [
+    {
+      key: 'username',
+      label: 'Konto',
+      zelle: (z) => (
+        <button
+          type="button"
+          onClick={() => {
+            onWaehlen(z.username);
+          }}
+          className="flex items-center gap-3 text-left"
+        >
+          {z.avatar_path ? (
+            <img
+              src={`${avatarBasis}${z.avatar_path}`}
+              alt=""
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <Avatar name={z.username} size={32} />
+          )}
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate font-medium">@{z.username}</span>
+            {z.display_name ? (
+              <span className="text-muted-foreground truncate text-xs">{z.display_name}</span>
+            ) : null}
+          </span>
+        </button>
+      ),
+    },
+    { key: 'entries', label: 'Einträge', zahl: true, zelle: (z) => z.entries },
+    { key: 'ratings', label: 'Bewertungen', zahl: true, zelle: (z) => z.ratings },
+    { key: 'reviews', label: 'Rezensionen', zahl: true, zelle: (z) => z.reviews },
+    { key: 'lists', label: 'Listen', zahl: true, zelle: (z) => z.lists },
+    { key: 'created_at', label: 'Dabei seit', zahl: true, zelle: (z) => tag(z.created_at) },
+    {
+      key: 'closed_at',
+      label: 'Zustand',
+      zelle: (z) =>
+        z.closed_at ? (
+          <span className="border-destructive text-destructive rounded-full border px-2 py-0.5 text-xs">
+            geschlossen
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-xs">offen</span>
+        ),
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium">Konto suchen</span>
+        <input
+          type="search"
+          defaultValue=""
+          onChange={(e) => {
+            l.suchen(e.target.value);
+          }}
+          placeholder="Benutzername oder angezeigter Name"
+          autoComplete="off"
+          className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
+        />
+      </label>
+
+      <AdminTable
+        spalten={spalten}
+        zeilen={l.zeilen}
+        gesamt={l.zeilen[0]?.gesamt ?? 0}
+        seite={l.seite}
+        sortieren={l.sortieren}
+        absteigend={l.absteigend}
+        laedt={l.laedt}
+        onSortieren={l.umschalten}
+        onSeite={l.blaettern}
+        schluessel={(z) => z.username}
+      />
+    </div>
+  );
+}
+
+export function AccountTools({ avatarBasis }: { avatarBasis: string }) {
   const [gewaehlt, setGewaehlt] = useState<Kontotreffer | null>(null);
   const [eingriff, setEingriff] = useState<(typeof EINGRIFFE)[number]['wert']>('note');
   const [wert, setWert] = useState('');
@@ -106,15 +226,6 @@ export function AccountTools() {
   const [laeuft, startTransition] = useTransition();
 
   const gewaehlterEingriff = EINGRIFFE.find((e) => e.wert === eingriff);
-
-  const suchen = (v: string) => {
-    setTerm(v);
-    if (v.trim().length < 2) {
-      setTreffer([]);
-      return;
-    }
-    void findAccount(v).then(setTreffer);
-  };
 
   const ausfuehren = () => {
     if (!gewaehlt) return;
@@ -128,8 +239,6 @@ export function AccountTools() {
         setGrund('');
         setWert('');
         setGewaehlt(null);
-        setTerm('');
-        setTreffer([]);
       }
     });
   };
@@ -137,48 +246,15 @@ export function AccountTools() {
   return (
     <div className="flex flex-col gap-4">
       {gewaehlt === null ? (
-        <>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Konto suchen</span>
-            <input
-              type="search"
-              value={term}
-              onChange={(e) => {
-                suchen(e.target.value);
-              }}
-              placeholder="Benutzername"
-              autoComplete="off"
-              className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
-            />
-          </label>
-
-          <ul className="flex flex-col gap-1">
-            {treffer.map((t) => (
-              <li key={t.username}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGewaehlt(t);
-                  }}
-                  className="hover:bg-card flex w-full items-center gap-3 rounded-md p-2 text-left"
-                >
-                  <span className="text-sm font-medium">@{t.username}</span>
-                  {t.display_name ? (
-                    <span className="text-muted-foreground text-xs">{t.display_name}</span>
-                  ) : null}
-                  <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                    {t.eintraege} Einträge
-                  </span>
-                  {t.closed_at ? (
-                    <span className="border-destructive text-destructive rounded-full border px-2 py-0.5 text-xs">
-                      geschlossen
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
+        <Kontoliste
+          avatarBasis={avatarBasis}
+          onWaehlen={(username) => {
+            void findAccount(username).then((t) => {
+              const genau = t.find((x) => x.username === username);
+              if (genau) setGewaehlt(genau);
+            });
+          }}
+        />
       ) : (
         <div className="border-border bg-card/40 flex flex-col gap-4 rounded-lg border p-5">
           <div className="flex flex-wrap items-center gap-3">

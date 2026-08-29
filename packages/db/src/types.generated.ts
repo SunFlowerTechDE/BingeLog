@@ -924,6 +924,29 @@ export type Database = {
       }
     }
     Functions: {
+      admin_films: {
+        Args: {
+          absteigend?: boolean
+          seite?: number
+          sortieren?: string
+          such?: string
+        }
+        Returns: {
+          avg_rating: number
+          edited_at: string
+          entries: number
+          fsk: number
+          gesamt: number
+          manual: number
+          poster_source: string
+          poster_url: string
+          ratings: number
+          release_year: number
+          runtime_min: number
+          title: string
+          wikidata_id: string
+        }[]
+      }
       admin_overview: {
         Args: never
         Returns: {
@@ -939,6 +962,26 @@ export type Database = {
           open_reports: number
           open_threads: number
           reviews: number
+        }[]
+      }
+      admin_users: {
+        Args: {
+          absteigend?: boolean
+          seite?: number
+          sortieren?: string
+          such?: string
+        }
+        Returns: {
+          avatar_path: string
+          closed_at: string
+          created_at: string
+          display_name: string
+          entries: number
+          gesamt: number
+          lists: number
+          ratings: number
+          reviews: number
+          username: string
         }[]
       }
       are_friends: { Args: { a: string; b: string }; Returns: boolean }

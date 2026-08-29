@@ -54,6 +54,8 @@ export default async function ModerationPage() {
 
   // Das Logbuch. Neueste zuerst — hier sucht man, was gerade passiert
   // ist, nicht was am Anfang war.
+  const avatarBasis = supabase.storage.from('avatars').getPublicUrl('').data.publicUrl;
+
   const { data: logbuch } = await supabase
     .from('account_actions')
     .select('id, target_name, actor_name, action, reason, details, notified, created_at')
@@ -138,7 +140,7 @@ export default async function ModerationPage() {
             Eingriffe in fremde Konten. Jeder wird protokolliert und dem Nutzer gemailt.
           </p>
         </div>
-        <AccountTools />
+        <AccountTools avatarBasis={avatarBasis} />
       </section>
 
       <section className="border-border flex flex-col gap-4 border-t pt-8">
