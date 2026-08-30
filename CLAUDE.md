@@ -99,8 +99,13 @@ Moderations-Dashboard stehen.
 Laufend ist M5, die iOS-App unter `apps/ios`. Projektaufbau (5.1) und
 Architektur (5.2) stehen: Xcode-Projekt mit synchronisierten Ordnern,
 Supabase-SDK über SPM, Konfiguration in `Config/*.xcconfig`,
-Repository-Schicht, `@Observable`, typisierte Fehler. Anmelden und
-Filmsuche laufen im Simulator.
+Repository-Schicht, `@Observable`, typisierte Fehler. Anmelden,
+Registrieren, Namenswahl und Filmsuche laufen — geprüft im Simulator und
+auf einem echten iPhone.
+
+Die Bestätigung per Mail führt in den Browser, nicht zurück in die App:
+beim Registrieren entsteht noch keine Sitzung. Ein Deep-Link zurück ist
+ein eigener Punkt (5.7).
 
 Vor dem Bauen für iOS:
 

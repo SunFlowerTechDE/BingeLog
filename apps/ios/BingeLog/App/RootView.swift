@@ -10,10 +10,16 @@ struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     let films: FilmRepository
+    let profiles: ProfileRepository
 
     var body: some View {
         if session.isLoading {
             ProgressView()
+        } else if session.needsUsername {
+            // Angemeldet, aber ohne Profil. Hier die Anmeldung zu zeigen
+            // ergäbe eine App, die angemeldet ist und abgemeldet
+            // aussieht.
+            UsernameView(profiles: profiles)
         } else if session.isSignedIn {
             if sizeClass == .compact {
                 CompactShell(films: films)

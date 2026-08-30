@@ -12,12 +12,19 @@ struct BingeLogApp: App {
 
     init() {
         let backend = Backend.live
-        _session = State(initialValue: SessionStore(auth: LiveAuthRepository(backend: backend)))
+        _session = State(
+            initialValue: SessionStore(
+                auth: LiveAuthRepository(backend: backend),
+                profiles: LiveProfileRepository(backend: backend)
+            ))
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(films: LiveFilmRepository(backend: backend))
+            RootView(
+                films: LiveFilmRepository(backend: backend),
+                profiles: LiveProfileRepository(backend: backend)
+            )
                 .environment(session)
                 .task { await session.restore() }
         }

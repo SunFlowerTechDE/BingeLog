@@ -76,6 +76,37 @@ struct ModelTests {
     }
 }
 
+/// Die Regeln für Benutzernamen.
+///
+/// Dieselben wie im Web, und dieselben Testfälle: der Name ist die
+/// Adresse eines Profils, und zwei Clients, die ihn verschieden
+/// säubern, ergeben zwei Nutzer, die sich für denselben halten.
+@Suite("Benutzernamen")
+struct UsernameTests {
+    @Test("Großbuchstaben werden klein, Unerlaubtes fällt weg")
+    func sanitises() {
+        #expect(Username.sanitise("BingeLog") == "bingelog")
+        #expect(Username.sanitise("Bing eLog! ÄÖÜ") == "bing_elog_")
+        #expect(Username.sanitise("  kevin  ") == "_kevin_")
+    }
+
+    @Test("Nie länger als zwanzig Zeichen")
+    func trimsToTwenty() {
+        let long = String(repeating: "a", count: 40)
+        #expect(Username.sanitise(long).count == 20)
+    }
+
+    @Test("Das Muster nimmt an, was es soll")
+    func matchesPattern() {
+        for good in ["abc", "kvn_undso", "a1_2"] {
+            #expect((try? Username.pattern.wholeMatch(in: good)) != nil, "\(good) sollte passen")
+        }
+        for bad in ["ab", "Abc", "mit-strich", String(repeating: "a", count: 21)] {
+            #expect((try? Username.pattern.wholeMatch(in: bad)) == nil, "\(bad) sollte nicht passen")
+        }
+    }
+}
+
 /// Läuft gegen das echte Backend.
 ///
 /// Kein Ersatz für die Tests oben, sondern die Antwort auf eine andere
@@ -89,6 +120,17 @@ struct ModelTests {
     .disabled(if: ProcessInfo.processInfo.environment["LIVE_BACKEND"] == nil)
 )
 struct LiveBackendTests {
+    @Test("Reservierte und vergebene Namen werden erkannt")
+    func checksNames() async throws {
+        let profiles = LiveProfileRepository(backend: .live)
+
+        // `bingelog` steht in `reserved_usernames` mit dem Grund
+        // „brand", `kvn_undso` ist ein echtes Profil.
+        #expect(await profiles.availability(of: "BingeLog") == .reserved)
+        #expect(await profiles.availability(of: "kvn_undso") == .taken)
+        #expect(await profiles.availability(of: "ab") == .tooShort)
+    }
+
     @Test("Die Suche findet Solaris, mit Tippfehler")
     func searchesThroughToPostgres() async throws {
         let repository = LiveFilmRepository(backend: .live)

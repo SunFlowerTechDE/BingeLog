@@ -7,6 +7,7 @@ struct SignInView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isWorking = false
+    @State private var showsRegistration = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -51,8 +52,21 @@ struct SignInView: View {
             .buttonStyle(.borderedProminent)
             .disabled(isWorking || email.isEmpty || password.isEmpty)
 
+            HStack(spacing: 4) {
+                Text("Noch kein Konto?")
+                    .foregroundStyle(.secondary)
+                Button("Registrieren") {
+                    session.problem = nil
+                    showsRegistration = true
+                }
+            }
+            .font(.footnote)
+
             Spacer()
         }
         .padding(24)
+        .sheet(isPresented: $showsRegistration) {
+            RegisterView()
+        }
     }
 }

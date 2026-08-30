@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		974934323044BBED00E3768C /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = AA01000000000000000021 /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,12 +28,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		AA01000000000000000001 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Shared.xcconfig; path = Config/Shared.xcconfig; sourceTree = "<group>"; };
-		AA01000000000000000002 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Config/Debug.xcconfig; sourceTree = "<group>"; };
-		AA01000000000000000003 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Config/Release.xcconfig; sourceTree = "<group>"; };
 		9712A53F303F08ED00BAE3D2 /* BingeLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BingeLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9712A54C303F08EF00BAE3D2 /* BingeLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BingeLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9712A556303F08EF00BAE3D2 /* BingeLogUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BingeLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA01000000000000000002 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Config/Debug.xcconfig; sourceTree = "<group>"; };
+		AA01000000000000000003 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Config/Release.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -58,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				974934323044BBED00E3768C /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,16 +79,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		AA01000000000000000010 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				AA01000000000000000001 /* Shared.xcconfig */,
-				AA01000000000000000002 /* Debug.xcconfig */,
-				AA01000000000000000003 /* Release.xcconfig */,
-			);
-			name = Config;
-			sourceTree = "<group>";
-		};
 		9712A536303F08ED00BAE3D2 = {
 			isa = PBXGroup;
 			children = (
@@ -95,6 +86,7 @@
 				9712A54F303F08EF00BAE3D2 /* BingeLogTests */,
 				9712A559303F08EF00BAE3D2 /* BingeLogUITests */,
 				9712A540303F08ED00BAE3D2 /* Products */,
+				974934333044BBED00E3768C /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -106,6 +98,15 @@
 				9712A556303F08EF00BAE3D2 /* BingeLogUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		974934333044BBED00E3768C /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				AA01000000000000000002 /* Debug.xcconfig */,
+				AA01000000000000000003 /* Release.xcconfig */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -212,11 +213,11 @@
 			);
 			mainGroup = 9712A536303F08ED00BAE3D2;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = 9712A540303F08ED00BAE3D2 /* Products */;
 			packageReferences = (
 				AA01000000000000000020 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9712A540303F08ED00BAE3D2 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -287,25 +288,6 @@
 			targetProxy = 9712A557303F08EF00BAE3D2 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		AA01000000000000000020 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/supabase/supabase-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		AA01000000000000000021 /* Supabase */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AA01000000000000000020 /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Supabase;
-		};
-/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		9712A55E303F08EF00BAE3D2 /* Debug */ = {
@@ -599,6 +581,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AA01000000000000000020 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA01000000000000000021 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA01000000000000000020 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9712A537303F08ED00BAE3D2 /* Project object */;
 }
