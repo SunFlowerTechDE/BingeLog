@@ -64,7 +64,7 @@ struct BingeLogApp: App {
 
         // Die Auswahl für **das nächste Mal** ziehen. Diesmal steht
         // schon da, was der letzte Start hinterlassen hat.
-        async let next: [Film] = repository.shuffledWithArtwork(count: 30)
+        async let next: [Film] = repository.shuffledWithArtwork(count: 50)
 
         try? await Task.sleep(for: .seconds(3))
         await restored

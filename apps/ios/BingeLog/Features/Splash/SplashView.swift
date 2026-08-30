@@ -16,7 +16,13 @@ struct SplashView: View {
     let films: [Film]
 
     /// Wie weit eine Reihe in den drei Sekunden wandert.
-    private let travel: CGFloat = 60
+    ///
+    /// 130 Punkte statt der 60 vom ersten Versuch. Bei 60 bewegte sich
+    /// zwar alles, aber so langsam, dass man es nicht als Fahrt sah —
+    /// was auffiel, war das Erscheinen einzelner Plakate beim Laden.
+    /// Eine Reihe muss sich sichtbar als Reihe bewegen, sonst ist es
+    /// keine.
+    private let travel: CGFloat = 130
     private let posterWidth: CGFloat = 104
     private let spacing: CGFloat = 8
     private let rowCount = 5
@@ -97,10 +103,21 @@ private struct PosterRow: View {
             ForEach(films) { film in
                 AsyncImage(
                     url: film.posterAddress(webBase: URL(string: "https://bingelog.eu")!)
-                ) { image in
-                    image.resizable().aspectRatio(2 / 3, contentMode: .fill)
-                } placeholder: {
-                    Rectangle().fill(Theme.card)
+                ) { phase in
+                    // Eingeblendet statt hineingesprungen. Sonst
+                    // erscheint jedes Plakat für sich, sobald es geladen
+                    // ist, und der Eindruck ist ein Aufpoppen einzelner
+                    // Bilder statt einer fahrenden Reihe.
+                    ZStack {
+                        Theme.card
+                        if let image = phase.image {
+                            image
+                                .resizable()
+                                .aspectRatio(2 / 3, contentMode: .fill)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(.easeIn(duration: 0.45), value: phase.image != nil)
                 }
                 .frame(width: width, height: width * 1.5)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
