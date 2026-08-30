@@ -133,6 +133,43 @@ struct SplashTests {
         #expect(SplashView.offset(forRow: 0, travel: travel, hasStarted: true) < 0)
         #expect(SplashView.offset(forRow: 1, travel: travel, hasStarted: true) > 0)
     }
+
+    /// Die Wand deckt den Bildschirm — auch am äußersten Punkt der Fahrt.
+    ///
+    /// Das ist die Zusicherung, die bei fester Plakatbreite auf dem iPad
+    /// gebrochen war: dort blieb ein schwarzer Rand, und beim Fahren
+    /// schob er sich ins Bild.
+    @Test("Die Plakatwand deckt jeden Bildschirm, auch beim Fahren")
+    func wallCoversTheScreen() {
+        let spacing: CGFloat = 8
+        let travel: CGFloat = 240
+        let rowCount = 5
+        let perRow = 10
+
+        let screens: [CGSize] = [
+            CGSize(width: 402, height: 874),  // iPhone 17
+            CGSize(width: 375, height: 812),  // das schmalste noch unterstützte
+            CGSize(width: 1024, height: 1366),  // iPad hoch
+            CGSize(width: 1366, height: 1024),  // iPad quer
+        ]
+
+        for screen in screens {
+            let width = SplashView.posterWidth(
+                in: screen, rowCount: rowCount, perRow: perRow,
+                spacing: spacing, travel: travel)
+
+            let rowWidth = CGFloat(perRow) * width + CGFloat(perRow - 1) * spacing
+            let overhang = (rowWidth - screen.width) / 2
+            #expect(
+                overhang >= travel,
+                "\(screen): der Überstand \(overhang) trägt die Fahrt von \(travel) nicht")
+
+            let wallHeight = CGFloat(rowCount) * width * 1.5 + CGFloat(rowCount - 1) * spacing
+            #expect(
+                wallHeight >= screen.height,
+                "\(screen): die Wand ist mit \(wallHeight) nicht hoch genug")
+        }
+    }
 }
 
 /// Läuft gegen das echte Backend.

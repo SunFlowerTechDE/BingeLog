@@ -119,6 +119,30 @@ und gehen an niemanden. `Caches` ist nicht in der Sicherung und jederzeit
 vom System räumbar. Ein serverseitiger Cache-Proxy bleibt die offene
 Frage, die das Lizenzpapier benennt — dieser hier ist keiner.
 
+Das Ein- und Ausblenden läuft in drei Stufen, und der dunkle Grund
+liegt über die ganze Zeit: erst kommen Plakate und Logo aus dem Schwarz
+(0,9 s), dann ziehen die Reihen, dann gehen Plakate und Logo ins Schwarz
+zurück (0,7 s) — und **erst danach** hebt sich der Grund und gibt die App
+frei (0,55 s). Blendete stattdessen der ganze Bildschirm auf einmal aus,
+lägen die halbdurchsichtigen Plakate eine halbe Sekunde über der App
+darunter. Der Aufrufer setzt nur `isLeaving` und wartet
+`SplashView.exitDuration` ab, bevor er die Ansicht entfernt.
+
+Damit im allerersten Bild kein Farbsprung steht, hat der Startbildschirm
+des Systems dieselbe Farbe: `UILaunchScreen` in `Config/Info.plist` zeigt
+auf das Farbfeld `LaunchBackground` (0C0D10, wie `Theme.background`).
+`INFOPLIST_KEY_UILaunchScreen_Generation` ist dafür aus dem pbxproj
+entfernt — der erzeugte Eintrag nahm `systemBackground`, im Dunkeln reines
+Schwarz.
+
+Die Plakatbreite ist nicht fest, sondern rechnet sich aus der
+Bildschirmgröße (`SplashView.posterWidth`). Bei fester Breite blieb auf
+dem iPad an allen vier Seiten ein Rand, und beim Fahren schob sich der
+seitliche ins Bild. Die Zahl der Plakate kann nicht wachsen — mehr gibt
+es nicht, ohne dass sich eines wiederholt —, also wächst ihre Größe.
+`SplashTests/wallCoversTheScreen()` prüft das für vier Formate, jeweils
+am äußersten Punkt der Fahrt.
+
 Die Richtung der Reihen ist durch `SplashTests/rowsAlternate()` gedeckt,
 nicht durch Messung. Ein früherer Versuch, sie über zwei Screenshots zu
 belegen, war ungültig: die Bilder luden zwischen den Aufnahmen noch, und

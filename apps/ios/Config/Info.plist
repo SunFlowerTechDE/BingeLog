@@ -14,6 +14,18 @@
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 
+	<!-- Der Startbildschirm des Systems, den iOS zeigt, bevor die App
+	     laeuft. Genau die Farbe von `Theme.background`: darauf blendet
+	     `SplashView` seine Plakate auf, und ein Farbsprung im ersten
+	     Bild waere als Blitzer sichtbar. Ohne diesen Eintrag erzeugt
+	     Xcode einen leeren, der `systemBackground` nimmt — im Dunkeln
+	     reines Schwarz, also fuenf Prozent daneben. -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
+
 	<!-- Dunkel als Voreinstellung, wie im Web. Dass Light Mode
 	     ordentlich unterstuetzt wird (M5 5.4), steht noch aus — dann
 	     faellt dieser Eintrag wieder weg. Bis dahin ist ein

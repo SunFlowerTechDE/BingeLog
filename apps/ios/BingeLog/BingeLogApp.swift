@@ -18,6 +18,11 @@ struct BingeLogApp: App {
     /// zurückkommt, will weiterarbeiten und keine Vorstellung sehen.
     @State private var isStarting = true
 
+    /// Das Zeichen zum Abgang. Der Startbildschirm blendet daraufhin
+    /// selbst aus — erst seinen Inhalt, dann seinen Grund —, und erst
+    /// wenn er damit durch ist, wird er entfernt.
+    @State private var splashIsLeaving = false
+
     /// Beim Bauen schon gefüllt, und zwar mit fertigen Bildern von der
     /// Platte — die Auswahl stammt vom letzten Start
     /// (`SplashFilmStore`, `SplashPosterCache`). Nichts wird während
@@ -43,8 +48,7 @@ struct BingeLogApp: App {
                 .environment(session)
 
                 if isStarting {
-                    SplashView(posters: splashPosters)
-                        .transition(.opacity)
+                    SplashView(posters: splashPosters, isLeaving: splashIsLeaving)
                 }
             }
             .task { await start() }
@@ -70,7 +74,14 @@ struct BingeLogApp: App {
 
         try? await Task.sleep(for: .seconds(3))
         await restored
-        withAnimation(.easeInOut(duration: 0.5)) { isStarting = false }
+
+        // Ausblenden und dann erst entfernen. Andersherum — entfernen
+        // und das Ausblenden einer Transition überlassen — lägen die
+        // halbdurchsichtigen Plakate eine halbe Sekunde über der App
+        // darunter. So sieht man nie zwei Bilder gleichzeitig.
+        splashIsLeaving = true
+        try? await Task.sleep(for: .seconds(SplashView.exitDuration))
+        isStarting = false
 
         // Erst danach die Bilder holen. Fünfzig Plakate herunterzuladen
         // dauert länger als der Startbildschirm steht — das gehört
