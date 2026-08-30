@@ -35,8 +35,28 @@ final class SessionStore {
 
     func restore() async {
         userID = await auth.currentUserID()
-        if userID != nil { username = await profiles.currentUsername() }
+        if userID != nil {
+            username = await profiles.currentUsername()
+            if username == nil { await claimPendingUsername() }
+        }
         isLoading = false
+    }
+
+    /// Den bei der Registrierung gewünschten Namen einlösen.
+    ///
+    /// Beim Registrieren gibt es noch keine Sitzung, also auch kein
+    /// Profil. Der Name liegt bis dahin in den Metadaten des Kontos und
+    /// wird beim ersten Anmelden angelegt.
+    ///
+    /// **Schlägt es fehl, ist das kein Fehler**, sondern der Fall, dass
+    /// sich in der Zwischenzeit jemand denselben Namen genommen hat.
+    /// Dann greift die Namenswahl, und der Nutzer sucht sich einen
+    /// anderen — statt eine Meldung zu lesen, mit der er nichts anfangen
+    /// kann.
+    private func claimPendingUsername() async {
+        guard let wanted = await auth.pendingUsername() else { return }
+        try? await profiles.chooseUsername(wanted)
+        username = await profiles.currentUsername()
     }
 
     func signIn(email: String, password: String) async {
@@ -44,7 +64,10 @@ final class SessionStore {
         do {
             try await auth.signIn(email: email, password: password)
             userID = await auth.currentUserID()
-            if userID != nil { username = await profiles.currentUsername() }
+            if userID != nil {
+                username = await profiles.currentUsername()
+                if username == nil { await claimPendingUsername() }
+            }
         } catch {
             // Siehe SearchViewModel: durch das Protokoll gerufen kommt
             // der Fehler untypisiert an.
@@ -52,14 +75,16 @@ final class SessionStore {
         }
     }
 
-    func signUp(email: String, password: String) async {
+    func signUp(email: String, password: String, username wanted: String) async {
         problem = nil
         do {
-            let needsConfirmation = try await auth.signUp(email: email, password: password)
+            let needsConfirmation = try await auth.signUp(
+                email: email, password: password, username: wanted)
             awaitingConfirmation = needsConfirmation
             if !needsConfirmation {
                 userID = await auth.currentUserID()
                 username = await profiles.currentUsername()
+                if username == nil { await claimPendingUsername() }
             }
         } catch {
             problem = BackendError.from(error).message

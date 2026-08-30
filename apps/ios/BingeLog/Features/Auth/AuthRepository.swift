@@ -9,7 +9,10 @@ protocol AuthRepository: Sendable {
     func currentUserID() async -> UUID?
     func signIn(email: String, password: String) async throws(BackendError)
     /// Gibt zurück, ob die Adresse noch bestätigt werden muss.
-    func signUp(email: String, password: String) async throws(BackendError) -> Bool
+    func signUp(email: String, password: String, username: String) async throws(BackendError)
+        -> Bool
+    /// Der bei der Registrierung gewünschte Name, aus den Metadaten.
+    func pendingUsername() async -> String?
     func sendPasswordReset(to email: String) async throws(BackendError)
     func signOut() async
 }
@@ -36,13 +39,32 @@ struct LiveAuthRepository: AuthRepository {
     /// bestätigt im Browser und meldet sich danach hier an. Ein
     /// Deep-Link zurück in die App wäre schöner und ist ein eigener
     /// Schritt (M5 5.7).
-    func signUp(email: String, password: String) async throws(BackendError) -> Bool {
+    func signUp(email: String, password: String, username: String) async throws(BackendError)
+        -> Bool
+    {
         do {
-            let response = try await backend.client.auth.signUp(email: email, password: password)
+            // Der Name geht als Metadatum mit.
+            //
+            // Anlegen lässt er sich hier noch nicht: `profiles` verlangt
+            // `auth.uid()`, und bei eingeschalteter Bestätigung gibt es
+            // noch keine Sitzung. Also merken und beim ersten Anmelden
+            // einlösen — siehe `SessionStore.claimPendingUsername`.
+            let response = try await backend.client.auth.signUp(
+                email: email,
+                password: password,
+                data: ["username": .string(username)]
+            )
             return response.session == nil
         } catch {
             throw BackendError.from(error)
         }
+    }
+
+    func pendingUsername() async -> String? {
+        guard let metadata = try? await backend.client.auth.session.user.userMetadata,
+            case .string(let name)? = metadata["username"]
+        else { return nil }
+        return name
     }
 
     /// Die Zurücksetz-Mail auslösen.

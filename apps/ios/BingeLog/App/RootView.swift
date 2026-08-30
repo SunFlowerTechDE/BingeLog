@@ -27,7 +27,7 @@ struct RootView: View {
                 RegularShell(films: films)
             }
         } else {
-            SignInView(films: films)
+            SignInView(films: films, profiles: profiles)
         }
     }
 }

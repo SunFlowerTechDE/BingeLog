@@ -14,6 +14,7 @@ struct SignInView: View {
     @Environment(SessionStore.self) private var session
 
     let films: FilmRepository
+    let profiles: ProfileRepository
 
     @State private var email = ""
     @State private var password = ""
@@ -107,7 +108,7 @@ struct SignInView: View {
             // Bildschirm steht trotzdem.
             wall = await films.wellKnownWithArtwork(limit: 12)
         }
-        .sheet(isPresented: $showsRegistration) { RegisterView() }
+        .sheet(isPresented: $showsRegistration) { RegisterView(films: films, profiles: profiles) }
         .sheet(isPresented: $showsReset) { PasswordResetView(email: email) }
     }
 }

@@ -107,8 +107,20 @@ Die Bestätigung per Mail führt in den Browser, nicht zurück in die App:
 beim Registrieren entsteht noch keine Sitzung. Ein Deep-Link zurück ist
 ein eigener Punkt (5.7).
 
-Der Anmeldebildschirm folgt dem Entwurf vom 30.08.2026: Plakatwand,
-Schriftzug, Felder mit Symbolen, Passwort aufdecken, Passwort vergessen.
+Anmelden und Registrieren folgen den Entwürfen vom 30.08.2026:
+Plakatwand, Schriftzug, Felder mit Symbolen, Passwort aufdecken,
+Passwort vergessen, Passwort wiederholen, Zustimmung als Häkchen.
+
+Der Benutzername steht **in** der Registrierung, nicht in einem zweiten
+Schritt. Gespeichert wird er erst beim ersten Anmelden: bei
+eingeschalteter Mailbestätigung gibt es beim Registrieren noch keine
+Sitzung, und `profiles` verlangt eine. Bis dahin liegt er in den
+Metadaten des Kontos. Ist er inzwischen vergeben, greift die
+Namenswahl — der einzige Fall, in dem sie noch gebraucht wird.
+
+**Datenschutzerklärung und Nutzungsbedingungen sind noch keine Links**,
+weil es beide Dokumente nicht gibt (M6). Ohne sie nimmt Apple die App
+nicht an.
 **Ohne Apple- und Google-Anmeldung** — beide brauchen Konten außerhalb
 des Repos, und Apple verlangt „Sign in with Apple", sobald es Google
 gibt. Also entweder beide oder keins (`docs/betrieb/ios-projekt.md`).
