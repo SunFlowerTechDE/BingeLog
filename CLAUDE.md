@@ -31,8 +31,13 @@ diskutiert. Läuft eine Umsetzung gegen eine ADR, ist die Umsetzung falsch.
 
 ## Konventionen
 
-- Code, Bezeichner, Kommentare, Commits: **Englisch**
-- UI-Texte: **Deutsch**, geduzt, knapp, keine Ausrufezeichen
+- UI-Texte: **Deutsch**, geduzt, knapp, keine Ausrufezeichen. Das ist
+  die Sprachregel, an der etwas hängt — sie liest der Nutzer.
+- Bezeichner und Kommentare: frei, aber innerhalb einer Datei
+  einheitlich. Entschieden am 30.08.2026: die Sprache im Code betrifft
+  niemanden außer uns, der Aufwand einer nachträglichen Umbenennung
+  dagegen schon.
+- Commits: **Englisch**
 - Einheiten: **metrisch**
 - RLS ab der ersten Migration, keine Tabelle ohne
 - Keine Business-Logik in Client-Komponenten
@@ -60,9 +65,11 @@ M0 ist abgeschlossen. Das Supabase-Projekt läuft in Frankfurt
 (eu-central-1), alle Migrationen sind eingespielt, die Typen sind aus dem
 Schema generiert und eingecheckt.
 
-- `pnpm test` — lokales Postgres, alle Migrationen, Policies: 108 Tests
-- `pnpm test:rls` — dieselben Zusicherungen über PostgREST: 33 Tests
-- `pnpm db:verify` — 9 Schemaprüfungen gegen das Projekt
+- `pnpm test` — lokales Postgres, alle Migrationen, Policies. Stand
+  30.08.2026: 241 Tests über alle Pakete, davon 108 auf dem Schema
+- `pnpm test:rls` — dieselben Zusicherungen über PostgREST
+- `pnpm db:verify` — 11 Schemaprüfungen gegen das Projekt
+- iOS: siehe `docs/betrieb/ios-projekt.md`
 
 Das Spoiler-Gate ist auf beiden Wegen belegt.
 
@@ -81,13 +88,13 @@ M3 ist durch: Auth, Suche, Filmdetail, Bewerten, Tagebuch, Watchlist und
 Reviews stehen; die fünf Pflicht-Testfälle der Suche laufen gegen
 lokales Postgres, also ohne Projekt.
 
-Laufend ist M4. Profil, Kopf- und Profilbild, Folgen, Favoriten (vier
+M4 ist durch. Profil, Kopf- und Profilbild, Folgen, Favoriten (vier
 Plätze) und Binge-Listen stehen. Der Header hat drei Zonen: Ziele in der
 Mitte, Suche als Lupe, das eigene Konto rechts hinter einem Klappmenü.
 Entdecken ist für Angemeldete die Startseite: Genre-Kacheln als
 Schieber, der chronologische Feed der gefolgten Profile, die neuesten
 Filme. Diskussion, Melden, Blockieren, Thread sperren und das
-Moderations-Dashboard stehen. **M4 ist abgeschlossen.**
+Moderations-Dashboard stehen.
 
 Laufend ist M5, die iOS-App unter `apps/ios`. Projektaufbau (5.1) und
 Architektur (5.2) stehen: Xcode-Projekt mit synchronisierten Ordnern,
