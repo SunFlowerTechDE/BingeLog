@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import BingeLog
@@ -104,6 +105,33 @@ struct UsernameTests {
         for bad in ["ab", "Abc", "mit-strich", String(repeating: "a", count: 21)] {
             #expect((try? Username.pattern.wholeMatch(in: bad)) == nil, "\(bad) sollte nicht passen")
         }
+    }
+}
+
+/// Der Startbildschirm.
+@Suite("Startbildschirm")
+struct SplashTests {
+    /// Benachbarte Reihen ziehen in verschiedene Richtungen.
+    @Test("Reihen wandern abwechselnd nach links und rechts")
+    func rowsAlternate() {
+        let travel: CGFloat = 60
+
+        for row in 0..<6 {
+            let start = SplashView.offset(forRow: row, travel: travel, hasStarted: false)
+            let end = SplashView.offset(forRow: row, travel: travel, hasStarted: true)
+
+            // Jede Reihe bewegt sich überhaupt …
+            #expect(start != end, "Reihe \(row) steht still")
+            // … und die Nachbarreihe in die andere Richtung.
+            let next = SplashView.offset(forRow: row + 1, travel: travel, hasStarted: true)
+            #expect(
+                (end < 0) != (next < 0),
+                "Reihen \(row) und \(row + 1) ziehen in dieselbe Richtung")
+        }
+
+        // Und die geraden nach links, wie beschrieben.
+        #expect(SplashView.offset(forRow: 0, travel: travel, hasStarted: true) < 0)
+        #expect(SplashView.offset(forRow: 1, travel: travel, hasStarted: true) > 0)
     }
 }
 

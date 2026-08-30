@@ -7,6 +7,9 @@ protocol FilmRepository: Sendable {
     /// Bekannte Filme mit echtem Plakat, für die Wand auf dem
     /// Anmeldebildschirm.
     func wellKnownWithArtwork(limit: Int) async -> [Film]
+    /// Dieselben, aber gemischt — für den Startbildschirm, der bei jedem
+    /// Start andere zeigen soll.
+    func shuffledWithArtwork(count: Int) async -> [Film]
 }
 
 struct LiveFilmRepository: FilmRepository {
@@ -30,6 +33,22 @@ struct LiveFilmRepository: FilmRepository {
             .value
 
         return films ?? []
+    }
+
+    /// Ein Vorrat der bekanntesten, dann gemischt.
+    ///
+    /// Gemischt **hier** und nicht in der Datenbank: `order by random()`
+    /// müsste über die ganze Tabelle sortieren, und das für eine
+    /// Zierde. Ein Vorrat der Bekanntesten liefert außerdem die
+    /// schöneren Plakate — Zufall soll die Reihenfolge bestimmen, nicht
+    /// die Qualität.
+    ///
+    /// Jeder Film kommt höchstens einmal vor: der Vorrat ist eine
+    /// Menge, und `shuffled().prefix()` nimmt daraus ohne
+    /// Zurücklegen.
+    func shuffledWithArtwork(count: Int) async -> [Film] {
+        let pool = await wellKnownWithArtwork(limit: max(count * 3, 60))
+        return Array(pool.shuffled().prefix(count))
     }
 
     /// Die Argumente von `search_films`. Als Struktur statt als
