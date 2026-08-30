@@ -85,6 +85,33 @@ deutsch belegt: **aus `@` wird `"`**. Für Adressen also die
 Zwischenablage benutzen (`xcrun simctl pbcopy`) oder das Feld von Hand
 füllen.
 
+## Der Startbildschirm
+
+Fünf Reihen Plakate, abwechselnd nach links und rechts, drei Sekunden,
+nur beim Kaltstart. Er wartet auf **drei Sekunden und die Sitzung** —
+verschwände er nach drei Sekunden, während die Anmeldung noch lädt,
+folgte auf die Vorstellung ein Ladekringel.
+
+**Die Plakate kommen zu spät.** Gemessen am 31.08.2026 im Simulator: bei
+1,6 Sekunden waren die Reihen leer, bei 2,4 voll. Sichtbar sind sie also
+nur in der letzten Sekunde.
+
+Gemildert dadurch, dass die Auswahl am Ende eines Starts abgelegt und
+beim nächsten sofort gezeigt wird (`SplashFilmStore`) — die Bilder
+liegen dann schon im `URLCache`. Zufällig bleibt es trotzdem: jede
+Auswahl wird frisch gezogen, nur einen Start früher.
+
+Der Rest ist die Ladezeit der Bilder. Dagegen hilft nur ein richtiger
+Plakat-Zwischenspeicher im Dateisystem — **Roadmap 5.3**, eigenes Stück
+Arbeit. Der allererste Start nach der Installation bleibt leer; die
+Bilder liegen dann auf keinem Gerät.
+
+**Die Laufrichtung ist nicht durch Messung belegt.** Ein Vergleich der
+Plakatkanten in zwei Aufnahmen war untauglich — dazwischen luden noch
+Bilder nach, und der Kantenfinder greift dann eine andere Kante.
+Geprüft wird stattdessen die Regel: `SplashView.offset(forRow:…)` ist
+eine eigene Funktion mit Test.
+
 ## Was auf dem Anmeldebildschirm noch fehlt
 
 Der Entwurf vom 30.08.2026 zeigt „Mit Apple anmelden" und „Mit Google
