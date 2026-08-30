@@ -87,30 +87,42 @@ füllen.
 
 ## Der Startbildschirm
 
-Fünf Reihen Plakate, abwechselnd nach links und rechts, drei Sekunden,
-nur beim Kaltstart. Er wartet auf **drei Sekunden und die Sitzung** —
-verschwände er nach drei Sekunden, während die Anmeldung noch lädt,
-folgte auf die Vorstellung ein Ladekringel.
+Drei Sekunden beim Kaltstart, fünf Reihen Plakate, die abwechselnd nach
+links und rechts ziehen (Reihe 1 links, 2 rechts, 3 links …), darüber
+Logo und Name.
 
-**Die Plakate kommen zu spät.** Gemessen am 31.08.2026 im Simulator: bei
-1,6 Sekunden waren die Reihen leer, bei 2,4 voll. Sichtbar sind sie also
-nur in der letzten Sekunde.
+**Die Plakate werden nicht während der drei Sekunden geladen.** Der
+erste Versuch tat das und sah falsch aus: gemessen am 31.08.2026 waren
+die Reihen bei 1,8 Sekunden noch leer und bei 2,4 Sekunden voll. Jedes
+Plakat erschien also für sich in der letzten Sekunde. Der Eindruck war,
+jedes Bild animiere sich einzeln — dabei fuhr jede Reihe durchaus als
+Block, es war zur Fahrt nur noch nichts zu sehen.
 
-Gemildert dadurch, dass die Auswahl am Ende eines Starts abgelegt und
-beim nächsten sofort gezeigt wird (`SplashFilmStore`) — die Bilder
-liegen dann schon im `URLCache`. Zufällig bleibt es trotzdem: jede
-Auswahl wird frisch gezogen, nur einen Start früher.
+Der `URLCache` reicht dafür nicht: was darin liegt, entscheidet der
+Server über seine Kopfzeilen, und geräumt wird er, wann das System will.
 
-Der Rest ist die Ladezeit der Bilder. Dagegen hilft nur ein richtiger
-Plakat-Zwischenspeicher im Dateisystem — **Roadmap 5.3**, eigenes Stück
-Arbeit. Der allererste Start nach der Installation bleibt leer; die
-Bilder liegen dann auf keinem Gerät.
+Also holt `SplashPosterCache` die Bilder **nach** dem Startbildschirm
+und legt sie in `Caches/splash-posters` ab. `SplashFilmStore` merkt sich
+dazu die Auswahl, aber nur die Filme, deren Bild danach wirklich auf der
+Platte liegt. Der nächste Kaltstart liest beides synchron und zeigt alle
+Plakate ab Bild eins. Zufällig bleibt es: jede Auswahl wird frisch
+gezogen, nur einen Start früher.
 
-**Die Laufrichtung ist nicht durch Messung belegt.** Ein Vergleich der
-Plakatkanten in zwei Aufnahmen war untauglich — dazwischen luden noch
-Bilder nach, und der Kantenfinder greift dann eine andere Kante.
-Geprüft wird stattdessen die Regel: `SplashView.offset(forRow:…)` ist
-eine eigene Funktion mit Test.
+Der allererste Start nach der Installation zeigt keine Plakate, sondern
+Logo auf dunklem Grund. Dagegen hilft nichts — die Bilder liegen dann
+auf keinem Gerät.
+
+**Lizenzlage:** das ist kein Spiegel im Sinne von
+`docs/legal/thetvdb-lizenz.md`. Verboten ist die Weitergabe; hier liegen
+fünfzig Bilder auf dem Gerät desjenigen, der sie gerade angesehen hat,
+und gehen an niemanden. `Caches` ist nicht in der Sicherung und jederzeit
+vom System räumbar. Ein serverseitiger Cache-Proxy bleibt die offene
+Frage, die das Lizenzpapier benennt — dieser hier ist keiner.
+
+Die Richtung der Reihen ist durch `SplashTests/rowsAlternate()` gedeckt,
+nicht durch Messung. Ein früherer Versuch, sie über zwei Screenshots zu
+belegen, war ungültig: die Bilder luden zwischen den Aufnahmen noch, und
+der Kantenvergleich fand jedes Mal eine andere Kante.
 
 ## Was auf dem Anmeldebildschirm noch fehlt
 

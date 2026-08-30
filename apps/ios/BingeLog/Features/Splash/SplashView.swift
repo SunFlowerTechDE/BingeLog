@@ -1,8 +1,18 @@
 import SwiftUI
+import UIKit
+
+/// Ein Plakat, das schon da ist.
+///
+/// Bild und nicht Adresse: der Startbildschirm zeigt nur, was beim Bauen
+/// bereits auf der Platte liegt. Alles andere käme zu spät.
+struct SplashPoster: Identifiable {
+    let id: String
+    let image: UIImage
+}
 
 /// Der Startbildschirm beim Kaltstart.
 ///
-/// Drei Reihen Plakate, die abwechselnd nach links und rechts ziehen,
+/// Fünf Reihen Plakate, die abwechselnd nach links und rechts ziehen,
 /// darüber das Logo. Blendet ein und wieder aus.
 ///
 /// **Kein Film wiederholt sich**, und bei jedem Start sind es andere:
@@ -12,17 +22,18 @@ import SwiftUI
 /// Die Reihen ziehen nur ein Stück und laufen nicht endlos im Kreis. Für
 /// drei Sekunden reicht das, und ein nahtloser Umlauf bräuchte dieselben
 /// Plakate zweimal — was hier ausdrücklich nicht sein soll.
+///
+/// Alle Plakate stehen ab Bild eins. Solange sie einzeln nachgeladen
+/// wurden, erschien jedes für sich in der letzten Sekunde, und der
+/// Eindruck war: jedes Plakat animiert sich selbst. Es fuhr durchaus
+/// jede Reihe als Block — nur war zur Fahrt noch nichts zu sehen.
+/// Deshalb kommen die Bilder aus `SplashPosterCache` und nicht aus dem
+/// Netz.
 struct SplashView: View {
-    let films: [Film]
+    let posters: [SplashPoster]
 
     /// Wie weit eine Reihe in den drei Sekunden wandert.
-    ///
-    /// 130 Punkte statt der 60 vom ersten Versuch. Bei 60 bewegte sich
-    /// zwar alles, aber so langsam, dass man es nicht als Fahrt sah —
-    /// was auffiel, war das Erscheinen einzelner Plakate beim Laden.
-    /// Eine Reihe muss sich sichtbar als Reihe bewegen, sonst ist es
-    /// keine.
-    private let travel: CGFloat = 130
+    private let travel: CGFloat = 160
     private let posterWidth: CGFloat = 104
     private let spacing: CGFloat = 8
     private let rowCount = 5
@@ -36,13 +47,16 @@ struct SplashView: View {
 
             VStack(spacing: spacing) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                    PosterRow(
-                        films: row,
-                        width: posterWidth,
-                        spacing: spacing,
-                        offset: SplashView.offset(
-                            forRow: index, travel: travel, hasStarted: hasStarted)
-                    )
+                    PosterRow(posters: row, width: posterWidth, spacing: spacing)
+                        .offset(
+                            x: SplashView.offset(
+                                forRow: index, travel: travel, hasStarted: hasStarted)
+                        )
+                        // An den Wert gebunden statt in `withAnimation`
+                        // gepackt: so hängt die Fahrt an genau dieser
+                        // einen Zustandsänderung und lässt sich von
+                        // nichts anderem unterbrechen.
+                        .animation(.linear(duration: 3), value: hasStarted)
                 }
             }
             .frame(maxHeight: .infinity)
@@ -56,18 +70,18 @@ struct SplashView: View {
             Wordmark(markSize: 104)
                 .opacity(logoIsVisible ? 1 : 0)
                 .scaleEffect(logoIsVisible ? 1 : 0.94)
+                .animation(.easeOut(duration: 0.6), value: logoIsVisible)
         }
         .onAppear {
-            withAnimation(.linear(duration: 3)) { hasStarted = true }
-            withAnimation(.easeOut(duration: 0.6)) { logoIsVisible = true }
+            hasStarted = true
+            logoIsVisible = true
         }
     }
 
     /// Wo eine Reihe steht.
     ///
     /// Gerade Reihen ziehen nach links, ungerade nach rechts — sie
-    /// starten auf der einen Seite und enden auf der anderen, und die
-    /// Animation dazwischen macht `withAnimation`.
+    /// starten auf der einen Seite und enden auf der anderen.
     ///
     /// Als eigene Funktion, weil sich eine Animation nicht prüfen lässt,
     /// die Regel dahinter aber schon.
@@ -82,48 +96,34 @@ struct SplashView: View {
     /// Fünf und nicht drei: bei drei Reihen à 156 Punkten blieb auf
     /// einem iPhone oben und unten ein schwarzer Streifen. Der
     /// Startbildschirm soll gefüllt sein, nicht ein Band in der Mitte.
-    private var rows: [[Film]] {
-        guard !films.isEmpty else { return [] }
-        let perRow = max(1, Int(ceil(Double(films.count) / Double(rowCount))))
-        return stride(from: 0, to: films.count, by: perRow).map {
-            Array(films[$0..<min($0 + perRow, films.count)])
+    private var rows: [[SplashPoster]] {
+        guard !posters.isEmpty else { return [] }
+        let perRow = max(1, Int(ceil(Double(posters.count) / Double(rowCount))))
+        return stride(from: 0, to: posters.count, by: perRow).map {
+            Array(posters[$0..<min($0 + perRow, posters.count)])
         }
     }
 }
 
-/// Eine Reihe Plakate, verschoben.
+/// Eine Reihe Plakate.
+///
+/// Verschoben wird die Reihe, nicht das einzelne Plakat: der Versatz
+/// sitzt am `HStack`, und die Bilder darin haben keine eigene Animation.
 private struct PosterRow: View {
-    let films: [Film]
+    let posters: [SplashPoster]
     let width: CGFloat
     let spacing: CGFloat
-    let offset: CGFloat
 
     var body: some View {
         HStack(spacing: spacing) {
-            ForEach(films) { film in
-                AsyncImage(
-                    url: film.posterAddress(webBase: URL(string: "https://bingelog.eu")!)
-                ) { phase in
-                    // Eingeblendet statt hineingesprungen. Sonst
-                    // erscheint jedes Plakat für sich, sobald es geladen
-                    // ist, und der Eindruck ist ein Aufpoppen einzelner
-                    // Bilder statt einer fahrenden Reihe.
-                    ZStack {
-                        Theme.card
-                        if let image = phase.image {
-                            image
-                                .resizable()
-                                .aspectRatio(2 / 3, contentMode: .fill)
-                                .transition(.opacity)
-                        }
-                    }
-                    .animation(.easeIn(duration: 0.45), value: phase.image != nil)
-                }
-                .frame(width: width, height: width * 1.5)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            ForEach(posters) { poster in
+                Image(uiImage: poster.image)
+                    .resizable()
+                    .aspectRatio(2 / 3, contentMode: .fill)
+                    .frame(width: width, height: width * 1.5)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
-        .offset(x: offset)
         .fixedSize()
         .accessibilityHidden(true)
     }

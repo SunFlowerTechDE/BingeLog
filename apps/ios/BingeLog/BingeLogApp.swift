@@ -18,9 +18,11 @@ struct BingeLogApp: App {
     /// zurückkommt, will weiterarbeiten und keine Vorstellung sehen.
     @State private var isStarting = true
 
-    /// Beim Bauen schon gefüllt, damit die Reihen nicht leer anfangen —
-    /// die Auswahl stammt vom letzten Start (`SplashFilmStore`).
-    @State private var splashFilms: [Film] = SplashFilmStore.load()
+    /// Beim Bauen schon gefüllt, und zwar mit fertigen Bildern von der
+    /// Platte — die Auswahl stammt vom letzten Start
+    /// (`SplashFilmStore`, `SplashPosterCache`). Nichts wird während
+    /// der drei Sekunden nachgeladen.
+    @State private var splashPosters: [SplashPoster] = SplashFilmStore.posters()
 
     init() {
         let backend = Backend.live
@@ -41,7 +43,7 @@ struct BingeLogApp: App {
                 .environment(session)
 
                 if isStarting {
-                    SplashView(films: splashFilms)
+                    SplashView(posters: splashPosters)
                         .transition(.opacity)
                 }
             }
@@ -68,8 +70,15 @@ struct BingeLogApp: App {
 
         try? await Task.sleep(for: .seconds(3))
         await restored
-        SplashFilmStore.save(await next)
-
         withAnimation(.easeInOut(duration: 0.5)) { isStarting = false }
+
+        // Erst danach die Bilder holen. Fünfzig Plakate herunterzuladen
+        // dauert länger als der Startbildschirm steht — das gehört
+        // hinter ihn, nicht vor ihn. Gemerkt wird nur, was danach
+        // wirklich auf der Platte liegt.
+        let base = URL(string: "https://bingelog.eu")!
+        let cached = await SplashPosterCache.fill(for: await next, webBase: base)
+        SplashFilmStore.save(cached)
+        SplashPosterCache.prune(keeping: cached)
     }
 }
