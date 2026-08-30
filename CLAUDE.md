@@ -107,6 +107,12 @@ Die Bestätigung per Mail führt in den Browser, nicht zurück in die App:
 beim Registrieren entsteht noch keine Sitzung. Ein Deep-Link zurück ist
 ein eigener Punkt (5.7).
 
+Der Anmeldebildschirm folgt dem Entwurf vom 30.08.2026: Plakatwand,
+Schriftzug, Felder mit Symbolen, Passwort aufdecken, Passwort vergessen.
+**Ohne Apple- und Google-Anmeldung** — beide brauchen Konten außerhalb
+des Repos, und Apple verlangt „Sign in with Apple", sobald es Google
+gibt. Also entweder beide oder keins (`docs/betrieb/ios-projekt.md`).
+
 Vor dem Bauen für iOS:
 
 - `xcodebuild -project apps/ios/BingeLog.xcodeproj -scheme BingeLog \

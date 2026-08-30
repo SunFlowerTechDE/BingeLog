@@ -85,6 +85,29 @@ deutsch belegt: **aus `@` wird `"`**. Für Adressen also die
 Zwischenablage benutzen (`xcrun simctl pbcopy`) oder das Feld von Hand
 füllen.
 
+## Was auf dem Anmeldebildschirm noch fehlt
+
+Der Entwurf vom 30.08.2026 zeigt „Mit Apple anmelden" und „Mit Google
+anmelden". Beide sind nicht gebaut, und beide hängen an Voraussetzungen
+außerhalb des Repos:
+
+- **Apple:** braucht das bezahlte Apple Developer Program. Die Fähigkeit
+  „Sign in with Apple" wird im Entwicklerportal für die App-ID
+  freigeschaltet; ohne Mitgliedschaft gibt es den Schalter nicht.
+- **Google:** braucht ein OAuth-Client-Paar aus der Google Cloud Console
+  und den Eintrag unter _Authentication → Providers_ in Supabase.
+
+**Der Zusammenhang ist teuer, wenn man ihn übersieht:** Apple verlangt
+„Sign in with Apple", sobald eine andere Fremdanmeldung angeboten wird.
+Google ohne Apple heißt Ablehnung im Review. Also entweder beide oder
+keins.
+
+Deshalb stehen die Knöpfe nicht in der App. Ein toter Knopf auf dem
+Anmeldebildschirm ist schlechter als einer, der fehlt.
+
+Das Logo ist vorläufig ein Systemzeichen (`film.circle.fill`). Eine
+echte Bilddatei gehört in die Assets.
+
 ## Was nicht ins Repo gehört
 
 `DerivedData/` und `xcuserdata/` sind ignoriert. **`Package.resolved`

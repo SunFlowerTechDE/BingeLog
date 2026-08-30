@@ -4,10 +4,33 @@ import Supabase
 /// Filme suchen.
 protocol FilmRepository: Sendable {
     func search(term: String, limit: Int) async throws(BackendError) -> [Film]
+    /// Bekannte Filme mit echtem Plakat, für die Wand auf dem
+    /// Anmeldebildschirm.
+    func wellKnownWithArtwork(limit: Int) async -> [Film]
 }
 
 struct LiveFilmRepository: FilmRepository {
     let backend: Backend
+
+    /// Filme mit echtem Plakat, die bekanntesten zuerst.
+    ///
+    /// `sitelink_count` ist die Zahl der Wikipedia-Sprachversionen und
+    /// damit das einzige Mass für Bekanntheit, das der Katalog kennt.
+    ///
+    /// Wirft nicht: für eine Zierde ist ein Fehler kein Ereignis. Ohne
+    /// Netz bleibt die Wand leer, und der Bildschirm steht trotzdem.
+    func wellKnownWithArtwork(limit: Int = 12) async -> [Film] {
+        let films: [Film]? = try? await backend.client
+            .from("films")
+            .select("wikidata_id, title_de, title_original, release_year, poster_source, poster_url")
+            .eq("poster_source", value: "tvdb")
+            .order("sitelink_count", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+
+        return films ?? []
+    }
 
     /// Die Argumente von `search_films`. Als Struktur statt als
     /// Wörterbuch, damit ein Tippfehler beim Übersetzen auffällt und

@@ -10,6 +10,7 @@ protocol AuthRepository: Sendable {
     func signIn(email: String, password: String) async throws(BackendError)
     /// Gibt zurück, ob die Adresse noch bestätigt werden muss.
     func signUp(email: String, password: String) async throws(BackendError) -> Bool
+    func sendPasswordReset(to email: String) async throws(BackendError)
     func signOut() async
 }
 
@@ -39,6 +40,22 @@ struct LiveAuthRepository: AuthRepository {
         do {
             let response = try await backend.client.auth.signUp(email: email, password: password)
             return response.session == nil
+        } catch {
+            throw BackendError.from(error)
+        }
+    }
+
+    /// Die Zurücksetz-Mail auslösen.
+    ///
+    /// Der Link führt auf die Webseite, nicht in die App — dort steht
+    /// das Formular für ein neues Passwort. Ein Deep-Link zurück ist
+    /// derselbe eigene Schritt wie bei der Bestätigung (5.7).
+    func sendPasswordReset(to email: String) async throws(BackendError) {
+        do {
+            try await backend.client.auth.resetPasswordForEmail(
+                email,
+                redirectTo: URL(string: "https://bingelog.eu/auth/neues-passwort")
+            )
         } catch {
             throw BackendError.from(error)
         }

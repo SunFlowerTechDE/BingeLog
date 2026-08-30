@@ -1,72 +1,113 @@
 import SwiftUI
 
 /// Anmelden.
+///
+/// Aufbau nach dem Entwurf vom 30.08.2026: Plakatwand, Schriftzug,
+/// Begrüßung, zwei Felder mit Symbolen, Passwort-vergessen, der goldene
+/// Knopf, dann der Weg zur Registrierung.
+///
+/// **Ohne die beiden Fremdanmeldungen.** Sie stehen im Entwurf, brauchen
+/// aber Voraussetzungen, die es noch nicht gibt — siehe
+/// `docs/betrieb/ios-projekt.md`. Ein Knopf, der nichts tut, ist
+/// schlechter als keiner.
 struct SignInView: View {
     @Environment(SessionStore.self) private var session
+
+    let films: FilmRepository
 
     @State private var email = ""
     @State private var password = ""
     @State private var isWorking = false
     @State private var showsRegistration = false
+    @State private var showsReset = false
+    @State private var wall: [Film] = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Anmelden")
-                    .font(.largeTitle.weight(.semibold))
-                Text("Weiter mit deinem Tagebuch.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+        ZStack(alignment: .top) {
+            Theme.background.ignoresSafeArea()
+            PosterWall(films: wall).ignoresSafeArea(edges: .top)
 
-            VStack(spacing: 12) {
-                TextField("E-Mail", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
+            ScrollView {
+                VStack(spacing: 24) {
+                    Wordmark().padding(.top, 150)
 
-                SecureField("Passwort", text: $password)
-                    .textContentType(.password)
-            }
-            .textFieldStyle(.roundedBorder)
+                    VStack(spacing: 8) {
+                        Text("Willkommen zurück")
+                            .font(.title.weight(.semibold))
+                            .foregroundStyle(Theme.foreground)
+                        Text("Melde dich an, um deine Filme, Bewertungen und Watchlist zu verwalten.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.muted)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 8)
 
-            if let problem = session.problem {
-                Text(problem)
+                    VStack(spacing: 12) {
+                        AuthField(
+                            symbol: "envelope",
+                            placeholder: "E-Mail",
+                            text: $email,
+                            contentType: .emailAddress,
+                            keyboard: .emailAddress
+                        )
+                        AuthField(
+                            symbol: "lock",
+                            placeholder: "Passwort",
+                            text: $password,
+                            isSecure: true,
+                            contentType: .password
+                        )
+
+                        HStack {
+                            Spacer()
+                            Button("Passwort vergessen?") {
+                                session.problem = nil
+                                showsReset = true
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(Theme.primary)
+                        }
+                    }
+
+                    if let problem = session.problem {
+                        Text(problem)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    PrimaryButton(
+                        title: isWorking ? "Wird geprüft" : "Anmelden",
+                        isDisabled: isWorking || email.isEmpty || password.isEmpty
+                    ) {
+                        Task {
+                            isWorking = true
+                            await session.signIn(email: email, password: password)
+                            isWorking = false
+                        }
+                    }
+
+                    HStack(spacing: 4) {
+                        Text("Noch kein Konto?").foregroundStyle(Theme.muted)
+                        Button("Registrieren") {
+                            session.problem = nil
+                            showsRegistration = true
+                        }
+                        .foregroundStyle(Theme.primary)
+                    }
                     .font(.footnote)
-                    .foregroundStyle(.red)
-            }
-
-            Button {
-                Task {
-                    isWorking = true
-                    await session.signIn(email: email, password: password)
-                    isWorking = false
+                    .padding(.top, 4)
                 }
-            } label: {
-                // Ohne sichtbaren Zustand hält man einen langsamen
-                // Vorgang für keinen und drückt noch einmal.
-                Text(isWorking ? "Wird geprüft" : "Anmelden")
-                    .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(isWorking || email.isEmpty || password.isEmpty)
-
-            HStack(spacing: 4) {
-                Text("Noch kein Konto?")
-                    .foregroundStyle(.secondary)
-                Button("Registrieren") {
-                    session.problem = nil
-                    showsRegistration = true
-                }
-            }
-            .font(.footnote)
-
-            Spacer()
         }
-        .padding(24)
-        .sheet(isPresented: $showsRegistration) {
-            RegisterView()
+        .task {
+            // Zierde: schlägt es fehl, bleibt die Wand leer und der
+            // Bildschirm steht trotzdem.
+            wall = await films.wellKnownWithArtwork(limit: 12)
         }
+        .sheet(isPresented: $showsRegistration) { RegisterView() }
+        .sheet(isPresented: $showsReset) { PasswordResetView(email: email) }
     }
 }

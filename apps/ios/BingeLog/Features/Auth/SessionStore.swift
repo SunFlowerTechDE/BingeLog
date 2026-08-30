@@ -85,6 +85,22 @@ final class SessionStore {
         }
     }
 
+    /// Gibt zurück, ob die Mail ausgelöst wurde.
+    ///
+    /// **Die Antwort ist immer dieselbe**, ob es die Adresse gibt oder
+    /// nicht. Sonst wäre das Formular eine Auskunft darüber, wer hier
+    /// ein Konto hat.
+    func sendPasswordReset(to email: String) async -> Bool {
+        problem = nil
+        do {
+            try await auth.sendPasswordReset(to: email)
+            return true
+        } catch {
+            problem = BackendError.from(error).message
+            return false
+        }
+    }
+
     func signOut() async {
         await auth.signOut()
         userID = nil
