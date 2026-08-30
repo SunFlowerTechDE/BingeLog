@@ -1,21 +1,24 @@
 import SwiftUI
 
-/// Der Schriftzug.
-///
-/// Vorläufig aus einem Systemzeichen und Text gesetzt. Ein echtes Logo
-/// gehört als Bilddatei in die Assets — bis es eins gibt, ist ein
-/// sauber gesetzter Schriftzug besser als ein nachgezeichnetes, das
-/// später doch ausgetauscht wird.
+/// Der Schriftzug: das Logo über dem Namen.
 struct Wordmark: View {
+    var markSize: CGFloat = 72
+
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "film.circle.fill")
-                .font(.system(size: 46))
-                .foregroundStyle(Theme.primary)
+        VStack(spacing: 4) {
+            Image("LogoMark")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: markSize, height: markSize)
+                // Das Logo bringt seine Farben selbst mit
+                // (`template-rendering-intent: original`). Als Schablone
+                // gerendert verlöre es sein Schwarz.
+                .accessibilityHidden(true)
 
             Text("BingeLog")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.primary)
+                .accessibilityLabel("BingeLog")
         }
     }
 }
