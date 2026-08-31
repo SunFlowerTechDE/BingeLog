@@ -202,6 +202,36 @@ struct DiscoverTests {
         #expect(names.count == Set(names).count, "ein Bild ist doppelt vergeben")
     }
 
+    /// Jedes Genre mit Bild hat auch einen kurzen Namen.
+    ///
+    /// Ohne den stünde auf einer Kachel "Horror" und auf der daneben
+    /// "Kriminalfilm" — halb gekürzt sieht aus wie vergessen.
+    @Test("Jede Kachel mit Bild hat einen kurzen Namen")
+    func everyTileHasAShortLabel() {
+        for genreID in GenreArtwork.known {
+            #expect(
+                GenreLabel.short(for: genreID) != nil,
+                "\(genreID) hat ein Bild, aber keinen kurzen Namen")
+        }
+    }
+
+    /// Kein kurzer Name kommt zweimal vor.
+    ///
+    /// Die Falle ist naheliegend: Filmdrama und Psychodrama beide zu
+    /// "Drama" zu kürzen. Zwei Kacheln mit demselben Namen sind für den
+    /// Leser zwei Fehler.
+    @Test("Kurze Namen sind eindeutig")
+    func shortLabelsAreUnique() {
+        let names = Array(GenreLabel.all.values)
+        #expect(names.count == Set(names).count, "ein kurzer Name ist doppelt vergeben")
+        #expect(names.allSatisfy { !$0.isEmpty })
+        // Und keiner endet wieder auf "film" — dann waere die Kuerzung
+        // vergessen worden.
+        #expect(
+            names.allSatisfy { !$0.lowercased().hasSuffix("film") },
+            "ein kurzer Name endet noch auf \"film\"")
+    }
+
     /// Postgres liefert Zeitstempel mit und ohne Sekundenbruchteile.
     ///
     /// Beide müssen durchgehen. Ein Decoder, der nur eine Form kennt,

@@ -126,7 +126,7 @@ private struct GenreCard: View {
                 // Namen. Sonst ist die Kachel von "Musikfilm" niedriger
                 // als die von "Science-Fiction-Film", und der Schieber
                 // wird zu einer Zickzacklinie.
-                Text(tile.label)
+                Text(tile.shortLabel)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.foreground)
                     .lineLimit(2, reservesSpace: true)
@@ -174,11 +174,11 @@ private struct GenreView: View {
                 ContentUnavailableView(
                     "Nichts da",
                     systemImage: "film",
-                    description: Text("Zu \(tile.label) steht noch kein Film im Katalog.")
+                    description: Text("Zu \(tile.shortLabel) steht noch kein Film im Katalog.")
                 )
             }
         }
-        .navigationTitle(tile.label)
+        .navigationTitle(tile.shortLabel)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             films = await repository.films(inGenre: tile.genreID, limit: 60)
