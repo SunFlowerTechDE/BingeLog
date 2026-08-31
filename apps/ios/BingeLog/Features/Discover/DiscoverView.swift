@@ -80,7 +80,7 @@ private struct GenreSlider: View {
             SectionTitle(text: "Nach Genre")
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
                     ForEach(tiles) { tile in
                         NavigationLink {
                             GenreView(tile: tile, repository: repository)
@@ -122,11 +122,18 @@ private struct GenreCard: View {
             .frame(width: 64, height: 64)
 
             VStack(spacing: 2) {
+                // Immer zwei Zeilen hoch, auch bei einem kurzen
+                // Namen. Sonst ist die Kachel von "Musikfilm" niedriger
+                // als die von "Science-Fiction-Film", und der Schieber
+                // wird zu einer Zickzacklinie.
                 Text(tile.label)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.foreground)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.center)
+                    // Ein sehr langer Name darf die Kachel nicht
+                    // breiter machen — lieber etwas kleiner gesetzt.
+                    .minimumScaleFactor(0.8)
 
                 Text("\(tile.films) Filme")
                     .font(.caption)
