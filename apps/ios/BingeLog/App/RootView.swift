@@ -13,6 +13,7 @@ struct RootView: View {
     let profiles: ProfileRepository
     let discover: DiscoverRepository
     let lazyFilms: LazyFilmRepository
+    let details: FilmDetailRepository
 
     var body: some View {
         if session.isLoading {
@@ -24,9 +25,11 @@ struct RootView: View {
             UsernameView(profiles: profiles)
         } else if session.isSignedIn {
             if sizeClass == .compact {
-                CompactShell(films: films, discover: discover, lazyFilms: lazyFilms)
+                CompactShell(
+                    films: films, discover: discover, lazyFilms: lazyFilms, details: details)
             } else {
-                RegularShell(films: films, discover: discover, lazyFilms: lazyFilms)
+                RegularShell(
+                    films: films, discover: discover, lazyFilms: lazyFilms, details: details)
             }
         } else {
             SignInView(films: films, profiles: profiles)
@@ -40,18 +43,19 @@ private struct CompactShell: View {
     let films: FilmRepository
     let discover: DiscoverRepository
     let lazyFilms: LazyFilmRepository
+    let details: FilmDetailRepository
 
     var body: some View {
         TabView {
             // Zuerst und damit voreingestellt: hier landet man nach dem
             // Anmelden und nach jedem Kaltstart.
             NavigationStack {
-                DiscoverView(repository: discover)
+                DiscoverView(repository: discover, details: details)
             }
             .tabItem { Label("Entdecken", systemImage: "sparkles") }
 
             NavigationStack {
-                SearchView(repository: films, lazyFilms: lazyFilms)
+                SearchView(repository: films, lazyFilms: lazyFilms, details: details)
             }
             .tabItem { Label("Suche", systemImage: "magnifyingglass") }
 
@@ -68,6 +72,7 @@ private struct RegularShell: View {
     let films: FilmRepository
     let discover: DiscoverRepository
     let lazyFilms: LazyFilmRepository
+    let details: FilmDetailRepository
     @State private var selection: Section? = .discover
 
     private enum Section: Hashable {
@@ -89,9 +94,9 @@ private struct RegularShell: View {
             case .account:
                 AccountView()
             case .search:
-                SearchView(repository: films, lazyFilms: lazyFilms)
+                SearchView(repository: films, lazyFilms: lazyFilms, details: details)
             case .discover, nil:
-                DiscoverView(repository: discover)
+                DiscoverView(repository: discover, details: details)
             }
         }
     }

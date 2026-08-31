@@ -17,8 +17,11 @@ struct DiscoverView: View {
     @State private var model: DiscoverModel
     private let repository: DiscoverRepository
 
-    init(repository: DiscoverRepository) {
+    private let details: FilmDetailRepository
+
+    init(repository: DiscoverRepository, details: FilmDetailRepository) {
         self.repository = repository
+        self.details = details
         _model = State(initialValue: DiscoverModel(repository: repository))
     }
 
@@ -26,17 +29,17 @@ struct DiscoverView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 if !model.tiles.isEmpty {
-                    GenreSlider(tiles: model.tiles, repository: repository)
+                    GenreSlider(tiles: model.tiles, repository: repository, details: details)
                 }
 
                 if !model.top.isEmpty {
-                    WeeklyTopSection(entries: model.top)
+                    WeeklyTopSection(entries: model.top, details: details)
                 }
 
-                FeedSection(entries: model.feed, avatarBase: model.avatarBase)
+                FeedSection(entries: model.feed, avatarBase: model.avatarBase, details: details)
 
                 if !model.newest.isEmpty {
-                    NewestSection(films: model.newest)
+                    NewestSection(films: model.newest, details: details)
                 }
             }
             .padding(.vertical, 8)
@@ -78,6 +81,7 @@ private struct SectionTitle: View {
 private struct GenreSlider: View {
     let tiles: [GenreTile]
     let repository: DiscoverRepository
+    let details: FilmDetailRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -87,7 +91,7 @@ private struct GenreSlider: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(tiles) { tile in
                         NavigationLink {
-                            GenreView(tile: tile, repository: repository)
+                            GenreView(tile: tile, repository: repository, details: details)
                         } label: {
                             GenreCard(tile: tile)
                         }
@@ -159,14 +163,19 @@ private struct GenreCard: View {
 private struct GenreView: View {
     let tile: GenreTile
     let repository: DiscoverRepository
+    let details: FilmDetailRepository
 
     @State private var films: [Film] = []
     @State private var isLoading = true
 
     var body: some View {
         List(films) { film in
-            FilmLine(film: film)
-                .listRowBackground(Theme.background)
+            NavigationLink {
+                FilmDetailView(film: film, repository: details)
+            } label: {
+                FilmLine(film: film)
+            }
+            .listRowBackground(Theme.background)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -198,6 +207,7 @@ private struct GenreView: View {
 private struct FeedSection: View {
     let entries: [FeedEntry]
     let avatarBase: URL?
+    let details: FilmDetailRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -214,7 +224,12 @@ private struct FeedSection: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(entries) { entry in
-                        FeedRow(entry: entry, avatarBase: avatarBase)
+                        NavigationLink {
+                            FilmDetailView(film: entry.film, repository: details)
+                        } label: {
+                            FeedRow(entry: entry, avatarBase: avatarBase)
+                        }
+                        .buttonStyle(.plain)
                         Divider().overlay(Theme.border).padding(.leading, 20)
                     }
                 }
@@ -229,7 +244,7 @@ private struct FeedRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            PosterThumb(film: entry.film, width: 44)
+            PosterThumbnail(film: entry.film, width: 44)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -340,6 +355,7 @@ private struct Avatar: View {
 /// ändert, ist keine.
 private struct WeeklyTopSection: View {
     let entries: [WeeklyTopFilm]
+    let details: FilmDetailRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -348,7 +364,12 @@ private struct WeeklyTopSection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 14) {
                     ForEach(entries) { entry in
-                        RankedCard(entry: entry)
+                        NavigationLink {
+                            FilmDetailView(film: entry.film, repository: details)
+                        } label: {
+                            RankedCard(entry: entry)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -375,7 +396,7 @@ private struct RankedCard: View {
         VStack(alignment: .leading, spacing: 8) {
             // Die Box um das Plakat. Sie trägt die Hervorhebung, damit
             // schon beim Überfliegen sichtbar ist, wo oben ist.
-            PosterThumb(film: entry.film, width: 118)
+            PosterThumbnail(film: entry.film, width: 118)
                 .padding(5)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
                 .overlay {
@@ -429,6 +450,7 @@ private struct RankedCard: View {
 
 private struct NewestSection: View {
     let films: [Film]
+    let details: FilmDetailRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -437,8 +459,11 @@ private struct NewestSection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(films) { film in
+                        NavigationLink {
+                            FilmDetailView(film: film, repository: details)
+                        } label: {
                         VStack(alignment: .leading, spacing: 6) {
-                            PosterThumb(film: film, width: 104)
+                            PosterThumbnail(film: film, width: 104)
                             Text(film.title)
                                 .font(.caption)
                                 .foregroundStyle(Theme.foreground)
@@ -451,27 +476,13 @@ private struct NewestSection: View {
                             }
                         }
                         .frame(width: 104)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 20)
             }
         }
-    }
-}
-
-/// Ein Plakat in fester Größe.
-private struct PosterThumb: View {
-    let film: Film
-    let width: CGFloat
-
-    var body: some View {
-        AsyncImage(url: film.posterAddress(webBase: URL(string: "https://bingelog.eu")!)) { image in
-            image.resizable().aspectRatio(contentMode: .fill)
-        } placeholder: {
-            Rectangle().fill(Theme.card)
-        }
-        .frame(width: width, height: width * 1.5)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
@@ -481,7 +492,7 @@ private struct FilmLine: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            PosterThumb(film: film, width: 44)
+            PosterThumbnail(film: film, width: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text(film.title)
                     .foregroundStyle(Theme.foreground)

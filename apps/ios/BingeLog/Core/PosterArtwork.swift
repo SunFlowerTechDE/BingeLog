@@ -175,3 +175,24 @@ struct PosterImage: View {
         }
     }
 }
+
+/// Ein Plakat in fester Größe — Bild oder prozedurale Karte.
+///
+/// Eine Stelle für alle Listen. Vorher stand an jeder ein eigenes
+/// `AsyncImage`, und jedes davon blieb bei einer prozeduralen Karte
+/// leer.
+struct PosterThumbnail: View {
+    let film: Film
+    let width: CGFloat
+
+    @State private var artwork: PosterArtwork?
+
+    var body: some View {
+        PosterImage(artwork: artwork)
+            .frame(width: width, height: width * 1.5)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .task(id: film.wikidataID) {
+                artwork = await PosterLoader.load(for: film)
+            }
+    }
+}

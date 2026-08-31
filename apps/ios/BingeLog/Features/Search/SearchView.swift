@@ -5,7 +5,13 @@ import UIKit
 struct SearchView: View {
     @State private var model: SearchViewModel
 
-    init(repository: FilmRepository, lazyFilms: LazyFilmRepository) {
+    private let details: FilmDetailRepository
+
+    init(
+        repository: FilmRepository, lazyFilms: LazyFilmRepository,
+        details: FilmDetailRepository
+    ) {
+        self.details = details
         _model = State(
             initialValue: SearchViewModel(repository: repository, lazyFilms: lazyFilms))
     }
@@ -55,7 +61,11 @@ struct SearchView: View {
             }
 
             ForEach(model.films) { film in
-                FilmRow(film: film)
+                NavigationLink {
+                    FilmDetailView(film: film, repository: details)
+                } label: {
+                    FilmRow(film: film)
+                }
             }
         }
         .listStyle(.plain)
@@ -91,6 +101,12 @@ struct SearchView: View {
                 .transition(.opacity)
             }
         }
+        // Die Menüleiste fährt nach unten weg, solange die Karte
+        // entsteht, und danach wieder hoch. Ohne das steht sie im
+        // Vordergrund vor dem Vorhang — die Zeremonie nimmt den ganzen
+        // Bildschirm ein oder sie nimmt ihn nicht ein.
+        .toolbar(model.building == nil ? .visible : .hidden, for: .tabBar)
+        .animation(.easeInOut(duration: 0.35), value: model.building == nil)
         .animation(.easeInOut(duration: 0.3), value: model.building)
     }
 }
@@ -131,13 +147,10 @@ private struct FilmRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AsyncImage(url: film.posterAddress(webBase: URL(string: "https://bingelog.eu")!)) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Rectangle().fill(.quaternary)
-            }
-            .frame(width: 44, height: 66)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            // Ueber `PosterThumbnail` und nicht ueber `AsyncImage`:
+            // sonst bleibt die prozedurale Karte leer, und die hat
+            // gerade ein frisch angelegter Film fast immer.
+            PosterThumbnail(film: film, width: 44)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(film.title)

@@ -389,6 +389,46 @@ struct DiscoverTests {
         #expect(c.stars == nil)
     }
 
+    /// Die Laufzeit wird als Stunden und Minuten gelesen.
+    @Test("Die Laufzeit steht als Stunden und Minuten da")
+    func runtimeReads() {
+        func detail(_ minutes: Int?) -> FilmDetail {
+            FilmDetail(
+                film: Film(
+                    wikidataID: "Q1", titleDE: nil, titleOriginal: "A", releaseYear: nil,
+                    posterSource: nil, posterURL: nil),
+                titleEN: nil, runtimeMinutes: minutes, synopsis: nil,
+                directors: [], cast: [], genres: [])
+        }
+
+        #expect(detail(137).runtimeText == "2 h 17 min")
+        #expect(detail(120).runtimeText == "2 h")
+        #expect(detail(45).runtimeText == "45 min")
+        #expect(detail(nil).runtimeText == nil)
+        // Null Minuten ist keine Laufzeit, sondern eine fehlende.
+        #expect(detail(0).runtimeText == nil)
+    }
+
+    /// Der zweite Titel steht nur da, wenn er etwas hinzufügt.
+    @Test("Ein Zweittitel, der dem ersten gleicht, wird nicht wiederholt")
+    func alternativeTitleAddsSomething() {
+        func detail(de: String?, original: String, en: String?) -> FilmDetail {
+            FilmDetail(
+                film: Film(
+                    wikidataID: "Q1", titleDE: de, titleOriginal: original, releaseYear: nil,
+                    posterSource: nil, posterURL: nil),
+                titleEN: en, runtimeMinutes: nil, synopsis: nil,
+                directors: [], cast: [], genres: [])
+        }
+
+        #expect(detail(de: "Der Pate", original: "The Godfather", en: nil)
+            .alternativeTitle == "The Godfather")
+        // Ohne deutschen Titel zeigt die Seite den Originaltitel oben —
+        // darunter noch einmal derselbe waere nur Laerm.
+        #expect(detail(de: nil, original: "Solaris", en: "Solaris").alternativeTitle == nil)
+        #expect(detail(de: "Solaris", original: "Solaris", en: "Solaris").alternativeTitle == nil)
+    }
+
     /// Postgres liefert Zeitstempel mit und ohne Sekundenbruchteile.
     ///
     /// Beide müssen durchgehen. Ein Decoder, der nur eine Form kennt,

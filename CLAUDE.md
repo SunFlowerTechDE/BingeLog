@@ -104,7 +104,17 @@ Registrieren, Namenswahl und Filmsuche laufen — geprüft im Simulator und
 auf einem echten iPhone.
 
 Entdecken ist auch auf dem iPhone die Startseite: Genre-Schieber,
-chronologischer Feed, Neu im Katalog — dieselbe Ordnung wie im Web.
+Top 10 der Woche, chronologischer Feed, Neu im Katalog — dieselbe
+Ordnung wie im Web. Filme sind überall antippbar und führen auf die
+Filmseite; **Bewerten, Tagebuch und Watchlist stehen dort noch aus**
+(5.4). Fehlt ein Film, legt ihn die Suche an — mit derselben
+fünfzehnsekündigen Zeremonie wie im Web, und das Jahr grenzt ein,
+welcher der Wikidata-Treffer gemeint ist.
+
+Die prozedurale Karte ist ein SVG. `AsyncImage` kann keins — sie läuft
+über `PosterThumbnail`/`PosterImage`, die nach dem Inhaltstyp
+entscheiden und das SVG über WebKit anzeigen. Ein neues `AsyncImage`
+für ein Plakat ist deshalb fast immer ein Fehler.
 Die Genre-Bilder liegen in `Assets.xcassets/Genres` und sind über die
 **Wikidata-ID** zugeordnet (`GenreArtwork`), nie über die Beschriftung.
 
