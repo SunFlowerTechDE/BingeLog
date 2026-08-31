@@ -16,7 +16,8 @@ struct SearchView: View {
         self.details = details
         self.entries = entries
         _model = State(
-            initialValue: SearchViewModel(repository: repository, lazyFilms: lazyFilms))
+            initialValue: SearchViewModel(
+                repository: repository, lazyFilms: lazyFilms, entries: entries))
     }
 
     var body: some View {
@@ -28,6 +29,36 @@ struct SearchView: View {
             // Feldern ist eine Leiste, in der man das falsche trifft.
             YearField(text: $model.yearText, isIncomplete: model.yearIsIncomplete)
                 .listRowSeparator(.hidden)
+
+            if model.term.isEmpty, !model.history.isEmpty {
+                Section {
+                    ForEach(model.history, id: \.self) { term in
+                        Button {
+                            model.use(term)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.quiet)
+                                Text(term).foregroundStyle(Theme.foreground)
+                                Spacer(minLength: 0)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .swipeActions {
+                            Button("Löschen", role: .destructive) { model.forget(term) }
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("Zuletzt gesucht")
+                        Spacer()
+                        Button("Alle löschen") { model.clearHistory() }
+                            .font(.caption)
+                            .foregroundStyle(Theme.primary)
+                    }
+                }
+            }
 
             if let problem = model.problem {
                 Text(problem)
@@ -45,29 +76,59 @@ struct SearchView: View {
                 )
                 .foregroundStyle(.secondary)
 
-                CreateFilmRow(
+                LookOutsideRow(
                     isBusy: model.isCreating,
                     isEnabled: model.canCreate
                 ) {
-                    // Erst die Tastatur weg, dann anlegen. Sonst steht
-                    // sie vor der Zeremonie, und wegtippen geht nicht:
-                    // ein Tippen auf den Vorhang überspringt sie.
+                    // Erst die Tastatur weg, dann suchen. Sonst steht
+                    // sie vor der Prüfkarte.
                     dismissKeyboard()
-                    Task { await model.createMissingFilm() }
+                    Task { await model.lookOutside() }
                 }
             }
 
             if let note = model.note {
-                Text(note)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(note)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    // „Ohne Jahresfilter suchen" statt eines leeren
+                    // Zustands (Suchkonzept, 3).
+                    if model.offersDroppingTheYear {
+                        Button("Ohne Jahr suchen") {
+                            Task { await model.retryWithoutYear() }
+                        }
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(Theme.primary)
+                    }
+                }
+            }
+
+            // Mehrere Treffer: der Nutzer entscheidet, welcher gemeint
+            // ist. „Halloween" gibt es dreimal (Suchkonzept, 14).
+            if model.candidates.count > 1 {
+                Section("Ausserhalb des Katalogs gefunden") {
+                    ForEach(model.candidates) { candidate in
+                        Button {
+                            model.inspecting = candidate
+                        } label: {
+                            CandidateRow(candidate: candidate)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
 
             ForEach(model.films) { film in
                 NavigationLink {
                     FilmDetailView(film: film, details: details, entries: entries)
                 } label: {
-                    FilmRow(film: film)
+                    FilmRow(
+                        film: film,
+                        isSeen: model.seen.contains(film.wikidataID),
+                        isOnWatchlist: model.onWatchlist.contains(film.wikidataID)
+                    )
                 }
             }
         }
@@ -82,7 +143,7 @@ struct SearchView: View {
             prompt: "Film suchen"
         )
         .overlay {
-            if model.term.isEmpty, model.yearText.isEmpty {
+            if model.term.isEmpty, model.yearText.isEmpty, model.history.isEmpty {
                 ContentUnavailableView(
                     "Such einen Film",
                     systemImage: "magnifyingglass",
@@ -94,6 +155,11 @@ struct SearchView: View {
             }
         }
         .navigationTitle("Suche")
+        .sheet(item: $model.inspecting) { candidate in
+            CandidateSheet(candidate: candidate) {
+                Task { await model.adopt(candidate) }
+            }
+        }
         .overlay {
             if let building = model.building {
                 CardBuildView(
@@ -115,16 +181,20 @@ struct SearchView: View {
 }
 
 /// Der Weg für einen Film, den der Katalog nicht hat.
-private struct CreateFilmRow: View {
+private struct LookOutsideRow: View {
     let isBusy: Bool
     let isEnabled: Bool
     let action: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // Die Quelle wird nicht genannt (Suchkonzept, 6). Der
+            // Nutzer soll verstehen, dass ausserhalb des Katalogs
+            // gesucht wird — woher die Daten kommen, hilft ihm nicht.
             Text(
-                "Nichts im Katalog. Wenn es den Film bei Wikidata gibt, "
-                    + "kannst du ihn hier anlegen — danach steht er für alle bereit."
+                "Nicht in unserem Katalog gefunden. "
+                    + "Wir können ausserhalb weitersuchen — was du aufnimmst, "
+                    + "steht danach für alle bereit."
             )
             .font(.footnote)
             .foregroundStyle(.secondary)
@@ -132,7 +202,9 @@ private struct CreateFilmRow: View {
             Button(action: action) {
                 HStack(spacing: 8) {
                     if isBusy { ProgressView().controlSize(.small) }
-                    Text(isBusy ? "Sucht bei Wikidata" : "Film anlegen")
+                    // „Film anlegen" klang nach einer Verwaltungstätigkeit
+                    // (Suchkonzept, 7).
+                    Text(isBusy ? "Wir suchen den Film" : "Weiter suchen")
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -147,6 +219,8 @@ private struct CreateFilmRow: View {
 /// Eine Zeile in der Trefferliste.
 private struct FilmRow: View {
     let film: Film
+    var isSeen = false
+    var isOnWatchlist = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -160,10 +234,31 @@ private struct FilmRow: View {
                     // Keine feste Schriftgröße: Dynamic Type muss
                     // greifen (M5 5.4).
                     .font(.body)
-                if let year = film.releaseYear {
-                    Text(String(year))
+
+                // Der Originaltitel, wenn er ein anderer ist. „Die
+                // Eiskönigin / Frozen" macht sofort klar, dass es
+                // derselbe Film ist (Suchkonzept, 2).
+                if film.titleOriginal != film.title {
+                    Text(film.titleOriginal)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 8) {
+                    if let year = film.releaseYear {
+                        Text(String(year))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+
+                    // Klein und ohne Knopf: die Suche bleibt Navigation
+                    // (Suchkonzept, 28 und 29).
+                    if isSeen {
+                        StatusTag(text: "Gesehen", symbol: "checkmark")
+                    } else if isOnWatchlist {
+                        StatusTag(text: "In Watchlist", symbol: "bookmark.fill")
+                    }
                 }
             }
         }
@@ -237,4 +332,139 @@ private struct YearField: View {
 func dismissKeyboard() {
     UIApplication.shared.sendAction(
         #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+}
+
+/// Ein Treffer von draussen, in der Liste.
+private struct CandidateRow: View {
+    let candidate: FilmCandidate
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Ein echtes Plakat, falls es eins gibt. Den Film gibt es
+            // noch nicht, also auch keine prozedurale Karte.
+            AsyncImage(url: candidate.posterURL.flatMap(URL.init(string:))) { image in
+                image.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                Rectangle().fill(Theme.card)
+            }
+            .frame(width: 44, height: 66)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(candidate.title)
+                    .foregroundStyle(Theme.foreground)
+                if let other = candidate.alternativeTitle {
+                    Text(other)
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                }
+                Text(candidate.facts)
+                    .font(.caption)
+                    .foregroundStyle(Theme.quiet)
+                    .monospacedDigit()
+            }
+
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(Theme.quiet)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// Die Prüfkarte vor der Aufnahme (Suchkonzept, 8).
+///
+/// Plakat, Titel, Originaltitel, Jahr, Regie und Laufzeit — genug, um zu
+/// erkennen, ob es wirklich der gesuchte Film ist. Erst der Knopf legt
+/// ihn an.
+private struct CandidateSheet: View {
+    let candidate: FilmCandidate
+    let onAdopt: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                AsyncImage(url: candidate.posterURL.flatMap(URL.init(string:))) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Theme.card)
+                        .overlay {
+                            Image(systemName: "film")
+                                .font(.largeTitle)
+                                .foregroundStyle(Theme.quiet)
+                        }
+                }
+                .frame(width: 150, height: 225)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Text(candidate.title)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Theme.foreground)
+                    .multilineTextAlignment(.center)
+
+                if let other = candidate.alternativeTitle {
+                    Text(other)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.muted)
+                        .multilineTextAlignment(.center)
+                }
+
+                Text(candidate.facts)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.quiet)
+                    .monospacedDigit()
+
+                Text("Ist das der richtige Film? Danach steht er für alle im Katalog.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.quiet)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 4)
+
+                Spacer()
+
+                Button {
+                    onAdopt()
+                    dismiss()
+                } label: {
+                    Text("Film hinzufügen")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .background(Theme.primary, in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(Theme.onPrimary)
+                .font(.headline)
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity)
+            .background(Theme.background)
+            .navigationTitle("Gefunden")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// Eine kleine Kennzeichnung in der Trefferliste.
+private struct StatusTag: View {
+    let text: String
+    let symbol: String
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: symbol).font(.system(size: 9))
+            Text(text).font(.caption2)
+        }
+        .foregroundStyle(Theme.primary)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .overlay { Capsule().strokeBorder(Theme.primary.opacity(0.4)) }
+    }
 }

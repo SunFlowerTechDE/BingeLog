@@ -198,7 +198,8 @@ struct SearchYearTests {
     @MainActor
     func partialYearDoesNotFilter() {
         let model = SearchViewModel(
-            repository: SilentFilmRepository(), lazyFilms: SilentLazyRepository())
+            repository: SilentFilmRepository(), lazyFilms: SilentLazyRepository(),
+            entries: SilentEntryRepository())
 
         model.yearText = "199"
         #expect(model.year == nil)
@@ -217,9 +218,42 @@ struct SearchYearTests {
 /// Antwortet nichts. Fuer Tests, die den Zustand pruefen und nicht das
 /// Netz.
 private struct SilentLazyRepository: LazyFilmRepository {
-    func create(term: String, year: Int?) async -> Result<[CreatedFilm], LazyFilmProblem> {
+    func look(term: String, year: Int?) async -> Result<[FilmCandidate], LazyFilmProblem> {
         .failure(.notFound)
     }
+    func adopt(_ candidate: FilmCandidate) async -> Result<CreatedFilm, LazyFilmProblem> {
+        .failure(.notFound)
+    }
+}
+
+/// Antwortet auf alles mit nichts.
+private struct SilentEntryRepository: FilmEntryRepository {
+    func summary(for filmID: String) async -> RatingSummary { RatingSummary(average: nil, votes: 0) }
+    func ownEntry(for filmID: String) async -> OwnEntry? { nil }
+    func isOnWatchlist(_ filmID: String) async -> Bool { false }
+    func setWatchlist(_ filmID: String, on: Bool) async -> Bool { on }
+    func save(
+        filmID: String, rating: Int, watchedOn: Date?, review: String?,
+        visibility: EntryVisibility
+    ) async -> EntrySaved { .failed("stumm") }
+    func ownFacets(for filmID: String) async -> [FacetKind: Int] { [:] }
+    func facetAverages(for filmID: String) async -> [FacetAverage] { [] }
+    func replaceFacets(entryID: UUID, with scores: [FacetKind: Int]) async {}
+    func reviews(for filmID: String, limit: Int) async -> [FilmReview] { [] }
+    func thread(for filmID: String) async -> ThreadState { .none }
+    func discussionThreshold() async -> Int { 5 }
+    func messages(for filmID: String) async -> [ThreadMessage] { [] }
+    func post(filmID: String, body: String, replyingTo parent: UUID?) async -> SaveOutcome {
+        .failed("stumm")
+    }
+    func friendsForRecommendation(film: String) async -> [RecommendationTarget] { [] }
+    func recommend(film: String, to friends: [UUID], note: String?) async -> SaveOutcome {
+        .failed("stumm")
+    }
+    func recommendationsForMe(limit: Int) async -> [Recommendation] { [] }
+    func dismissRecommendation(film: String) async {}
+    func watchlist() async -> [WatchlistEntry] { [] }
+    func statuses(for filmIDs: [String]) async -> FilmStatuses { .none }
 }
 
 private struct SilentFilmRepository: FilmRepository {
@@ -368,6 +402,72 @@ struct PopcornTests {
         #expect(FSKLevel.level(for: nil) == nil, "nil heisst nicht bekannt")
         #expect(FSKLevel.level(for: 14) == nil, "FSK 14 gibt es nicht")
         #expect(FSKLevel.all.count == 5)
+    }
+}
+
+/// Der Suchverlauf und die Fehlerzustände.
+@Suite("Suchverlauf")
+struct SearchHistoryTests {
+    /// Ein wiederholter Begriff rückt vor, statt zweimal dazustehen.
+    @Test("Derselbe Begriff steht nur einmal im Verlauf")
+    func repeatedTermMovesUp() {
+        var verlauf = ["Michael", "Vaiana"]
+        verlauf = SearchHistory.adding("The Odyssey", to: verlauf)
+        #expect(verlauf == ["The Odyssey", "Michael", "Vaiana"])
+
+        verlauf = SearchHistory.adding("michael", to: verlauf)
+        #expect(verlauf == ["michael", "The Odyssey", "Vaiana"], "Gross und klein ist derselbe")
+        #expect(verlauf.count == 3)
+    }
+
+    /// Zu kurze Begriffe kommen gar nicht erst hinein.
+    @Test("Unter zwei Zeichen wird nichts gemerkt")
+    func shortTermsAreNotRemembered() {
+        #expect(SearchHistory.adding("a", to: ["Michael"]) == ["Michael"])
+        #expect(SearchHistory.adding("  ", to: ["Michael"]) == ["Michael"])
+        #expect(SearchHistory.adding(" Dune ", to: []) == ["Dune"], "getrimmt gemerkt")
+    }
+
+    /// Der Verlauf wächst nicht endlos.
+    @Test("Der Verlauf hält höchstens acht Begriffe")
+    func historyIsCapped() {
+        var verlauf: [String] = []
+        for index in 0..<20 { verlauf = SearchHistory.adding("Film \(index)", to: verlauf) }
+        #expect(verlauf.count == 8)
+        #expect(verlauf.first == "Film 19", "das Jüngste steht vorn")
+    }
+
+    /// Die Fehlerfälle sind auseinandergehalten — und nennen die Quelle
+    /// nicht.
+    ///
+    /// Der Nutzer soll verstehen, dass ausserhalb des Katalogs gesucht
+    /// wurde. Woher die Daten kommen, hilft ihm nicht (Suchkonzept, 6).
+    @Test("Keine Fehlermeldung nennt die Datenquelle")
+    func messagesNeverNameTheSource() {
+        let alle: [LazyFilmProblem] = [
+            .tooShort, .rateLimited, .wrongYear, .notFound, .offline,
+            .sourceUnreachable, .saveFailed, .alreadyThere,
+        ]
+        for problem in alle {
+            let text = problem.message.lowercased()
+            #expect(!text.contains("wikidata"), "\(problem) nennt die Quelle")
+            #expect(!text.contains("tvdb"))
+            #expect(!problem.message.isEmpty)
+        }
+        // Und nur beim Jahr lohnt sich der zweite Versuch ohne Jahr.
+        #expect(LazyFilmProblem.wrongYear.suggestsDroppingTheYear)
+        #expect(!LazyFilmProblem.notFound.suggestsDroppingTheYear)
+    }
+
+    /// Kein Netz ist etwas anderes als eine Quelle, die schweigt.
+    @Test("Fehlendes Netz wird als solches erkannt")
+    func offlineIsItsOwnCase() {
+        let ohneNetz = NSError(
+            domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)
+        #expect(LazyFilmProblem.from(error: ohneNetz) == .offline)
+
+        let anderes = NSError(domain: NSURLErrorDomain, code: NSURLErrorBadServerResponse)
+        #expect(LazyFilmProblem.from(error: anderes) == .sourceUnreachable)
     }
 }
 

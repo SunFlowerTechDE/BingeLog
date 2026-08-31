@@ -88,6 +88,7 @@ protocol FilmEntryRepository: Sendable {
     func dismissRecommendation(film: String) async
 
     func watchlist() async -> [WatchlistEntry]
+    func statuses(for filmIDs: [String]) async -> FilmStatuses
 }
 
 /// Was beim Speichern herauskam.
@@ -272,5 +273,47 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
         } catch {
             return .failed(BackendError.from(error).message)
         }
+    }
+}
+
+/// Was der Nutzer von einer Handvoll Filme schon kennt.
+struct FilmStatuses: Sendable {
+    let seen: Set<String>
+    let onWatchlist: Set<String>
+
+    static let none = FilmStatuses(seen: [], onWatchlist: [])
+}
+
+extension LiveFilmEntryRepository {
+    private struct FilmRow: Decodable { let film_id: String }
+
+    /// Zwei Abfragen für die ganze Trefferliste, nicht zwei je Zeile.
+    func statuses(for filmIDs: [String]) async -> FilmStatuses {
+        guard let user = backend.client.auth.currentUser, !filmIDs.isEmpty else {
+            return .none
+        }
+
+        async let diary: [FilmRow] =
+            (try? await backend.client
+                .from("diary_entries")
+                .select("film_id")
+                .eq("user_id", value: user.id)
+                .in("film_id", values: filmIDs)
+                .execute()
+                .value) ?? []
+
+        async let watchlist: [FilmRow] =
+            (try? await backend.client
+                .from("watchlist")
+                .select("film_id")
+                .eq("user_id", value: user.id)
+                .in("film_id", values: filmIDs)
+                .execute()
+                .value) ?? []
+
+        return FilmStatuses(
+            seen: Set(await diary.map(\.film_id)),
+            onWatchlist: Set(await watchlist.map(\.film_id))
+        )
     }
 }

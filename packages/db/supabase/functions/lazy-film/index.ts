@@ -30,6 +30,32 @@ interface RequestBody {
   imdbId?: string;
   /** Optional. Narrows the candidates to one release year. */
   year?: number;
+  /**
+   * 'preview' looks without writing and answers with the candidates it
+   * found. Anything else keeps the old behaviour and writes.
+   *
+   * The split exists because the concept asks for a card to check
+   * before the film joins the catalogue, and because a title like
+   * "Halloween" is several films — taking the first hit is a guess
+   * everyone else then reads.
+   */
+  mode?: 'preview';
+  /**
+   * Adopt exactly this one. Set by the app after the user picked from
+   * the preview; no title search happens then.
+   */
+  wikidataId?: string;
+}
+
+/** What a preview answers with. */
+interface Candidate {
+  wikidataId: string;
+  title: string;
+  titleOriginal: string;
+  releaseYear: number | null;
+  runtimeMin: number | null;
+  director: string | null;
+  posterUrl: string | null;
 }
 
 function json(body: unknown, status = 200): Response {
@@ -51,6 +77,8 @@ Deno.serve(async (request: Request) => {
 
   const term = (body.term ?? '').trim();
   const imdbId = (body.imdbId ?? '').trim();
+  const wanted = (body.wikidataId ?? '').trim();
+  const isPreview = body.mode === 'preview';
 
   // Four digits or nothing, same rule the clients apply to the field.
   // A year outside that is not a narrower search, it is a typo.
@@ -58,7 +86,10 @@ Deno.serve(async (request: Request) => {
     typeof body.year === 'number' && Number.isInteger(body.year) && body.year >= 1000
       ? body.year
       : null;
-  if (term.length < 2 && imdbId === '') return json({ error: 'term_too_short' }, 400);
+  if (term.length < 2 && imdbId === '' && wanted === '') {
+    return json({ error: 'term_too_short' }, 400);
+  }
+  if (wanted !== '' && !/^Q\d+$/.test(wanted)) return json({ error: 'bad_request' }, 400);
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -70,7 +101,7 @@ Deno.serve(async (request: Request) => {
   // because several of these can be running at once and none of them can
   // see the others.
   const { data: allowed, error: claimError } = await supabase.rpc('claim_lazy_creation', {
-    search_term: term || imdbId,
+    search_term: term || imdbId || wanted,
   });
 
   if (claimError) {
@@ -83,9 +114,14 @@ Deno.serve(async (request: Request) => {
 
   let candidates: string[];
   try {
-    candidates = imdbId
-      ? [await findFilmIdByImdbId(imdbId)].filter((id): id is string => id !== null)
-      : await findFilmIdsByTitle(term, { limit: MAX_CANDIDATES });
+    // Eine gewaehlte Id ueberspringt die Titelsuche: der Nutzer hat
+    // sich in der Vorschau bereits entschieden, und ein zweiter Lauf
+    // koennte etwas anderes finden.
+    candidates = wanted
+      ? [wanted]
+      : imdbId
+        ? [await findFilmIdByImdbId(imdbId)].filter((id): id is string => id !== null)
+        : await findFilmIdsByTitle(term, { limit: MAX_CANDIDATES });
   } catch (error) {
     // Wikidata being slow or down is not this app's failure. The search
     // that triggered this already showed its own empty result.
@@ -113,6 +149,64 @@ Deno.serve(async (request: Request) => {
   const extracted = year === null ? all : all.filter((e) => e.film.releaseYear === year);
 
   if (extracted.length === 0) return json({ created: [], reason: 'wrong_year' });
+
+  // --- preview ---------------------------------------------------------
+  //
+  // Ab hier wird geschrieben. Eine Vorschau tut das nicht: sie
+  // beantwortet nur, was da draussen zu finden waere, damit der Nutzer
+  // pruefen kann, ob es der richtige Film ist. Erst sein zweiter Tipp
+  // legt an.
+  if (isPreview) {
+    const tvdbKey = Deno.env.get('TVDB_API_KEY');
+    const tvdb = tvdbKey
+      ? createTvdbClient({ apiKey: tvdbKey, pin: Deno.env.get('TVDB_PIN') ?? undefined })
+      : null;
+
+    // Die Regienamen in **einer** Abfrage, nicht in einer je Kandidat.
+    const directorIds = [
+      ...new Set(
+        extracted
+          .map((e) => e.credits.find((c) => c.role === 'director')?.personId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const directorNames = new Map<string, string>();
+    if (directorIds.length > 0) {
+      for (const entity of await fetchEntities(directorIds)) {
+        const named = extractNamedEntity(entity);
+        if (named) directorNames.set(named.wikidataId, named.name);
+      }
+    }
+
+    const shown: Candidate[] = [];
+    for (const entry of extracted) {
+      let posterUrl: string | null = null;
+      // Das Plakat gehoert in die Pruefkarte — daran erkennt man einen
+      // Film schneller als an einer Jahreszahl. Ein Fehlschlag ist kein
+      // Grund, die Vorschau ausfallen zu lassen.
+      if (tvdb && entry.film.imdbId) {
+        try {
+          posterUrl = (await tvdb.findByImdbId(entry.film.imdbId))?.posterUrl ?? null;
+        } catch (error) {
+          console.error(`preview artwork failed for ${entry.film.imdbId}:`, String(error));
+        }
+      }
+
+      const directorId = entry.credits.find((c) => c.role === 'director')?.personId;
+
+      shown.push({
+        wikidataId: entry.film.wikidataId,
+        title: entry.film.titleDe ?? entry.film.titleOriginal,
+        titleOriginal: entry.film.titleOriginal,
+        releaseYear: entry.film.releaseYear,
+        runtimeMin: entry.film.runtimeMin,
+        director: directorId ? (directorNames.get(directorId) ?? null) : null,
+        posterUrl,
+      });
+    }
+
+    return json({ candidates: shown });
+  }
 
   // --- write -----------------------------------------------------------
   //
@@ -255,7 +349,7 @@ Deno.serve(async (request: Request) => {
   await supabase
     .from('lazy_creation_attempts')
     .update({ found: created.length })
-    .eq('term', term || imdbId)
+    .eq('term', term || imdbId || wanted)
     .order('created_at', { ascending: false })
     .limit(1);
 
