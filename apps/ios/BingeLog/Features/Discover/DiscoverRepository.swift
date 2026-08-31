@@ -21,11 +21,11 @@ protocol DiscoverRepository: Sendable {
 struct LiveDiscoverRepository: DiscoverRepository {
     let backend: Backend
 
-    private struct TileArguments: Encodable {
+    nonisolated private struct TileArguments: Encodable {
         let max_results: Int
     }
 
-    private struct FeedArguments: Encodable {
+    nonisolated private struct FeedArguments: Encodable {
         let max_results: Int
     }
 
@@ -135,7 +135,7 @@ struct LiveDiscoverRepository: DiscoverRepository {
         try? backend.client.storage.from("avatars").getPublicURL(path: "")
     }
 
-    private struct GenreLink: Decodable {
+    nonisolated private struct GenreLink: Decodable {
         let film_id: String
     }
 

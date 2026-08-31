@@ -5,7 +5,7 @@ import Foundation
 /// Die Feldnamen folgen der Datenbank, nicht der Swift-Gewohnheit —
 /// `CodingKeys` übersetzt einmal an dieser Stelle, statt bei jedem
 /// Aufruf.
-struct Film: Codable, Identifiable, Hashable, Sendable {
+nonisolated struct Film: Codable, Identifiable, Hashable, Sendable {
     let wikidataID: String
     let titleDE: String?
     let titleOriginal: String

@@ -17,7 +17,7 @@ import SwiftUI
 /// Das ging nicht: ein Eimer ist eine Zeichnung mit Streifen und
 /// ausgefranstem Rand, keine Silhouette, und die Hälfte davon liest sich
 /// nicht als Hälfte von irgendetwas.
-enum Popcorn {
+nonisolated enum Popcorn {
     /// Kleiner geht nicht, ohne dass die drei Zustände verschwimmen.
     static let minimumSize: CGFloat = 18
 

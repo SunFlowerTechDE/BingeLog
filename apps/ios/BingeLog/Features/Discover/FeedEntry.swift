@@ -5,7 +5,7 @@ import Foundation
 /// Flach und nicht verschachtelt, weil die Funktion flach zurückgibt.
 /// Den Film setzt ``film`` daraus wieder zusammen, damit die Plakat-
 /// Adresse an genau einer Stelle im Projekt entsteht.
-struct FeedEntry: Decodable, Identifiable, Hashable, Sendable {
+nonisolated struct FeedEntry: Decodable, Identifiable, Hashable, Sendable {
     let id: UUID
     let createdAt: String
     let rating: Int?

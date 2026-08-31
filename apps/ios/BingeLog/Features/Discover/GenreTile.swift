@@ -1,7 +1,7 @@
 import Foundation
 
 /// Eine Genre-Kachel, so wie `genre_tiles` sie liefert.
-struct GenreTile: Decodable, Identifiable, Hashable, Sendable {
+nonisolated struct GenreTile: Decodable, Identifiable, Hashable, Sendable {
     let genreID: String
     let label: String
     let films: Int
@@ -38,7 +38,7 @@ struct GenreTile: Decodable, Identifiable, Hashable, Sendable {
 /// Genres ohne Bild bekommen eine Kachel ohne Bild. Der Katalog kennt
 /// vierzig Genres und wächst; sechzehn Bilder sind der Anfang, kein
 /// Vollstaendigkeitsanspruch.
-enum GenreArtwork {
+nonisolated enum GenreArtwork {
     private static let byGenre: [String: String] = [
         "Q859369": "Genres/Dramedy",
         "Q130232": "Genres/Filmdrama",
@@ -79,7 +79,7 @@ enum GenreArtwork {
 /// Beschriftung aus dem Katalog. Ein Genre ohne Eintrag hier behält
 /// seine, das ist der Normalfall für die vierundzwanzig, die keine
 /// Kachel haben.
-enum GenreLabel {
+nonisolated enum GenreLabel {
     private static let byGenre: [String: String] = [
         "Q130232": "Drama",  // Filmdrama
         "Q157443": "Komödie",  // Filmkomödie

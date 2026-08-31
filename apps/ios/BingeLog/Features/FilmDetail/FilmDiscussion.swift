@@ -52,7 +52,7 @@ struct ThreadMessage: Decodable, Identifiable, Sendable {
 
     var created: Date? { FeedEntry.timestamp(from: createdAt) }
 
-    private struct Profile: Decodable { let username: String }
+    nonisolated private struct Profile: Decodable { let username: String }
 
     enum CodingKeys: String, CodingKey {
         case id, body, profiles
@@ -75,8 +75,8 @@ struct ThreadMessage: Decodable, Identifiable, Sendable {
 }
 
 extension LiveFilmEntryRepository {
-    private struct SettingRow: Decodable { let value: Int }
-    private struct NewMessage: Encodable {
+    nonisolated private struct SettingRow: Decodable { let value: Int }
+    nonisolated private struct NewMessage: Encodable {
         let film_id: String
         let user_id: String
         let parent_id: String?

@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 /// Ein Film auf der Watchlist, mit allem, was die Seite braucht.
-struct WatchlistEntry: Decodable, Identifiable, Sendable {
+nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
     let filmID: String
     let titleDE: String?
     let titleOriginal: String
@@ -89,7 +89,7 @@ struct WatchlistEntry: Decodable, Identifiable, Sendable {
 }
 
 /// Wonach die Watchlist sortiert wird.
-enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
+nonisolated enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
     case newestAdded
     case oldestAdded
     case bestRated

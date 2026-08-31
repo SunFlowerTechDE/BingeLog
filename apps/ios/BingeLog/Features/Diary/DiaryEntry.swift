@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 /// Ein Eintrag im eigenen Tagebuch.
-struct DiaryEntry: Decodable, Identifiable, Sendable {
+nonisolated struct DiaryEntry: Decodable, Identifiable, Sendable {
     let id: UUID
     let filmID: String
     let titleDE: String?
@@ -83,7 +83,7 @@ struct DiaryEntry: Decodable, Identifiable, Sendable {
 }
 
 /// Die Zahlen über dem Tagebuch.
-struct DiarySummary: Decodable, Sendable {
+nonisolated struct DiarySummary: Decodable, Sendable {
     let entries: Int
     let films: Int
     let thisYear: Int
@@ -118,7 +118,7 @@ struct DiarySummary: Decodable, Sendable {
 }
 
 /// Wonach das Tagebuch sortiert wird.
-enum DiaryOrder: String, CaseIterable, Identifiable, Sendable {
+nonisolated enum DiaryOrder: String, CaseIterable, Identifiable, Sendable {
     case newest
     case oldest
     case bestRated

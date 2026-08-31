@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 /// Ein Genre, wie es an einem Film hängt.
-struct FilmGenre: Identifiable, Hashable, Sendable {
+nonisolated struct FilmGenre: Identifiable, Hashable, Sendable {
     let id: String
     let label: String
 
@@ -15,7 +15,7 @@ struct FilmGenre: Identifiable, Hashable, Sendable {
 /// Was der Katalog über ihn weiß. **Ohne Bewerten, Tagebuch und
 /// Watchlist** — die stehen in M5 5.4 und sind jeweils mehr als ein
 /// Feld auf dieser Seite.
-struct FilmDetail: Sendable, Equatable {
+nonisolated struct FilmDetail: Sendable, Equatable {
     let film: Film
     let titleEN: String?
     let runtimeMinutes: Int?
@@ -53,7 +53,7 @@ protocol FilmDetailRepository: Sendable {
 struct LiveFilmDetailRepository: FilmDetailRepository {
     let backend: Backend
 
-    private struct Row: Decodable {
+    nonisolated private struct Row: Decodable {
         let wikidata_id: String
         let title_de: String?
         let title_original: String
@@ -66,21 +66,21 @@ struct LiveFilmDetailRepository: FilmDetailRepository {
         let poster_url: String?
     }
 
-    private struct CreditRow: Decodable {
+    nonisolated private struct CreditRow: Decodable {
         let person_id: String
         let role: String
     }
 
-    private struct PersonRow: Decodable {
+    nonisolated private struct PersonRow: Decodable {
         let wikidata_id: String
         let name: String
     }
 
-    private struct GenreLinkRow: Decodable {
+    nonisolated private struct GenreLinkRow: Decodable {
         let genre_id: String
     }
 
-    private struct GenreRow: Decodable {
+    nonisolated private struct GenreRow: Decodable {
         let wikidata_id: String
         let label_de: String?
         let label_en: String?

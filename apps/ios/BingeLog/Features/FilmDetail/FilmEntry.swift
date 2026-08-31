@@ -116,16 +116,16 @@ enum EntrySaved: Equatable, Sendable {
 struct LiveFilmEntryRepository: FilmEntryRepository {
     let backend: Backend
 
-    private struct SummaryArguments: Encodable { let film: String }
+    nonisolated private struct SummaryArguments: Encodable { let film: String }
 
-    private struct EntryValues: Encodable {
+    nonisolated private struct EntryValues: Encodable {
         let rating: Int
         let watched_on: String?
         let review: String?
         let visibility: String
     }
 
-    private struct NewEntry: Encodable {
+    nonisolated private struct NewEntry: Encodable {
         let user_id: String
         let film_id: String
         let rating: Int
@@ -134,13 +134,13 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
         let visibility: String
     }
 
-    private struct WatchlistRow: Encodable {
+    nonisolated private struct WatchlistRow: Encodable {
         let user_id: String
         let film_id: String
     }
 
     /// Ein Datum als `yyyy-MM-dd`, wie die Spalte es führt.
-    static let dayFormatter: DateFormatter = {
+    nonisolated static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.calendar = Calendar(identifier: .iso8601)
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -190,7 +190,7 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
         return !(rows ?? []).isEmpty
     }
 
-    private struct WatchedRow: Decodable { let film_id: String }
+    nonisolated private struct WatchedRow: Decodable { let film_id: String }
 
     /// Gibt zurück, wie der Zustand danach ist — auch im Fehlerfall.
     ///
@@ -292,7 +292,7 @@ struct FilmStatuses: Sendable {
 }
 
 extension LiveFilmEntryRepository {
-    private struct FilmRow: Decodable { let film_id: String }
+    nonisolated private struct FilmRow: Decodable { let film_id: String }
 
     /// Zwei Abfragen für die ganze Trefferliste, nicht zwei je Zeile.
     func statuses(for filmIDs: [String]) async -> FilmStatuses {

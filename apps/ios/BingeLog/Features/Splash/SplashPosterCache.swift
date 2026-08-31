@@ -20,7 +20,7 @@ import UIKit
 /// gerade angesehen hat, und geben sie an niemanden weiter. Es liegt in
 /// `Caches`: nicht in der Sicherung, jederzeit vom System räumbar. Das
 /// ist ein Cache und nichts anderes.
-enum SplashPosterCache {
+nonisolated enum SplashPosterCache {
     private static let folder = "splash-posters"
 
     private static var directory: URL? {

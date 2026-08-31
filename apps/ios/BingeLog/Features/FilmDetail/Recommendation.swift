@@ -61,8 +61,8 @@ struct Recommendation: Decodable, Identifiable, Sendable {
 }
 
 extension LiveFilmEntryRepository {
-    private struct FilmArgument: Encodable { let film: String }
-    private struct NewRecommendation: Encodable {
+    nonisolated private struct FilmArgument: Encodable { let film: String }
+    nonisolated private struct NewRecommendation: Encodable {
         let from_user: String
         let to_user: String
         let film_id: String
@@ -134,7 +134,7 @@ extension LiveFilmEntryRepository {
     /// folgenlos.
     func dismissRecommendation(film: String) async {
         guard let user = backend.client.auth.currentUser else { return }
-        try? await backend.client
+        _ = try? await backend.client
             .from("recommendations")
             .update(Dismissal(dismissed_at: ISO8601DateFormatter().string(from: Date())))
             .eq("to_user", value: user.id)
@@ -142,7 +142,7 @@ extension LiveFilmEntryRepository {
             .execute()
     }
 
-    private struct Dismissal: Encodable { let dismissed_at: String }
+    nonisolated private struct Dismissal: Encodable { let dismissed_at: String }
     struct TileLimit: Encodable {
         let max_results: Int
         init(max_results: Int) { self.max_results = max_results }

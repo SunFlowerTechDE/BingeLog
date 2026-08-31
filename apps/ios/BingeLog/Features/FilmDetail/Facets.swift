@@ -64,9 +64,9 @@ struct FacetAverage: Decodable, Identifiable, Sendable {
 }
 
 extension LiveFilmEntryRepository {
-    private struct FilmArguments: Encodable { let film: String }
-    private struct OwnFacetRow: Decodable { let facet: FacetKind; let score: Int }
-    private struct FacetWrite: Encodable { let entry_id: String; let facet: String; let score: Int }
+    nonisolated private struct FilmArguments: Encodable { let film: String }
+    nonisolated private struct OwnFacetRow: Decodable { let facet: FacetKind; let score: Int }
+    nonisolated private struct FacetWrite: Encodable { let entry_id: String; let facet: String; let score: Int }
 
     /// Die eigenen Facetten zum jüngsten Eintrag.
     func ownFacets(for filmID: String) async -> [FacetKind: Int] {
@@ -101,7 +101,7 @@ extension LiveFilmEntryRepository {
     /// Eine Facette, die der Nutzer zurückgenommen hat, muss auch
     /// wirklich weg sein, und ein `upsert` allein nähme sie nicht.
     func replaceFacets(entryID: UUID, with scores: [FacetKind: Int]) async {
-        try? await backend.client
+        _ = try? await backend.client
             .from("entry_facet_ratings")
             .delete()
             .eq("entry_id", value: entryID)
@@ -114,6 +114,6 @@ extension LiveFilmEntryRepository {
         }
         guard !rows.isEmpty else { return }
 
-        try? await backend.client.from("entry_facet_ratings").insert(rows).execute()
+        _ = try? await backend.client.from("entry_facet_ratings").insert(rows).execute()
     }
 }
