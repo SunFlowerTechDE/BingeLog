@@ -1171,8 +1171,11 @@ describe('diary and facet visibility', () => {
     const fremderFilm = 'Q900504';
 
     for (const id of [gemocht, vorschlag, fremderFilm]) await seedFilm(h, id);
+    // Beide sind Kategorien. Ein Genre **ohne** Kategorie treibt keine
+    // Vorschlaege mehr — das ist der eigene Fall weiter unten.
     await h.sql.query(
-      `insert into public.genres (wikidata_id, label_de) values ($1, 'Testgenre'), ($2, 'Fremdgenre')`,
+      `insert into public.genres (wikidata_id, label_de, is_category, category_id)
+       values ($1, 'Testgenre', true, $1), ($2, 'Fremdgenre', true, $2)`,
       [genre, fremdesGenre],
     );
     await h.sql.query(
@@ -1435,7 +1438,11 @@ describe('diary and facet visibility', () => {
         [freund, ich, FILM],
       );
 
-    interface Zeile { film_id: string; recommenders: number; first_friend: string | null }
+    interface Zeile {
+      film_id: string;
+      recommenders: number;
+      first_friend: string | null;
+    }
     const meine = await h
       .as('authenticated', ich)
       .query<Zeile>(`select film_id, recommenders, first_friend from public.watchlist_for_me()`);
@@ -1506,6 +1513,68 @@ describe('diary and facet visibility', () => {
       /permission denied/i,
       'anon darf films_for_me nicht ausfuehren',
     );
+  });
+
+  it('maps foreign genres onto the sixteen, or onto none at all', async () => {
+    // Der Kern von Suchkonzept 26: ein Begriff, den Wikidata fuehrt,
+    // wird abgebildet oder faellt weg. Er wird nie zur siebzehnten
+    // Kategorie.
+    const eigen = 'Q900600'; // wird auf eine Kategorie abgebildet
+    const halde = 'Q900601'; // bleibt ohne Kategorie
+    const kategorie = 'Q900602';
+    const film = 'Q900603';
+    await seedFilm(h, film);
+
+    await h.sql.query(
+      `insert into public.genres (wikidata_id, label_de, is_category, category_id)
+       values ($1, 'Testkategorie', true, $1)`,
+      [kategorie],
+    );
+    await h.sql.query(
+      `insert into public.genres (wikidata_id, label_de, category_id)
+       values ($1, 'Enger gefasst', $2), ($3, 'Machart', null)`,
+      [eigen, kategorie, halde],
+    );
+
+    await h.sql.query(
+      `insert into public.film_genres (film_id, genre_id) values ($1, $2), ($1, $3)`,
+      [film, eigen, halde],
+    );
+
+    const kategorien = await h
+      .as('anon', null)
+      .query<{ category_id: string }>(
+        `select category_id from public.film_categories where film_id = $1`,
+        [film],
+      );
+    assert.deepEqual(
+      kategorien.map((r) => r.category_id),
+      [kategorie],
+      'das abgebildete Genre zaehlt, das andere nicht',
+    );
+
+    // Und die Rohzuordnung bleibt stehen: sie ist die Herkunft.
+    const roh = await h
+      .as('anon', null)
+      .query(`select genre_id from public.film_genres where film_id = $1`, [film]);
+    assert.equal(roh.length, 2, 'was Wikidata fuehrt, bleibt gespeichert');
+
+    // Eine Abbildung darf nur auf eine Kategorie zeigen. Sonst haetten
+    // die Kacheln einen Eintrag, fuer den es kein Bild gibt.
+    await assert.rejects(
+      () =>
+        h.sql.query(`update public.genres set category_id = $1 where wikidata_id = $2`, [
+          halde,
+          eigen,
+        ]),
+      /not one of the categories/i,
+      'eine Kategorie kann nur eine Kategorie sein',
+    );
+
+    await h.sql.query(`delete from public.film_genres where film_id = $1`, [film]);
+    await h.sql.query(`delete from public.genres where wikidata_id = any($1)`, [
+      [eigen, halde, kategorie],
+    ]);
   });
 
   it('starts the week on Monday at midnight, German time', async () => {

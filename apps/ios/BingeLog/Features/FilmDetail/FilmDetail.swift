@@ -106,8 +106,11 @@ struct LiveFilmDetailRepository: FilmDetailRepository {
             table: "film_credits", columns: "person_id, role", column: "film_id",
             value: wikidataID, ordered: true)
 
+        // Kategorien, nicht Rohgenres: sonst stünde neben „Kriminalfilm"
+        // noch „Neo-Noir" und „Krimidrama", und der Leser zählt drei
+        // Genres, wo es eines ist (Suchkonzept 26).
         async let links: [GenreLinkRow] = fetch(
-            table: "film_genres", columns: "genre_id", column: "film_id",
+            table: "film_categories", columns: "category_id as genre_id", column: "film_id",
             value: wikidataID, ordered: false)
 
         guard let row = await filmRow else { return nil }

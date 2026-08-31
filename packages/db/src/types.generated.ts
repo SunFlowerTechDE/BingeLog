@@ -461,21 +461,35 @@ export type Database = {
       }
       genres: {
         Row: {
+          category_id: string | null
+          is_category: boolean
           label_de: string | null
           label_en: string | null
           wikidata_id: string
         }
         Insert: {
+          category_id?: string | null
+          is_category?: boolean
           label_de?: string | null
           label_en?: string | null
           wikidata_id: string
         }
         Update: {
+          category_id?: string | null
+          is_category?: boolean
           label_de?: string | null
           label_en?: string | null
           wikidata_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "genres_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["wikidata_id"]
+          },
+        ]
       }
       lazy_creation_attempts: {
         Row: {
@@ -1006,6 +1020,28 @@ export type Database = {
       }
     }
     Views: {
+      film_categories: {
+        Row: {
+          category_id: string | null
+          film_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "film_genres_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "genres_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["wikidata_id"]
+          },
+        ]
+      }
       film_facet_averages: {
         Row: {
           avg_score: number | null

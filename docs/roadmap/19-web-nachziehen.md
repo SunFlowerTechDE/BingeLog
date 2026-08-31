@@ -239,10 +239,15 @@ umgesetzt. Das Web hat davon noch nichts:
 Das Konzept schlaegt in §9 eine Sekunde vor; verworfen am 31.08.2026 —
 ein Tipp auf den Bildschirm beendet sie ohnehin jederzeit.
 
-Noch offen aus dem Konzept, in beiden: **das Genre-Mapping** (§26). Ein
-externes Genre erzeugt heute eine neue Kategorie, statt auf die sechzehn
-abgebildet zu werden; der Katalog fuehrt deshalb vierzig. Das ist eine
-Aenderung an der Pipeline und an `lazy-film`, keine der Oberflaeche.
+**Das Genre-Mapping (§26) ist erledigt** und wirkt fuer beide
+Plattformen: `genre_tiles` und `films_for_me` rechnen jetzt ueber
+Kategorien, und `genres` traegt `is_category` und `category_id`. Aus
+vierzig Kacheln sind sechzehn geworden.
+
+Was das Web dazu noch braucht: **die Filmseite liest die Genres
+weiterhin roh** aus `film_genres`, zeigt also neben „Kriminalfilm" auch
+„Neo-Noir" und „Krimidrama". Sie muss auf die Sicht `film_categories`
+umgestellt werden — eine Zeile, dieselbe wie auf dem iPhone.
 
 ## 11. Das Logo
 

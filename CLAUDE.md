@@ -133,6 +133,12 @@ für ein Plakat ist deshalb fast immer ein Fehler.
 Die Genre-Bilder liegen in `Assets.xcassets/Genres` und sind über die
 **Wikidata-ID** zugeordnet (`GenreArtwork`), nie über die Beschriftung.
 
+Es gibt **sechzehn feste Kategorien**. Was Wikidata sonst noch an einem
+Film führt, wird darauf abgebildet (`genres.category_id`) oder auf
+nichts — eine siebzehnte Kategorie entsteht nie von selbst. Die
+Rohzuordnung bleibt in `film_genres` stehen; gezeigt und gezählt wird
+über die Sicht `film_categories`.
+
 Die Bestätigung per Mail führt in den Browser, nicht zurück in die App:
 beim Registrieren entsteht noch keine Sitzung. Ein Deep-Link zurück ist
 ein eigener Punkt (5.7).
