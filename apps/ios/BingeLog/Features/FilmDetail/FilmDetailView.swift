@@ -15,6 +15,9 @@ struct FilmDetailView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
 
+    /// Damit die Rezension die Tastatur wieder hergibt.
+    @FocusState private var isWriting: Bool
+
     init(film: Film, details: FilmDetailRepository, entries: FilmEntryRepository) {
         _model = State(
             initialValue: FilmDetailModel(film: film, details: details, entries: entries))
@@ -51,11 +54,23 @@ struct FilmDetailView: View {
                     Divider().overlay(Theme.border)
 
                     catalogue
+
+                    Divider().overlay(Theme.border)
+
+                    OtherFacets(averages: model.facetAverages, own: model.facets)
+
+                    ReviewList(reviews: model.reviews)
+
+                    DiscussionSection(model: model)
                 }
                 .padding(.horizontal, 20)
             }
             .padding(.bottom, 28)
         }
+        // Wegwischen geht immer. Ein `TextEditor` bringt keine
+        // Return-Taste zum Schliessen mit — ohne das hier stand die
+        // Tastatur fest, sobald man die Rezension angefasst hatte.
+        .scrollDismissesKeyboard(.interactively)
         .background(Theme.background)
         .ignoresSafeArea(edges: .top)
         .navigationBarBackButtonHidden()
@@ -150,7 +165,18 @@ struct FilmDetailView: View {
                     .scrollContentBackground(.hidden)
                     .font(.callout)
                     .foregroundStyle(Theme.foreground)
+                    .focused($isWriting)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            if isWriting {
+                                Spacer()
+                                Button("Fertig") { isWriting = false }
+                            }
+                        }
+                    }
             }
+
+            FacetForm(scores: $model.facets)
 
             HStack(alignment: .top, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -476,5 +502,389 @@ private struct VisibilityPicker: View {
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 8))
         .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border) }
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+
+// --------------------------------------------------------------------
+// Erweiterte Bewertung
+// --------------------------------------------------------------------
+
+/// Die sieben Facetten, jede freiwillig.
+///
+/// Zugeklappt, weil sie das sind: freiwillig. Aufgeklappt stünde vor der
+/// Pflichtbewertung eine Wand aus sieben Reihen, und zwei Taps wären
+/// keine zwei mehr (ADR-009).
+private struct FacetForm: View {
+    @Binding var scores: [FacetKind: Int]
+    @State private var isOpen = false
+
+    private var setCount: Int { scores.values.filter { $0 > 0 }.count }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { isOpen.toggle() }
+            } label: {
+                HStack {
+                    Text("Erweiterte Bewertung")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.foreground)
+                    if setCount > 0 {
+                        Text("\(setCount) von \(FacetKind.allCases.count)")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.primary)
+                            .monospacedDigit()
+                    }
+                    Spacer()
+                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if isOpen {
+                Text("Freiwillig. Die Gesamtbewertung bleibt davon unberührt.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.quiet)
+
+                ForEach(FacetKind.allCases, id: \.self) { facet in
+                    HStack(spacing: 10) {
+                        Text(facet.label)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.foreground)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        PopcornPicker(
+                            rating: Binding(
+                                get: { scores[facet] ?? 0 },
+                                set: { scores[facet] = $0 }
+                            ),
+                            size: 18
+                        )
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(Theme.card.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+        .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border) }
+    }
+}
+
+/// Wie andere im Einzelnen bewerten.
+///
+/// Ausdrücklich nur die Werte der anderen. Die eigenen stehen im
+/// Formular darüber und ließen sich hier bloß ein zweites Mal ablesen.
+/// Der eigene Wert steht daneben, wo es einen gibt: ohne Vergleich ist
+/// eine Facette nur eine Zahl (M3 3.4b).
+private struct OtherFacets: View {
+    let averages: [FacetAverage]
+    let own: [FacetKind: Int]
+
+    var body: some View {
+        if !averages.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Wie andere bewerten")
+                    .font(.headline)
+                    .foregroundStyle(Theme.foreground)
+
+                ForEach(averages) { row in
+                    HStack(spacing: 10) {
+                        Text(row.facet.label)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        PopcornRating(rating: row.average, size: 15)
+
+                        Text(Popcorn.format(row.average))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.foreground)
+                            .monospacedDigit()
+
+                        if let mine = own[row.facet], mine > 0 {
+                            Text("du \(Popcorn.format(mine))")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.primary)
+                                .monospacedDigit()
+                        }
+                    }
+                }
+
+                Text("Facetten erscheinen ab fünf Stimmen.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.quiet)
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------
+// Was die anderen geschrieben haben
+// --------------------------------------------------------------------
+
+private struct ReviewList: View {
+    let reviews: [FilmReview]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Neueste Bewertungen")
+                .font(.headline)
+                .foregroundStyle(Theme.foreground)
+
+            if reviews.isEmpty {
+                Text("Noch keine Rezension zu diesem Film.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+            } else {
+                ForEach(reviews) { entry in
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 8) {
+                            Text(entry.username ?? "Jemand")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.foreground)
+
+                            if let rating = entry.rating {
+                                PopcornRating(rating: Double(rating), size: 13)
+                            }
+
+                            if entry.isRewatch {
+                                Text("Wiedersehen")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.quiet)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            if let when = entry.created {
+                                Text(when, format: .relative(presentation: .named))
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.quiet)
+                            }
+                        }
+
+                        Text(entry.review)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.card.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------
+// Diskussion
+// --------------------------------------------------------------------
+
+/// Der Raum zum Film.
+///
+/// **Das Gate steht in der Policy auf `thread_messages`, nicht hier**
+/// (ADR-010). Was diese Ansicht zeigt, ist eine Erklärung für das, was
+/// Postgres nicht herausgegeben hat — kein Schutz. Eine ausgeblendete
+/// Komponente wäre keiner.
+private struct DiscussionSection: View {
+    @Bindable var model: FilmDetailModel
+    @Environment(SessionStore.self) private var session
+    @FocusState private var isWriting: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Diskussion")
+                .font(.headline)
+                .foregroundStyle(Theme.foreground)
+
+            if !model.thread.isActive {
+                // Noch nicht aufgegangen. Das ist kein Versäumnis,
+                // sondern Absicht: 350.000 leere Räume sind schlimmer
+                // als keine (ADR-010).
+                Note(
+                    "Die Diskussion geht auf, sobald \(model.threshold) Leute den Film "
+                        + "eingetragen haben. Bisher sind es \(model.thread.viewerCount)."
+                )
+            } else if !session.isSignedIn || !model.hasRated {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(
+                        "Sichtbar, sobald du den Film bewertet hast. "
+                            + (model.thread.messageCount == 1
+                                ? "1 Beitrag bisher."
+                                : "\(model.thread.messageCount) Beiträge bisher.")
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(Theme.foreground)
+
+                    Text(
+                        "Hier wird über das Ende geredet, über Wendungen, über alles. "
+                            + "Deshalb erst danach."
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(Theme.quiet)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(Theme.border, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                }
+            } else {
+                open
+            }
+        }
+    }
+
+    @ViewBuilder private var open: some View {
+        // Eine geschlossene Tür mit Schild. Ohne den Grund wirkt eine
+        // Sperre wie ein Fehler.
+        if model.thread.isLocked {
+            Note(
+                "Diese Diskussion ist geschlossen. "
+                    + (model.thread.lockedReason ?? "Lesen geht weiter, schreiben nicht.")
+            )
+        }
+
+        if model.messages.isEmpty {
+            Text("Noch keine Beiträge. Fang an.")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+        }
+
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(model.topLevel) { message in
+                MessageBubble(message: message, isReply: false) {
+                    model.replyingTo = message
+                    isWriting = true
+                }
+
+                ForEach(model.replies(to: message.id)) { reply in
+                    MessageBubble(message: reply, isReply: true, onReply: nil)
+                        .padding(.leading, 24)
+                }
+            }
+        }
+
+        if !model.thread.isLocked {
+            VStack(alignment: .leading, spacing: 8) {
+                if let parent = model.replyingTo {
+                    HStack(spacing: 6) {
+                        Text("Antwort an \(parent.username ?? "jemanden")")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.muted)
+                        Button("Abbrechen") { model.replyingTo = nil }
+                            .font(.caption2)
+                            .foregroundStyle(Theme.primary)
+                    }
+                }
+
+                TextEditor(text: $model.draft)
+                    .frame(minHeight: 72)
+                    .scrollContentBackground(.hidden)
+                    .font(.callout)
+                    .foregroundStyle(Theme.foreground)
+                    .focused($isWriting)
+                    .padding(8)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border) }
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            if isWriting {
+                                Spacer()
+                                Button("Fertig") { isWriting = false }
+                            }
+                        }
+                    }
+
+                if let note = model.discussionNote {
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                Button {
+                    isWriting = false
+                    Task { await model.send() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if model.isPosting { ProgressView().controlSize(.small) }
+                        Text("Beitrag senden")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                }
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border) }
+                .foregroundStyle(Theme.foreground)
+                .font(.subheadline.weight(.medium))
+                .disabled(model.draft.trimmingCharacters(in: .whitespaces).isEmpty
+                    || model.isPosting)
+            }
+        }
+    }
+}
+
+private struct MessageBubble: View {
+    let message: ThreadMessage
+    let isReply: Bool
+    let onReply: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(message.username ?? "Jemand")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.foreground)
+                if let when = message.created {
+                    Text(when, format: .relative(presentation: .named))
+                        .font(.caption2)
+                        .foregroundStyle(Theme.quiet)
+                }
+                if message.editedAt != nil {
+                    Text("bearbeitet")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.quiet)
+                }
+                Spacer(minLength: 0)
+            }
+
+            Text(message.body)
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let onReply {
+                Button("Antworten", action: onReply)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.primary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            (isReply ? Theme.card.opacity(0.35) : Theme.card),
+            in: RoundedRectangle(cornerRadius: 10)
+        )
+    }
+}
+
+/// Ein Hinweis in gestricheltem Rahmen.
+private struct Note: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(Theme.muted)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Theme.border, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            }
     }
 }

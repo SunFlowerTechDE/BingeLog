@@ -71,7 +71,16 @@ protocol FilmEntryRepository: Sendable {
     func save(
         filmID: String, rating: Int, watchedOn: Date?, review: String?,
         visibility: EntryVisibility
-    ) async -> SaveOutcome
+    ) async -> EntrySaved
+
+    func ownFacets(for filmID: String) async -> [FacetKind: Int]
+    func facetAverages(for filmID: String) async -> [FacetAverage]
+    func replaceFacets(entryID: UUID, with scores: [FacetKind: Int]) async
+    func reviews(for filmID: String, limit: Int) async -> [FilmReview]
+    func thread(for filmID: String) async -> ThreadState
+    func discussionThreshold() async -> Int
+    func messages(for filmID: String) async -> [ThreadMessage]
+    func post(filmID: String, body: String, replyingTo parent: UUID?) async -> SaveOutcome
 }
 
 /// Was beim Speichern herauskam.
@@ -80,6 +89,12 @@ protocol FilmEntryRepository: Sendable {
 /// kein Fehler, und der Compiler sagt das zu Recht.
 enum SaveOutcome: Equatable, Sendable {
     case saved
+    case failed(String)
+}
+
+/// Was gespeichert wurde — die Zeile, an der die Facetten hängen.
+enum EntrySaved: Equatable, Sendable {
+    case saved(UUID)
     case failed(String)
 }
 
@@ -203,7 +218,7 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
     func save(
         filmID: String, rating: Int, watchedOn: Date?, review: String?,
         visibility: EntryVisibility
-    ) async -> SaveOutcome {
+    ) async -> EntrySaved {
         guard (1...10).contains(rating) else {
             return .failed("Wähl eine Bewertung von einem halben bis fünf Popcorn.")
         }
@@ -226,17 +241,27 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
                     )
                     .eq("id", value: existing.id)
                     .execute()
-            } else {
-                try await backend.client
-                    .from("diary_entries")
-                    .insert(
-                        NewEntry(
-                            user_id: user.id.uuidString, film_id: filmID, rating: rating,
-                            watched_on: day, review: cleaned, visibility: visibility.rawValue)
-                    )
-                    .execute()
+                return .saved(existing.id)
             }
-            return .saved
+
+            try await backend.client
+                .from("diary_entries")
+                .insert(
+                    NewEntry(
+                        user_id: user.id.uuidString, film_id: filmID, rating: rating,
+                        watched_on: day, review: cleaned, visibility: visibility.rawValue)
+                )
+                .execute()
+
+            // Die neue Zeile noch einmal lesen, statt sie sich ausgeben
+            // zu lassen: ein `insert().select()` braucht eine
+            // SELECT-Policy, und wenn die fehlt, meldet Postgres einen
+            // Verstoss beim Einfügen — der Fehler zeigt dann auf die
+            // falsche Hälfte.
+            guard let created = await ownEntry(for: filmID) else {
+                return .failed("Gespeichert, aber nicht wiedergefunden.")
+            }
+            return .saved(created.id)
         } catch {
             return .failed(BackendError.from(error).message)
         }

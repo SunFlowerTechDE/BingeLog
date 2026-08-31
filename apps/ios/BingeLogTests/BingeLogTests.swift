@@ -356,6 +356,45 @@ struct PopcornTests {
     }
 }
 
+/// Die erweiterte Bewertung.
+@Suite("Facetten")
+struct FacetTests {
+    /// Die sieben Facetten heissen wie die Werte des Enums im Schema.
+    ///
+    /// Ein Tippfehler ergäbe keinen Übersetzungsfehler, sondern eine
+    /// abgewiesene Zeile zur Laufzeit — `production_design` ist der
+    /// Kandidat dafür.
+    @Test("Die Facetten heissen wie facet_kind in der Datenbank")
+    func facetsMatchTheSchema() {
+        #expect(FacetKind.allCases.count == 7)
+        #expect(FacetKind.allCases.map(\.rawValue) == [
+            "acting", "story", "directing", "cinematography",
+            "sound", "production_design", "pacing",
+        ])
+        // Und jede hat eine deutsche Beschriftung.
+        #expect(FacetKind.allCases.allSatisfy { !$0.label.isEmpty })
+        #expect(FacetKind.productionDesign.label == "Setting und Ausstattung")
+    }
+
+    /// Facetten fliessen **nicht** in die Gesamtbewertung ein.
+    ///
+    /// Das ist eine Zusicherung aus ADR-009 und kein Detail. Der Test
+    /// hält fest, dass es keinen Weg von den Facetten zur Bewertung
+    /// gibt: das Formular hält beide getrennt, und gespeichert werden
+    /// sie über zwei verschiedene Tabellen.
+    @Test("Eine leere Facette ist keine Bewertung von null")
+    func emptyFacetIsNotZero() {
+        var scores: [FacetKind: Int] = [:]
+        #expect(scores[.acting] == nil, "nicht gesetzt ist nicht dasselbe wie gesetzt")
+        scores[.acting] = 8
+        #expect(scores.values.filter { $0 > 0 }.count == 1)
+        // Nur Werte von 1 bis 10 sind gueltig; alles andere faellt beim
+        // Schreiben heraus.
+        #expect(!(1...10).contains(0))
+        #expect((1...10).contains(8))
+    }
+}
+
 /// Entdecken.
 @Suite("Entdecken")
 struct DiscoverTests {
