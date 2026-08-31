@@ -112,12 +112,19 @@ struct FilmDetailView: View {
                     .foregroundStyle(Theme.muted)
             }
 
-            HStack(spacing: 8) {
+            // Die Altersfreigabe steht bei den harten Angaben und nicht
+            // als Hinweis irgendwo: sie ist eine Tatsache über den Film,
+            // keine Warnung an den Leser.
+            HStack(spacing: 10) {
+                FSKBadge(value: model.detail?.fsk)
+
                 Text(factLine)
                     .font(.subheadline)
                     .foregroundStyle(Theme.muted)
                     .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .padding(.top, 2)
         }
     }
 
@@ -224,15 +231,6 @@ struct FilmDetailView: View {
                     }
                 }
 
-                LabelledRow(title: "Altersfreigabe") {
-                    HStack(spacing: 8) {
-                        FSKBadge(value: detail.fsk)
-                        Text(FSKLevel.level(for: detail.fsk)?.text ?? "nicht bekannt")
-                            .font(.caption)
-                            .foregroundStyle(Theme.muted)
-                    }
-                }
-
                 if detail.directors.count > 1 {
                     LabelledRow(title: "Regie") {
                         Text(detail.directors.joined(separator: ", "))
@@ -324,10 +322,17 @@ private struct RatingCards: View {
     let canRate: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
+        // Beide Karten sind gleich hoch und gleich breit. Dafür haben
+        // sie denselben Aufbau — Überschrift, Reihe Eimer, Zeile
+        // darunter —, auch wenn links noch nichts zu zeigen ist: eine
+        // Karte ohne Eimer ist niedriger als eine mit, und zwei
+        // verschieden hohe Karten nebeneinander sehen aus wie ein
+        // Fehler.
+        HStack(alignment: .top, spacing: 12) {
             Panel(title: "Ø Bewertung") {
+                PopcornRating(rating: summary.average ?? 0, size: 22)
+
                 if let average = summary.average {
-                    PopcornRating(rating: average, size: 22)
                     HStack(spacing: 6) {
                         Text(Popcorn.format(average))
                             .font(.subheadline.weight(.semibold))
@@ -344,6 +349,7 @@ private struct RatingCards: View {
                         .foregroundStyle(Theme.quiet)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             if canRate {
                 Panel(title: "Deine Bewertung") {
@@ -353,8 +359,12 @@ private struct RatingCards: View {
                         .foregroundStyle(rating == 0 ? Theme.quiet : Theme.foreground)
                         .monospacedDigit()
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
+        // Die Reihe nimmt die Höhe der höheren Karte an, und weil beide
+        // `maxHeight: .infinity` haben, füllen sie diese aus. Ohne das
+        // hier zöge `.infinity` bis ans Ende der Seite.
         .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -446,6 +456,12 @@ private struct VisibilityPicker: View {
                 } label: {
                     Text(option.label)
                         .font(.caption.weight(selection == option ? .semibold : .regular))
+                        // Einzeilig: "Öffent-lich" umgebrochen sah aus
+                        // wie ein Fehler, und die drei Felder wurden
+                        // dadurch verschieden hoch.
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .multilineTextAlignment(.center)
                         .foregroundStyle(
                             selection == option ? Theme.onPrimary : Theme.muted
                         )
