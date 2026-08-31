@@ -300,6 +300,62 @@ struct CardBuildTests {
     }
 }
 
+/// Die Bewertungsskala.
+@Suite("Popcorn")
+struct PopcornTests {
+    /// Zehn Halbe werden zu fünf Eimern.
+    ///
+    /// Die Zuordnung ist dieselbe wie im Web (`fillFor` in
+    /// `popcorn.tsx`), und sie steht jetzt an zwei Stellen — deshalb
+    /// dieser Test.
+    @Test("Jede Bewertung füllt die richtigen Eimer")
+    func bucketsFill() {
+        func row(_ rating: Int) -> [Int] {
+            (0..<5).map { Popcorn.fill(rating: Double(rating), index: $0) }
+        }
+
+        #expect(row(10) == [2, 2, 2, 2, 2], "fünf volle")
+        #expect(row(1) == [1, 0, 0, 0, 0], "ein halber")
+        #expect(row(7) == [2, 2, 2, 1, 0], "drei volle und ein halber")
+        #expect(row(0) == [0, 0, 0, 0, 0], "keine Bewertung ist keine Füllung")
+    }
+
+    /// Halbiert wird genau einmal, und mit deutschem Komma.
+    @Test("Die Zahl daneben steht auf der Skala bis fünf")
+    func formatsOnTheFiveScale() {
+        #expect(Popcorn.format(10) == "5,0")
+        #expect(Popcorn.format(7) == "3,5")
+        #expect(Popcorn.format(1) == "0,5")
+        // Der Durchschnitt kommt als Kommazahl auf derselben Skala.
+        #expect(Popcorn.format(8.5) == "4,3")
+    }
+
+    /// Die drei Sichtbarkeiten heissen so wie in der Datenbank.
+    ///
+    /// Ein Tippfehler hier ergäbe keinen Fehler beim Übersetzen, sondern
+    /// einen abgewiesenen Schreibvorgang zur Laufzeit — oder, schlimmer,
+    /// einen Eintrag mit der falschen Sichtbarkeit.
+    @Test("Die Sichtbarkeiten heissen wie die Werte im Schema")
+    func visibilityMatchesTheSchema() {
+        #expect(EntryVisibility.publicly.rawValue == "public")
+        #expect(EntryVisibility.friends.rawValue == "friends")
+        #expect(EntryVisibility.privately.rawValue == "private")
+        #expect(EntryVisibility.allCases.count == 3)
+        // Und öffentlich steht zuerst, wie im Entwurf.
+        #expect(EntryVisibility.allCases.first == .publicly)
+    }
+
+    /// Die FSK-Stufen und ihre amtlichen Farben.
+    @Test("Unbekannt ist nicht dasselbe wie FSK 0")
+    func unknownIsNotZero() {
+        #expect(FSKLevel.level(for: 0)?.label == "FSK 0")
+        #expect(FSKLevel.level(for: 18)?.text == "ab 18 Jahren")
+        #expect(FSKLevel.level(for: nil) == nil, "nil heisst nicht bekannt")
+        #expect(FSKLevel.level(for: 14) == nil, "FSK 14 gibt es nicht")
+        #expect(FSKLevel.all.count == 5)
+    }
+}
+
 /// Entdecken.
 @Suite("Entdecken")
 struct DiscoverTests {
@@ -397,7 +453,7 @@ struct DiscoverTests {
                 film: Film(
                     wikidataID: "Q1", titleDE: nil, titleOriginal: "A", releaseYear: nil,
                     posterSource: nil, posterURL: nil),
-                titleEN: nil, runtimeMinutes: minutes, synopsis: nil,
+                titleEN: nil, runtimeMinutes: minutes, fsk: nil, synopsis: nil,
                 directors: [], cast: [], genres: [])
         }
 
@@ -417,7 +473,7 @@ struct DiscoverTests {
                 film: Film(
                     wikidataID: "Q1", titleDE: de, titleOriginal: original, releaseYear: nil,
                     posterSource: nil, posterURL: nil),
-                titleEN: en, runtimeMinutes: nil, synopsis: nil,
+                titleEN: en, runtimeMinutes: nil, fsk: nil, synopsis: nil,
                 directors: [], cast: [], genres: [])
         }
 

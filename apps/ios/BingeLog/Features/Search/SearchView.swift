@@ -6,12 +6,15 @@ struct SearchView: View {
     @State private var model: SearchViewModel
 
     private let details: FilmDetailRepository
+    private let entries: FilmEntryRepository
 
     init(
         repository: FilmRepository, lazyFilms: LazyFilmRepository,
-        details: FilmDetailRepository
+        details: FilmDetailRepository,
+        entries: FilmEntryRepository
     ) {
         self.details = details
+        self.entries = entries
         _model = State(
             initialValue: SearchViewModel(repository: repository, lazyFilms: lazyFilms))
     }
@@ -62,7 +65,7 @@ struct SearchView: View {
 
             ForEach(model.films) { film in
                 NavigationLink {
-                    FilmDetailView(film: film, repository: details)
+                    FilmDetailView(film: film, details: details, entries: entries)
                 } label: {
                     FilmRow(film: film)
                 }

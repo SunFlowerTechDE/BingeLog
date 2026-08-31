@@ -150,7 +150,21 @@ anderen mitlesen.
 `wrong_year` ist bereits uebersetzt. **Was fehlt, ist der Aufruf mit
 dem Jahr** — er kommt zusammen mit dem Feld aus Punkt 5.
 
-## 7. Das Logo
+## 7. Die Filmseite
+
+Der Entwurf vom 31.08.2026 ist auf dem iPhone umgesetzt und weicht vom
+Web ab: Plakat ueber die ganze Breite und nach unten ins Dunkle
+auslaufend, Titel darauf, darunter die beiden Zahlen nebeneinander, dann
+Besetzung mit „Mehr anzeigen (n)", Rezension, Datum, Sichtbarkeit,
+Knopf. Im Web steht das Plakat links in einer eigenen Schiene.
+
+Ob das Web nachziehen soll, ist eine offene Frage und keine Aufgabe: am
+Schreibtisch ist eine zweispaltige Seite nicht dasselbe wie auf einem
+Telefon. **Die Popcorn-Skala, die FSK-Farben und die drei
+Sichtbarkeiten sind auf beiden gleich** — das ist der Teil, der gleich
+bleiben muss.
+
+## 8. Das Logo
 
 Die Bildmarke liegt als Asset in der App
 (`apps/ios/BingeLog/Assets.xcassets/LogoMark.imageset`). Im Web wird der

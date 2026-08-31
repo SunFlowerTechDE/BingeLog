@@ -19,6 +19,7 @@ struct FilmDetail: Sendable, Equatable {
     let film: Film
     let titleEN: String?
     let runtimeMinutes: Int?
+    let fsk: Int?
     let synopsis: String?
     let directors: [String]
     let cast: [String]
@@ -59,6 +60,7 @@ struct LiveFilmDetailRepository: FilmDetailRepository {
         let title_en: String?
         let release_year: Int?
         let runtime_min: Int?
+        let fsk: Int?
         let synopsis_de: String?
         let poster_source: String?
         let poster_url: String?
@@ -93,7 +95,7 @@ struct LiveFilmDetailRepository: FilmDetailRepository {
             .from("films")
             .select(
                 "wikidata_id, title_de, title_original, title_en, release_year, "
-                    + "runtime_min, synopsis_de, poster_source, poster_url"
+                    + "runtime_min, fsk, synopsis_de, poster_source, poster_url"
             )
             .eq("wikidata_id", value: wikidataID)
             .single()
@@ -146,6 +148,7 @@ struct LiveFilmDetailRepository: FilmDetailRepository {
             ),
             titleEN: row.title_en,
             runtimeMinutes: row.runtime_min,
+            fsk: row.fsk,
             synopsis: row.synopsis_de,
             directors: named("director"),
             // Zwölf reichen. Eine Besetzungsliste ist keine Filmseite.

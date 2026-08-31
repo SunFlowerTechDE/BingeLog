@@ -18,10 +18,15 @@ struct DiscoverView: View {
     private let repository: DiscoverRepository
 
     private let details: FilmDetailRepository
+    private let entries: FilmEntryRepository
 
-    init(repository: DiscoverRepository, details: FilmDetailRepository) {
+    init(
+        repository: DiscoverRepository, details: FilmDetailRepository,
+        entries: FilmEntryRepository
+    ) {
         self.repository = repository
         self.details = details
+        self.entries = entries
         _model = State(initialValue: DiscoverModel(repository: repository))
     }
 
@@ -29,17 +34,21 @@ struct DiscoverView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 if !model.tiles.isEmpty {
-                    GenreSlider(tiles: model.tiles, repository: repository, details: details)
+                    GenreSlider(
+                        tiles: model.tiles, repository: repository,
+                        details: details, entries: entries)
                 }
 
                 if !model.top.isEmpty {
-                    WeeklyTopSection(entries: model.top, details: details)
+                    WeeklyTopSection(entries: model.top, details: details, filmEntries: entries)
                 }
 
-                FeedSection(entries: model.feed, avatarBase: model.avatarBase, details: details)
+                FeedSection(
+                    entries: model.feed, avatarBase: model.avatarBase,
+                    details: details, filmEntries: entries)
 
                 if !model.newest.isEmpty {
-                    NewestSection(films: model.newest, details: details)
+                    NewestSection(films: model.newest, details: details, entries: entries)
                 }
             }
             .padding(.vertical, 8)
@@ -82,6 +91,7 @@ private struct GenreSlider: View {
     let tiles: [GenreTile]
     let repository: DiscoverRepository
     let details: FilmDetailRepository
+    let entries: FilmEntryRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -91,7 +101,7 @@ private struct GenreSlider: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(tiles) { tile in
                         NavigationLink {
-                            GenreView(tile: tile, repository: repository, details: details)
+                            GenreView(tile: tile, repository: repository, details: details, entries: entries)
                         } label: {
                             GenreCard(tile: tile)
                         }
@@ -164,6 +174,7 @@ private struct GenreView: View {
     let tile: GenreTile
     let repository: DiscoverRepository
     let details: FilmDetailRepository
+    let entries: FilmEntryRepository
 
     @State private var films: [Film] = []
     @State private var isLoading = true
@@ -171,7 +182,7 @@ private struct GenreView: View {
     var body: some View {
         List(films) { film in
             NavigationLink {
-                FilmDetailView(film: film, repository: details)
+                FilmDetailView(film: film, details: details, entries: entries)
             } label: {
                 FilmLine(film: film)
             }
@@ -208,6 +219,7 @@ private struct FeedSection: View {
     let entries: [FeedEntry]
     let avatarBase: URL?
     let details: FilmDetailRepository
+    let filmEntries: FilmEntryRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -225,7 +237,7 @@ private struct FeedSection: View {
                 VStack(spacing: 0) {
                     ForEach(entries) { entry in
                         NavigationLink {
-                            FilmDetailView(film: entry.film, repository: details)
+                            FilmDetailView(film: entry.film, details: details, entries: filmEntries)
                         } label: {
                             FeedRow(entry: entry, avatarBase: avatarBase)
                         }
@@ -356,6 +368,7 @@ private struct Avatar: View {
 private struct WeeklyTopSection: View {
     let entries: [WeeklyTopFilm]
     let details: FilmDetailRepository
+    let filmEntries: FilmEntryRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -365,7 +378,7 @@ private struct WeeklyTopSection: View {
                 HStack(alignment: .top, spacing: 14) {
                     ForEach(entries) { entry in
                         NavigationLink {
-                            FilmDetailView(film: entry.film, repository: details)
+                            FilmDetailView(film: entry.film, details: details, entries: filmEntries)
                         } label: {
                             RankedCard(entry: entry)
                         }
@@ -451,6 +464,7 @@ private struct RankedCard: View {
 private struct NewestSection: View {
     let films: [Film]
     let details: FilmDetailRepository
+    let entries: FilmEntryRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -460,7 +474,7 @@ private struct NewestSection: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(films) { film in
                         NavigationLink {
-                            FilmDetailView(film: film, repository: details)
+                            FilmDetailView(film: film, details: details, entries: entries)
                         } label: {
                         VStack(alignment: .leading, spacing: 6) {
                             PosterThumbnail(film: film, width: 104)
