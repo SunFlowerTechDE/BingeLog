@@ -116,9 +116,10 @@ Entdecken ist auch auf dem iPhone die Startseite: Genre-Schieber,
 Top 10 der Woche, chronologischer Feed, Neu im Katalog — dieselbe
 Ordnung wie im Web. Filme sind überall antippbar und führen auf die
 Filmseite; **Bewerten, Tagebuch und Watchlist stehen dort noch aus**
-(5.4). Fehlt ein Film, legt ihn die Suche an — mit derselben
-fünfzehnsekündigen Zeremonie wie im Web, und das Jahr grenzt ein,
-welcher der Wikidata-Treffer gemeint ist.
+(5.4). Fehlt ein Film, sucht die Suche **erst nach** und zeigt eine Prüfkarte,
+bevor irgendetwas geschrieben wird; bei mehreren Treffern entscheidet
+der Nutzer. Die Datenquelle wird in der Oberfläche **nie genannt**. Die
+Zeremonie dauert fünfzehn Sekunden wie im Web und endet bei einem Tipp.
 
 Empfehlen geht **nur unter Freunden** — beidseitiges Folgen. Die Regel
 steht in der Policy auf `recommendations`, nicht in der Auswahlliste:

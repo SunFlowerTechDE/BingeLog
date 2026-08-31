@@ -215,7 +215,36 @@ Client** — eine Watchlist hat Dutzende Eintraege, keine
 Hunderttausend; sollte das je nicht mehr stimmen, ist das der Punkt zum
 Umdrehen.
 
-## 10. Das Logo
+## 10. Die Suche
+
+Das Such-Konzept vom 31.08.2026, Prioritaet 1, ist auf dem iPhone
+umgesetzt. Das Web hat davon noch nichts:
+
+- **Vorschau vor der Aufnahme.** `lazy-film` kennt jetzt
+  `mode: 'preview'` — nachsehen ohne zu schreiben — und nimmt bei
+  `{ wikidataId }` genau einen Treffer auf. Der bisherige Aufruf des
+  Webs mit `{ term }` schreibt weiterhin sofort; das ist der Weg, der
+  abzuloesen ist.
+- **Mehrere Treffer zur Auswahl** statt des ersten. „Halloween" sind
+  drei Filme.
+- **Die Quelle wird nicht genannt.** Im Web steht noch „Wikidata
+  antwortet gerade nicht" und „Film anlegen". Beides muss weg.
+- **Getrennte Fehlerzustaende**: kein Treffer, kein Netz, Quelle nicht
+  erreichbar, Speichern fehlgeschlagen, schon vorhanden.
+- **„Ohne Jahr suchen"** statt eines leeren Ergebnisses.
+- **Suchverlauf**, Originaltitel neben dem deutschen, und die Marken
+  „Gesehen" / „In Watchlist".
+
+**Die Kartenanimation bleibt bei fuenfzehn Sekunden**, in App und Web.
+Das Konzept schlaegt in §9 eine Sekunde vor; verworfen am 31.08.2026 —
+ein Tipp auf den Bildschirm beendet sie ohnehin jederzeit.
+
+Noch offen aus dem Konzept, in beiden: **das Genre-Mapping** (§26). Ein
+externes Genre erzeugt heute eine neue Kategorie, statt auf die sechzehn
+abgebildet zu werden; der Katalog fuehrt deshalb vierzig. Das ist eine
+Aenderung an der Pipeline und an `lazy-film`, keine der Oberflaeche.
+
+## 11. Das Logo
 
 Die Bildmarke liegt als Asset in der App
 (`apps/ios/BingeLog/Assets.xcassets/LogoMark.imageset`). Im Web wird der

@@ -80,8 +80,21 @@ struct CardBuildView: View {
 
     var body: some View {
         ZStack {
+            // Der Vorhang: unscharf **und** dunkel, wie im Web
+            // (`backdrop-filter: blur(14px)` plus `rgba(0,0,0,.62)`).
+            //
+            // Vorher stand hier nur das Schwarz. Ohne die Unschärfe
+            // blieb die Trefferliste dahinter lesbar, und ihre Kanten
+            // liefen mit den Splittern der Karte ineinander — zwei
+            // Bilder auf einmal, von denen keines zu erkennen war.
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(isDimmed ? 1 : 0)
+                .ignoresSafeArea()
+                .animation(.easeInOut(duration: 2), value: isDimmed)
+
             Color.black
-                .opacity(isDimmed ? 0.62 : 0)
+                .opacity(isDimmed ? 0.45 : 0)
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 2), value: isDimmed)
 
@@ -107,11 +120,15 @@ struct CardBuildView: View {
             }
             .padding(.horizontal, 24)
         }
-        // Antippen geht früher weiter. Der Film ist da längst
-        // gespeichert — die Zeremonie ist ein Bericht, kein Schritt, den
-        // man abbrechen könnte.
+        // Antippen beendet sie, überall auf dem Bildschirm. Der Film
+        // ist da längst gespeichert — die Zeremonie ist ein Bericht,
+        // kein Schritt, den man abbrechen könnte.
+        //
+        // `simultaneousGesture`, damit der Tipp auch dann ankommt, wenn
+        // er auf der Karte landet: die liegt darüber, und ein
+        // `onTapGesture` am Behälter allein bekäme ihn nicht.
         .contentShape(Rectangle())
-        .onTapGesture { finish() }
+        .simultaneousGesture(TapGesture().onEnded { finish() })
         .onAppear {
             // Doppelt gesichert: der Knopf schliesst die Tastatur schon,
             // aber der Vorhang darf unter keinen Umständen dahinter
