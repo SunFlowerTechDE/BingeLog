@@ -1128,6 +1128,36 @@ export type Database = {
         Args: { per_minute?: number; search_term: string }
         Returns: boolean
       }
+      diary_for_me: {
+        Args: never
+        Returns: {
+          created_at: string
+          film_id: string
+          genre_ids: string[]
+          genre_labels: string[]
+          id: string
+          is_rewatch: boolean
+          poster_source: string
+          poster_url: string
+          rating: number
+          release_year: number
+          review: string
+          runtime_min: number
+          title_de: string
+          title_original: string
+          visibility: Database["public"]["Enums"]["entry_visibility"]
+          watched_on: string
+        }[]
+      }
+      diary_summary: {
+        Args: never
+        Returns: {
+          average: number
+          entries: number
+          films: number
+          this_year: number
+        }[]
+      }
       film_rating_summary: {
         Args: { film: string }
         Returns: {

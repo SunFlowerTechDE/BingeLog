@@ -89,6 +89,13 @@ protocol FilmEntryRepository: Sendable {
 
     func watchlist() async -> [WatchlistEntry]
     func statuses(for filmIDs: [String]) async -> FilmStatuses
+
+    func diary() async -> [DiaryEntry]
+    func diarySummary() async -> DiarySummary
+    func updateEntry(
+        id: UUID, rating: Int, watchedOn: Date?, review: String?, visibility: EntryVisibility
+    ) async -> SaveOutcome
+    func deleteEntry(id: UUID) async -> SaveOutcome
 }
 
 /// Was beim Speichern herauskam.

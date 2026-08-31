@@ -249,7 +249,24 @@ weiterhin roh** aus `film_genres`, zeigt also neben „Kriminalfilm" auch
 „Neo-Noir" und „Krimidrama". Sie muss auf die Sicht `film_categories`
 umgestellt werden — eine Zeile, dieselbe wie auf dem iPhone.
 
-## 11. Das Logo
+## 11. Das Tagebuch
+
+Im Web ist das Tagebuch eine chronologische Liste ohne Suche, Filter
+oder Sortierung, und Eintraege lassen sich dort nicht bearbeiten. Auf
+dem iPhone ist es nach Monat gruppiert, hat drei Zahlen im Kopf, sucht
+in Titel **und** Rezension, filtert nach Kategorie, Sichtbarkeit,
+Rezension und Wiedersehen und laesst jeden Eintrag aendern oder
+loeschen.
+
+`diary_for_me()` und `diary_summary()` liefern beides in zwei Antworten
+und stehen dem Web offen.
+
+Eine Regel, die dabei gilt und im Web fehlt: ein Eintrag **ohne**
+Sehdatum wird unter seinem Eintragszeitpunkt einsortiert, und die Zeile
+sagt dazu „eingetragen am". Sonst stuende er als Eintrag von 1970 ganz
+unten.
+
+## 12. Das Logo
 
 Die Bildmarke liegt als Asset in der App
 (`apps/ios/BingeLog/Assets.xcassets/LogoMark.imageset`). Im Web wird der

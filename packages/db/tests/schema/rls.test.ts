@@ -1515,6 +1515,49 @@ describe('diary and facet visibility', () => {
     );
   });
 
+  it('shows only your own diary, dated even when the date is missing', async () => {
+    const ich = await seedUser(h, 'tagebuchich');
+    const fremd = await seedUser(h, 'tagebuchfremd');
+
+    const mitDatum = 'Q900700';
+    const ohneDatum = 'Q900701';
+    for (const id of [mitDatum, ohneDatum]) await seedFilm(h, id);
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, watched_on, visibility)
+       values ($1, $2, 8, date '2026-08-20', 'public'),
+              ($1, $3, 9, null, 'private')`,
+      [ich, mitDatum, ohneDatum],
+    );
+    // Ein oeffentlicher Eintrag eines anderen. Die Policy liesse ihn
+    // lesen — im eigenen Tagebuch hat er trotzdem nichts zu suchen.
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $2, 10, 'public')`,
+      [fremd, mitDatum],
+    );
+
+    const meine = await h
+      .as('authenticated', ich)
+      .query<{ film_id: string }>(`select film_id from public.diary_for_me()`);
+
+    assert.equal(meine.length, 2, 'nur die eigenen zwei');
+    // Der Eintrag ohne Sehdatum steht oben, weil sein Eintragszeitpunkt
+    // heute ist — und nicht unten, als waere er von 1970.
+    assert.equal(meine[0]?.film_id, ohneDatum, 'ohne Datum zaehlt der Eintragszeitpunkt');
+
+    const zahlen = await h
+      .as('authenticated', ich)
+      .query<{ entries: number; films: number; this_year: number; average: string }>(
+        `select entries, films, this_year, average from public.diary_summary()`,
+      );
+    assert.equal(zahlen[0]?.entries, 2);
+    assert.equal(zahlen[0]?.films, 2);
+    assert.equal(Number(zahlen[0]?.average), 8.5, 'der Durchschnitt zaehlt beide');
+
+    await h.sql.query(`delete from public.diary_entries where user_id = any($1)`, [[ich, fremd]]);
+  });
+
   it('maps foreign genres onto the sixteen, or onto none at all', async () => {
     // Der Kern von Suchkonzept 26: ein Begriff, den Wikidata fuehrt,
     // wird abgebildet oder faellt weg. Er wird nie zur siebzehnten

@@ -254,6 +254,12 @@ private struct SilentEntryRepository: FilmEntryRepository {
     func dismissRecommendation(film: String) async {}
     func watchlist() async -> [WatchlistEntry] { [] }
     func statuses(for filmIDs: [String]) async -> FilmStatuses { .none }
+    func diary() async -> [DiaryEntry] { [] }
+    func diarySummary() async -> DiarySummary { .none }
+    func updateEntry(
+        id: UUID, rating: Int, watchedOn: Date?, review: String?, visibility: EntryVisibility
+    ) async -> SaveOutcome { .failed("stumm") }
+    func deleteEntry(id: UUID) async -> SaveOutcome { .failed("stumm") }
 }
 
 private struct SilentFilmRepository: FilmRepository {
@@ -468,6 +474,118 @@ struct SearchHistoryTests {
 
         let anderes = NSError(domain: NSURLErrorDomain, code: NSURLErrorBadServerResponse)
         #expect(LazyFilmProblem.from(error: anderes) == .sourceUnreachable)
+    }
+}
+
+/// Das Tagebuch.
+@Suite("Tagebuch")
+struct DiaryTests {
+    private func entry(
+        id: String, title: String, rating: Int?, watchedOn: String?, createdAt: String,
+        review: String? = nil, visibility: String = "public", rewatch: Bool = false,
+        genres: [String] = []
+    ) -> DiaryEntry {
+        let ids = genres.map { "\"\($0)\"" }.joined(separator: ",")
+        let json = """
+            {"id":"\(id)","film_id":"Q1","title_de":"\(title)","title_original":"\(title)",
+             "release_year":2000,"runtime_min":100,"poster_source":null,"poster_url":null,
+             "rating":\(rating.map(String.init) ?? "null"),
+             "review":\(review.map { "\"\($0)\"" } ?? "null"),
+             "watched_on":\(watchedOn.map { "\"\($0)\"" } ?? "null"),
+             "is_rewatch":\(rewatch),"visibility":"\(visibility)",
+             "created_at":"\(createdAt)","genre_ids":[\(ids)],"genre_labels":[\(ids)]}
+            """
+        // swiftlint:disable:next force_try
+        return try! JSONDecoder().decode(DiaryEntry.self, from: Data(json.utf8))
+    }
+
+    /// Ein Eintrag ohne Sehdatum ist kein Eintrag von 1970.
+    ///
+    /// Er wird unter seinem Eintragszeitpunkt einsortiert — und die
+    /// Zeile sagt dazu, dass das Datum nicht das Sehdatum ist.
+    @Test("Ohne Sehdatum zählt der Eintragszeitpunkt")
+    func missingWatchedDateFallsBackToCreation() {
+        let ohne = entry(
+            id: "11111111-1111-1111-1111-111111111111", title: "Ohne", rating: 8,
+            watchedOn: nil, createdAt: "2026-08-30T10:00:00+00:00")
+        #expect(!ohne.hasWatchedDate)
+        #expect(ohne.effectiveDate != nil)
+
+        let mit = entry(
+            id: "22222222-2222-2222-2222-222222222222", title: "Mit", rating: 8,
+            watchedOn: "2026-08-20", createdAt: "2026-08-30T10:00:00+00:00")
+        #expect(mit.hasWatchedDate)
+
+        // Und einsortiert wird nach dem, was gilt: der ohne Datum ist
+        // der jüngere, weil er heute eingetragen wurde.
+        let sortiert = [mit, ohne].sorted(by: DiaryOrder.newest.sorts)
+        #expect(sortiert.first?.title == "Ohne")
+    }
+
+    /// Monate werden zusammengefasst, nicht Einträge gezählt.
+    @Test("Zwei Einträge aus demselben Monat stehen unter einer Überschrift")
+    func sameMonthSharesAHeading() {
+        let formatter = ISO8601DateFormatter()
+        let august = formatter.date(from: "2026-08-20T10:00:00Z")
+        let september = formatter.date(from: "2026-09-02T10:00:00Z")
+
+        #expect(DiaryModel.monthKey(for: august) == DiaryModel.monthKey(for: formatter.date(
+            from: "2026-08-29T10:00:00Z")))
+        #expect(DiaryModel.monthKey(for: august) != DiaryModel.monthKey(for: september))
+        #expect(DiaryModel.monthTitle(for: august) == "August 2026")
+        #expect(DiaryModel.monthTitle(for: nil) == "Ohne Datum")
+    }
+
+    /// Die Suche greift auch in die eigene Rezension.
+    ///
+    /// „Was habe ich damals über den Schluss geschrieben" ist eine echte
+    /// Frage an ein Tagebuch — und die Antwort steht nicht im Titel.
+    @Test("Gesucht wird in Titel und Rezension")
+    func searchReachesTheReview() {
+        let a = entry(
+            id: "11111111-1111-1111-1111-111111111111", title: "Dune", rating: 9,
+            watchedOn: "2026-08-01", createdAt: "2026-08-01T10:00:00+00:00",
+            review: "Der Schluss hat mich umgehauen")
+        let b = entry(
+            id: "22222222-2222-2222-2222-222222222222", title: "Der Schluss", rating: 5,
+            watchedOn: "2026-08-02", createdAt: "2026-08-02T10:00:00+00:00")
+
+        let treffer = DiaryModel.select(
+            from: [a, b], term: "schluss", genre: nil, visibility: nil,
+            onlyWithReview: false, onlyRewatches: false)
+        #expect(treffer.count == 2, "Titel und Rezension zählen beide")
+
+        #expect(
+            DiaryModel.select(
+                from: [a, b], term: "umgehauen", genre: nil, visibility: nil,
+                onlyWithReview: false, onlyRewatches: false
+            ).map(\.title) == ["Dune"])
+    }
+
+    /// Die Filter wirken gemeinsam.
+    @Test("Sichtbarkeit und Rezension filtern zusammen")
+    func filtersCombine() {
+        let privat = entry(
+            id: "11111111-1111-1111-1111-111111111111", title: "Privat", rating: 8,
+            watchedOn: "2026-08-01", createdAt: "2026-08-01T10:00:00+00:00",
+            review: "geheim", visibility: "private")
+        let offen = entry(
+            id: "22222222-2222-2222-2222-222222222222", title: "Offen", rating: 8,
+            watchedOn: "2026-08-02", createdAt: "2026-08-02T10:00:00+00:00",
+            visibility: "public")
+        let alle = [privat, offen]
+
+        #expect(
+            DiaryModel.select(
+                from: alle, term: "", genre: nil, visibility: .privately,
+                onlyWithReview: false, onlyRewatches: false
+            ).map(\.title) == ["Privat"])
+
+        #expect(
+            DiaryModel.select(
+                from: alle, term: "", genre: nil, visibility: nil,
+                onlyWithReview: true, onlyRewatches: false
+            ).map(\.title) == ["Privat"], "eine leere Rezension zählt nicht als Rezension")
     }
 }
 
