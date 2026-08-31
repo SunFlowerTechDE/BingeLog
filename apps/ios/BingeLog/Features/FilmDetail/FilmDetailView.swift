@@ -201,6 +201,13 @@ struct FilmDetailView: View {
                             }
                         }
                     }
+
+                // Nur wenn es etwas zu verdecken gibt.
+                if !model.review.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Toggle("Enthält Spoiler", isOn: $model.hasSpoilers)
+                        .font(.footnote)
+                        .tint(Theme.primary)
+                }
             }
 
             FacetForm(scores: $model.facets)
@@ -699,10 +706,8 @@ private struct ReviewList: View {
                             }
                         }
 
-                        Text(entry.review)
-                            .font(.footnote)
-                            .foregroundStyle(Theme.muted)
-                            .fixedSize(horizontal: false, vertical: true)
+                        SpoilerText(
+                            text: entry.review, hasSpoilers: entry.hasSpoilers, lineLimit: 6)
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)

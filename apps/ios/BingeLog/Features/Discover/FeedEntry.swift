@@ -10,6 +10,8 @@ nonisolated struct FeedEntry: Decodable, Identifiable, Hashable, Sendable {
     let createdAt: String
     let rating: Int?
     let review: String?
+    /// Ob der Verfasser die Rezension als Spoiler markiert hat.
+    let hasSpoilers: Bool
     let watchedOn: String?
     let isRewatch: Bool
     let username: String
@@ -72,6 +74,7 @@ nonisolated struct FeedEntry: Decodable, Identifiable, Hashable, Sendable {
         case createdAt = "created_at"
         case rating
         case review
+        case hasSpoilers = "has_spoilers"
         case watchedOn = "watched_on"
         case isRewatch = "is_rewatch"
         case username

@@ -119,7 +119,7 @@ final class WatchlistModel {
     func markSeen(_ entry: WatchlistEntry, rating: Int) async {
         switch await entries.save(
             filmID: entry.filmID, rating: rating, watchedOn: Date(), review: nil,
-            visibility: .publicly)
+            hasSpoilers: false, visibility: .publicly)
         {
         case .saved:
             all.removeAll { $0.filmID == entry.filmID }

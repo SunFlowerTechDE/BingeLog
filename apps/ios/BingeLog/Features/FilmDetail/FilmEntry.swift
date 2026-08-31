@@ -26,11 +26,13 @@ struct OwnEntry: Decodable, Equatable, Sendable {
     let rating: Int?
     let watchedOn: String?
     let review: String?
+    let hasSpoilers: Bool
     let isRewatch: Bool
     let visibility: EntryVisibility
 
     enum CodingKeys: String, CodingKey {
         case id, rating, review, visibility
+        case hasSpoilers = "has_spoilers"
         case watchedOn = "watched_on"
         case isRewatch = "is_rewatch"
     }
@@ -69,7 +71,7 @@ protocol FilmEntryRepository: Sendable {
     func isOnWatchlist(_ filmID: String) async -> Bool
     func setWatchlist(_ filmID: String, on: Bool) async -> Bool
     func save(
-        filmID: String, rating: Int, watchedOn: Date?, review: String?,
+        filmID: String, rating: Int, watchedOn: Date?, review: String?, hasSpoilers: Bool,
         visibility: EntryVisibility
     ) async -> EntrySaved
 
@@ -93,7 +95,8 @@ protocol FilmEntryRepository: Sendable {
     func diary() async -> [DiaryEntry]
     func diarySummary() async -> DiarySummary
     func updateEntry(
-        id: UUID, rating: Int, watchedOn: Date?, review: String?, visibility: EntryVisibility
+        id: UUID, rating: Int, watchedOn: Date?, review: String?, hasSpoilers: Bool,
+        visibility: EntryVisibility
     ) async -> SaveOutcome
     func deleteEntry(id: UUID) async -> SaveOutcome
 }
@@ -122,6 +125,7 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
         let rating: Int
         let watched_on: String?
         let review: String?
+        let has_spoilers: Bool
         let visibility: String
     }
 
@@ -131,6 +135,7 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
         let rating: Int
         let watched_on: String?
         let review: String?
+        let has_spoilers: Bool
         let visibility: String
     }
 
@@ -168,7 +173,7 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
 
         let rows: [OwnEntry]? = try? await backend.client
             .from("diary_entries")
-            .select("id, rating, watched_on, review, is_rewatch, visibility")
+            .select("id, rating, watched_on, review, has_spoilers, is_rewatch, visibility")
             .eq("user_id", value: user.id)
             .eq("film_id", value: filmID)
             .order("created_at", ascending: false)
@@ -231,7 +236,7 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
     /// **Die Bewertung ist Pflicht, die Facetten sind es nicht**
     /// (ADR-009).
     func save(
-        filmID: String, rating: Int, watchedOn: Date?, review: String?,
+        filmID: String, rating: Int, watchedOn: Date?, review: String?, hasSpoilers: Bool,
         visibility: EntryVisibility
     ) async -> EntrySaved {
         guard (1...10).contains(rating) else {
@@ -252,6 +257,8 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
                     .update(
                         EntryValues(
                             rating: rating, watched_on: day, review: cleaned,
+                            // Ohne Rezension gibt es nichts zu verdecken.
+                            has_spoilers: cleaned == nil ? false : hasSpoilers,
                             visibility: visibility.rawValue)
                     )
                     .eq("id", value: existing.id)
@@ -264,7 +271,9 @@ struct LiveFilmEntryRepository: FilmEntryRepository {
                 .insert(
                     NewEntry(
                         user_id: user.id.uuidString, film_id: filmID, rating: rating,
-                        watched_on: day, review: cleaned, visibility: visibility.rawValue)
+                        watched_on: day, review: cleaned,
+                        has_spoilers: cleaned == nil ? false : hasSpoilers,
+                        visibility: visibility.rawValue)
                 )
                 .execute()
 

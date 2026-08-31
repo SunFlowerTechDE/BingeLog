@@ -23,6 +23,14 @@ final class DiaryModel {
     var visibility: EntryVisibility?
     var onlyWithReview = false
     var onlyRewatches = false
+    /// Mit oder ohne Bewertung, oder egal.
+    var ratedState: RatedState = .any
+    /// Das Jahr, oder `nil` für alle.
+    var year: Int?
+
+    enum RatedState: String, CaseIterable, Sendable {
+        case any, rated, unrated
+    }
 
     private let entries: FilmEntryRepository
 
@@ -49,6 +57,7 @@ final class DiaryModel {
 
     var hasFilters: Bool {
         genre != nil || visibility != nil || onlyWithReview || onlyRewatches
+            || ratedState != .any || year != nil
     }
 
     func clearFilters() {
@@ -56,12 +65,34 @@ final class DiaryModel {
         visibility = nil
         onlyWithReview = false
         onlyRewatches = false
+        ratedState = .any
+        year = nil
     }
+
+    /// Die Jahre, in denen wirklich etwas steht — jüngstes zuerst.
+    ///
+    /// Nicht alle Jahre seit 1900: eine Auswahl, die auf nichts zeigt,
+    /// ist keine.
+    var availableYears: [Int] {
+        var seen: Set<Int> = []
+        for entry in all {
+            if let date = entry.effectiveDate {
+                seen.insert(Calendar.current.component(.year, from: date))
+            }
+        }
+        return seen.sorted(by: >)
+    }
+
+    /// Die Sichtungsnummer je Eintrag, über das ganze Tagebuch gerechnet
+    /// — nicht über die gefilterte Auswahl. Sonst wäre „2. Sichtung"
+    /// davon abhängig, welcher Filter gerade gesetzt ist.
+    var viewingNumbers: [UUID: Int] { all.viewingNumbers() }
 
     var shown: [DiaryEntry] {
         DiaryModel.select(
             from: all, term: term, genre: genre?.id, visibility: visibility,
-            onlyWithReview: onlyWithReview, onlyRewatches: onlyRewatches
+            onlyWithReview: onlyWithReview, onlyRewatches: onlyRewatches,
+            ratedState: ratedState, year: year
         )
         .sorted(by: order.sorts)
     }
@@ -72,7 +103,7 @@ final class DiaryModel {
     /// Nur bei den beiden Datumssortierungen: nach Bewertung gruppiert
     /// ergäbe Monatsüberschriften, die keinen Zusammenhang mehr haben.
     var months: [DiaryMonth] {
-        guard order == .newest || order == .oldest else {
+        guard order.groupsByMonth else {
             return [DiaryMonth(id: "alle", title: "", entries: shown)]
         }
 
@@ -98,7 +129,8 @@ final class DiaryModel {
     /// Die Auswahl als eigene Funktion, damit sie prüfbar ist.
     nonisolated static func select(
         from entries: [DiaryEntry], term: String, genre: String?,
-        visibility: EntryVisibility?, onlyWithReview: Bool, onlyRewatches: Bool
+        visibility: EntryVisibility?, onlyWithReview: Bool, onlyRewatches: Bool,
+        ratedState: RatedState = .any, year: Int? = nil
     ) -> [DiaryEntry] {
         let needle = term.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -117,6 +149,16 @@ final class DiaryModel {
             if let visibility, entry.visibility != visibility { return false }
             if onlyWithReview, (entry.review ?? "").isEmpty { return false }
             if onlyRewatches, !entry.isRewatch { return false }
+            switch ratedState {
+            case .any: break
+            case .rated: if entry.rating == nil { return false }
+            case .unrated: if entry.rating != nil { return false }
+            }
+            if let year {
+                guard let date = entry.effectiveDate,
+                    Calendar.current.component(.year, from: date) == year
+                else { return false }
+            }
             return true
         }
     }
@@ -139,12 +181,12 @@ final class DiaryModel {
 
     func save(
         _ entry: DiaryEntry, rating: Int, watchedOn: Date?, review: String,
-        visibility: EntryVisibility
+        hasSpoilers: Bool, visibility: EntryVisibility
     ) async {
         note = nil
         switch await entries.updateEntry(
             id: entry.id, rating: rating, watchedOn: watchedOn, review: review,
-            visibility: visibility)
+            hasSpoilers: hasSpoilers, visibility: visibility)
         {
         case .saved: await load()
         case .failed(let message): note = message

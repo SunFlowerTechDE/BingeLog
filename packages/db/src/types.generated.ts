@@ -126,6 +126,7 @@ export type Database = {
         Row: {
           created_at: string
           film_id: string
+          has_spoilers: boolean
           id: string
           is_rewatch: boolean
           rating: number | null
@@ -138,6 +139,7 @@ export type Database = {
         Insert: {
           created_at?: string
           film_id: string
+          has_spoilers?: boolean
           id?: string
           is_rewatch?: boolean
           rating?: number | null
@@ -150,6 +152,7 @@ export type Database = {
         Update: {
           created_at?: string
           film_id?: string
+          has_spoilers?: boolean
           id?: string
           is_rewatch?: boolean
           rating?: number | null
@@ -1135,6 +1138,7 @@ export type Database = {
           film_id: string
           genre_ids: string[]
           genre_labels: string[]
+          has_spoilers: boolean
           id: string
           is_rewatch: boolean
           poster_source: string
@@ -1187,6 +1191,7 @@ export type Database = {
           avatar_path: string
           created_at: string
           film_id: string
+          has_spoilers: boolean
           id: string
           is_rewatch: boolean
           poster_source: string

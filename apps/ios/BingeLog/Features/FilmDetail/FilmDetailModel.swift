@@ -15,6 +15,7 @@ final class FilmDetailModel {
     /// Der eigene Eintrag, aufgeteilt in das, was das Formular hält.
     var rating = 0
     var review = ""
+    var hasSpoilers = false
     var watchedOn = Date()
     var hasWatchedOn = false
     var visibility: EntryVisibility = .publicly
@@ -93,6 +94,7 @@ final class FilmDetailModel {
             hadEntry = true
             rating = entry.rating ?? 0
             review = entry.review ?? ""
+            hasSpoilers = entry.hasSpoilers
             visibility = entry.visibility
             if let day = entry.watchedOn,
                 let date = LiveFilmEntryRepository.dayFormatter.date(from: day)
@@ -158,6 +160,7 @@ final class FilmDetailModel {
             rating: rating,
             watchedOn: hasWatchedOn ? watchedOn : nil,
             review: review,
+            hasSpoilers: hasSpoilers,
             visibility: visibility
         ) {
         case .saved(let entryID):

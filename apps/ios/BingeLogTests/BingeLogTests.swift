@@ -233,7 +233,7 @@ private struct SilentEntryRepository: FilmEntryRepository {
     func isOnWatchlist(_ filmID: String) async -> Bool { false }
     func setWatchlist(_ filmID: String, on: Bool) async -> Bool { on }
     func save(
-        filmID: String, rating: Int, watchedOn: Date?, review: String?,
+        filmID: String, rating: Int, watchedOn: Date?, review: String?, hasSpoilers: Bool,
         visibility: EntryVisibility
     ) async -> EntrySaved { .failed("stumm") }
     func ownFacets(for filmID: String) async -> [FacetKind: Int] { [:] }
@@ -257,7 +257,8 @@ private struct SilentEntryRepository: FilmEntryRepository {
     func diary() async -> [DiaryEntry] { [] }
     func diarySummary() async -> DiarySummary { .none }
     func updateEntry(
-        id: UUID, rating: Int, watchedOn: Date?, review: String?, visibility: EntryVisibility
+        id: UUID, rating: Int, watchedOn: Date?, review: String?, hasSpoilers: Bool,
+        visibility: EntryVisibility
     ) async -> SaveOutcome { .failed("stumm") }
     func deleteEntry(id: UUID) async -> SaveOutcome { .failed("stumm") }
 }
@@ -492,6 +493,7 @@ struct DiaryTests {
              "rating":\(rating.map(String.init) ?? "null"),
              "review":\(review.map { "\"\($0)\"" } ?? "null"),
              "watched_on":\(watchedOn.map { "\"\($0)\"" } ?? "null"),
+             "has_spoilers":false,
              "is_rewatch":\(rewatch),"visibility":"\(visibility)",
              "created_at":"\(createdAt)","genre_ids":[\(ids)],"genre_labels":[\(ids)]}
             """
@@ -586,6 +588,114 @@ struct DiaryTests {
                 from: alle, term: "", genre: nil, visibility: nil,
                 onlyWithReview: true, onlyRewatches: false
             ).map(\.title) == ["Privat"], "eine leere Rezension zählt nicht als Rezension")
+    }
+}
+
+/// Die Zusätze aus dem Tagebuch-Konzept.
+@Suite("Tagebuch, Konzept")
+struct DiaryConceptTests {
+    private func entry(
+        id: String, film: String, watchedOn: String?, createdAt: String
+    ) -> DiaryEntry {
+        let json = """
+            {"id":"\(id)","film_id":"\(film)","title_de":"A","title_original":"A",
+             "release_year":2000,"runtime_min":100,"poster_source":null,"poster_url":null,
+             "rating":8,"review":null,"has_spoilers":false,
+             "watched_on":\(watchedOn.map { "\"\($0)\"" } ?? "null"),
+             "is_rewatch":false,"visibility":"public","created_at":"\(createdAt)",
+             "genre_ids":[],"genre_labels":[]}
+            """
+        // swiftlint:disable:next force_try
+        return try! JSONDecoder().decode(DiaryEntry.self, from: Data(json.utf8))
+    }
+
+    /// „3. Sichtung" statt „Wiedergesehen".
+    ///
+    /// Gezählt wird je Film und in zeitlicher Ordnung — die erste
+    /// Sichtung ist die erste, auch wenn sie zuletzt eingetragen wurde.
+    @Test("Jede Sichtung bekommt ihre Nummer, je Film")
+    func viewingsAreNumberedPerFilm() {
+        let ersteSichtung = entry(
+            id: "11111111-1111-1111-1111-111111111111", film: "Q1",
+            watchedOn: "2024-01-01", createdAt: "2026-08-31T10:00:00+00:00")
+        let zweite = entry(
+            id: "22222222-2222-2222-2222-222222222222", film: "Q1",
+            watchedOn: "2025-01-01", createdAt: "2026-08-01T10:00:00+00:00")
+        let andererFilm = entry(
+            id: "33333333-3333-3333-3333-333333333333", film: "Q2",
+            watchedOn: "2026-01-01", createdAt: "2026-01-01T10:00:00+00:00")
+
+        let nummern = [zweite, ersteSichtung, andererFilm].viewingNumbers()
+
+        #expect(nummern[ersteSichtung.id] == 1, "die aelteste Sichtung ist die erste")
+        #expect(nummern[zweite.id] == 2)
+        #expect(nummern[andererFilm.id] == 1, "ein anderer Film faengt wieder bei eins an")
+    }
+
+    /// „eingetragen am" steht nur da, wenn die Daten auseinanderliegen.
+    @Test("Am selben Tag eingetragen heisst: keine zweite Zeile")
+    func loggedLaterOnlyWhenItDiffers() {
+        let sofort = entry(
+            id: "11111111-1111-1111-1111-111111111111", film: "Q1",
+            watchedOn: "2026-08-31", createdAt: "2026-08-31T22:00:00+00:00")
+        #expect(!sofort.wasLoggedLater, "am selben Tag gesehen und eingetragen")
+
+        let spaeter = entry(
+            id: "22222222-2222-2222-2222-222222222222", film: "Q1",
+            watchedOn: "2026-08-20", createdAt: "2026-08-31T10:00:00+00:00")
+        #expect(spaeter.wasLoggedLater)
+
+        // Ohne Sehdatum gibt es nichts zu vergleichen — dann steht der
+        // Eintragszeitpunkt ohnehin als Hauptdatum da.
+        let ohne = entry(
+            id: "33333333-3333-3333-3333-333333333333", film: "Q1",
+            watchedOn: nil, createdAt: "2026-08-31T10:00:00+00:00")
+        #expect(!ohne.wasLoggedLater)
+    }
+
+    /// Monatsüberschriften nur, wo sie einen Sinn ergeben.
+    @Test("Nach Bewertung sortiert gibt es keine Monatsgruppen")
+    func monthsOnlyForDateOrders() {
+        #expect(DiaryOrder.newest.groupsByMonth)
+        #expect(DiaryOrder.oldest.groupsByMonth)
+        #expect(DiaryOrder.lastLogged.groupsByMonth)
+        #expect(!DiaryOrder.bestRated.groupsByMonth)
+        #expect(!DiaryOrder.alphabetical.groupsByMonth)
+        #expect(!DiaryOrder.releaseYear.groupsByMonth)
+    }
+
+    /// Mit und ohne Bewertung sind zwei verschiedene Filter.
+    @Test("Ohne Bewertung findet die Einträge, die noch fehlen")
+    func ratedFilterSeparatesBoth() {
+        let json = { (id: String, rating: String) in
+            """
+            {"id":"\(id)","film_id":"Q1","title_de":"A","title_original":"A",
+             "release_year":2000,"runtime_min":100,"poster_source":null,"poster_url":null,
+             "rating":\(rating),"review":null,"has_spoilers":false,"watched_on":"2026-08-01",
+             "is_rewatch":false,"visibility":"public",
+             "created_at":"2026-08-01T10:00:00+00:00","genre_ids":[],"genre_labels":[]}
+            """
+        }
+        // swiftlint:disable force_try
+        let bewertet = try! JSONDecoder().decode(
+            DiaryEntry.self,
+            from: Data(json("11111111-1111-1111-1111-111111111111", "8").utf8))
+        let offen = try! JSONDecoder().decode(
+            DiaryEntry.self,
+            from: Data(json("22222222-2222-2222-2222-222222222222", "null").utf8))
+        // swiftlint:enable force_try
+
+        let alle = [bewertet, offen]
+        #expect(
+            DiaryModel.select(
+                from: alle, term: "", genre: nil, visibility: nil, onlyWithReview: false,
+                onlyRewatches: false, ratedState: .rated
+            ).map(\.id) == [bewertet.id])
+        #expect(
+            DiaryModel.select(
+                from: alle, term: "", genre: nil, visibility: nil, onlyWithReview: false,
+                onlyRewatches: false, ratedState: .unrated
+            ).map(\.id) == [offen.id])
     }
 }
 

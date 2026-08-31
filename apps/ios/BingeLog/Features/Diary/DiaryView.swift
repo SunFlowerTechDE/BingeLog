@@ -54,11 +54,11 @@ struct DiaryView: View {
             }
         }
         .sheet(item: $editing) { entry in
-            EditEntrySheet(entry: entry) { rating, watchedOn, review, visibility in
+            EditEntrySheet(entry: entry) { rating, watchedOn, review, spoilers, visibility in
                 Task {
                     await model.save(
                         entry, rating: rating, watchedOn: watchedOn, review: review,
-                        visibility: visibility)
+                        hasSpoilers: spoilers, visibility: visibility)
                 }
             } onDelete: {
                 Task { await model.delete(entry) }
@@ -91,6 +91,7 @@ struct DiaryView: View {
         return ScrollView {
             LazyVStack(alignment: .leading, spacing: 18, pinnedViews: [.sectionHeaders]) {
                 numbers
+                if model.availableYears.count > 1 { years }
                 filters
 
                 if model.shown.isEmpty {
@@ -108,19 +109,14 @@ struct DiaryView: View {
                                     FilmDetailView(
                                         film: entry.film, details: details, entries: entries)
                                 } label: {
-                                    DiaryRow(entry: entry)
+                                    DiaryRow(
+                                        entry: entry,
+                                        viewing: model.viewingNumbers[entry.id] ?? 1,
+                                        onEdit: { editing = entry },
+                                        onDelete: { Task { await model.delete(entry) } }
+                                    )
                                 }
                                 .buttonStyle(.plain)
-                                .contextMenu {
-                                    Button("Bearbeiten", systemImage: "pencil") {
-                                        editing = entry
-                                    }
-                                    Button(
-                                        "Eintrag löschen", systemImage: "trash", role: .destructive
-                                    ) {
-                                        Task { await model.delete(entry) }
-                                    }
-                                }
 
                                 Divider().overlay(Theme.border).padding(.leading, 20)
                             }
@@ -171,6 +167,23 @@ struct DiaryView: View {
         .padding(.horizontal, 20)
     }
 
+    /// Schnell zwischen den Jahren wechseln — erst ab zwei.
+    private var years: some View {
+        @Bindable var model = model
+
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                DiaryChip(label: "Alle", isOn: model.year == nil) { model.year = nil }
+                ForEach(model.availableYears, id: \.self) { year in
+                    DiaryChip(label: String(year), isOn: model.year == year) {
+                        model.year = model.year == year ? nil : year
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
     private var filters: some View {
         @Bindable var model = model
 
@@ -178,6 +191,12 @@ struct DiaryView: View {
             HStack(spacing: 8) {
                 if model.hasFilters {
                     DiaryChip(label: "Zurücksetzen", isOn: false) { model.clearFilters() }
+                }
+                DiaryChip(label: "Mit Bewertung", isOn: model.ratedState == .rated) {
+                    model.ratedState = model.ratedState == .rated ? .any : .rated
+                }
+                DiaryChip(label: "Ohne Bewertung", isOn: model.ratedState == .unrated) {
+                    model.ratedState = model.ratedState == .unrated ? .any : .unrated
                 }
                 DiaryChip(label: "Mit Rezension", isOn: model.onlyWithReview) {
                     model.onlyWithReview.toggle()
@@ -244,6 +263,10 @@ private struct DiaryChip: View {
 /// Eine Zeile im Tagebuch.
 private struct DiaryRow: View {
     let entry: DiaryEntry
+    /// Die wievielte Sichtung dieses Films — 1 bei der ersten.
+    let viewing: Int
+    let onEdit: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -261,24 +284,45 @@ private struct DiaryRow: View {
                             .foregroundStyle(Theme.quiet)
                             .monospacedDigit()
                     }
+                    Spacer(minLength: 0)
+
+                    // Drei Punkte statt nur langem Druck: ein Menü, das
+                    // man nicht sieht, findet niemand.
+                    Menu {
+                        Button("Bearbeiten", systemImage: "pencil", action: onEdit)
+                        Button(
+                            "Eintrag löschen", systemImage: "trash", role: .destructive,
+                            action: onDelete)
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.quiet)
+                            .frame(width: 32, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Mehr")
                 }
 
                 HStack(spacing: 8) {
                     if let rating = entry.rating {
                         PopcornRating(rating: Double(rating), size: 12)
                     }
-                    Text(dateLine)
+
+                    // Gesehen am steht vorn. Das ist das Datum, um das
+                    // es im Tagebuch geht.
+                    Text(watchedLine)
                         .font(.caption2)
                         .foregroundStyle(Theme.quiet)
                         .monospacedDigit()
-                    if entry.isRewatch {
-                        Text("Wiedersehen")
+
+                    // „3. Sichtung" sagt mehr als „Wiedergesehen".
+                    if viewing > 1 {
+                        Text("\(viewing). Sichtung")
                             .font(.caption2)
-                            .foregroundStyle(Theme.quiet)
+                            .foregroundStyle(Theme.primary)
+                            .monospacedDigit()
                     }
-                    // Die Sichtbarkeit steht nur da, wenn sie nicht
-                    // öffentlich ist. Bei jedem Eintrag „Öffentlich" zu
-                    // schreiben, sagt nichts.
+
                     if entry.visibility != .publicly {
                         Text(entry.visibility.label)
                             .font(.caption2)
@@ -286,37 +330,72 @@ private struct DiaryRow: View {
                     }
                 }
 
-                if let review = entry.review, !review.isEmpty {
-                    Text(review)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.muted)
-                        .lineLimit(3)
+                // Nur wenn beide Daten auseinanderliegen. Bei einem Film,
+                // den man am selben Abend einträgt, wäre das Lärm.
+                if entry.wasLoggedLater, let created = entry.createdDate {
+                    Text("eingetragen am \(DiaryRow.short(created))")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.quiet.opacity(0.8))
+                        .monospacedDigit()
                 }
+
+                if let review = entry.review, !review.isEmpty {
+                    SpoilerText(text: review, hasSpoilers: entry.hasSpoilers)
+                }
+
+                // Nachtragen, wo etwas fehlt (Tagebuch-Konzept).
+                HStack(spacing: 12) {
+                    if entry.rating == nil {
+                        Button("Jetzt bewerten", action: onEdit)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(Theme.primary)
+                    }
+                    if (entry.review ?? "").isEmpty {
+                        Button("Rezension hinzufügen", action: onEdit)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(Theme.primary)
+                    }
+                }
+                .buttonStyle(.plain)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 20)
+        .padding(.leading, 20)
+        .padding(.trailing, 8)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
     }
 
-    private var dateLine: String {
+    /// Das Sehdatum, ausgeschrieben wie im Konzept: „29. Aug. 2026".
+    private var watchedLine: String {
         guard let date = entry.effectiveDate else { return "" }
+        let text = DiaryRow.long(date)
+        // Ohne Sehdatum ist das, was dasteht, der Eintragszeitpunkt —
+        // und das muss dabeistehen, sonst gibt die Zeile ein geratenes
+        // Datum als sicheres aus.
+        return entry.hasWatchedDate ? text : "eingetragen \(text)"
+    }
+
+    static func long(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "d. MMM yyyy"
+        return formatter.string(from: date)
+    }
+
+    static func short(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "de_DE")
         formatter.dateFormat = "d. MMM"
-        let text = formatter.string(from: date)
-        // Ohne Sehdatum steht der Eintragszeitpunkt da — und dass er es
-        // ist. Ein geratenes Datum als sicheres auszugeben wäre falsch.
-        return entry.hasWatchedDate ? text : "eingetragen \(text)"
+        return formatter.string(from: date)
     }
 }
 
 /// Einen Eintrag ändern oder löschen.
 private struct EditEntrySheet: View {
     let entry: DiaryEntry
-    let onSave: (Int, Date?, String, EntryVisibility) -> Void
+    let onSave: (Int, Date?, String, Bool, EntryVisibility) -> Void
     let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -327,10 +406,11 @@ private struct EditEntrySheet: View {
     @State private var watchedOn: Date
     @State private var hasWatchedOn: Bool
     @State private var visibility: EntryVisibility
+    @State private var hasSpoilers: Bool
     @State private var confirmingDelete = false
 
     init(
-        entry: DiaryEntry, onSave: @escaping (Int, Date?, String, EntryVisibility) -> Void,
+        entry: DiaryEntry, onSave: @escaping (Int, Date?, String, Bool, EntryVisibility) -> Void,
         onDelete: @escaping () -> Void
     ) {
         self.entry = entry
@@ -343,6 +423,7 @@ private struct EditEntrySheet: View {
                 ?? Date())
         _hasWatchedOn = State(initialValue: entry.hasWatchedDate)
         _visibility = State(initialValue: entry.visibility)
+        _hasSpoilers = State(initialValue: entry.hasSpoilers)
     }
 
     var body: some View {
@@ -362,12 +443,23 @@ private struct EditEntrySheet: View {
                         .monospacedDigit()
                 }
 
-                Section("Rezension") {
+                Section {
                     TextEditor(text: $review)
                         .frame(minHeight: 90)
                         .scrollContentBackground(.hidden)
                         .focused($isWriting)
                         .listRowBackground(Theme.card)
+
+                    if !review.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Toggle("Enthält Spoiler", isOn: $hasSpoilers)
+                            .listRowBackground(Theme.card)
+                    }
+                } header: {
+                    Text("Rezension")
+                } footer: {
+                    if hasSpoilers {
+                        Text("Die Rezension wird verdeckt, bis jemand tippt.")
+                    }
                 }
 
                 Section("Gesehen am") {
@@ -405,7 +497,9 @@ private struct EditEntrySheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Sichern") {
-                        onSave(rating, hasWatchedOn ? watchedOn : nil, review, visibility)
+                        onSave(
+                            rating, hasWatchedOn ? watchedOn : nil, review, hasSpoilers,
+                            visibility)
                         dismiss()
                     }
                     .disabled(rating == 0)

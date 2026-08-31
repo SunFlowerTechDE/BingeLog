@@ -106,7 +106,13 @@ auf einem echten iPhone.
 Die Leiste hat fünf Einträge: Entdecken, Watchlist, Tagebuch, Profil,
 Einstellungen. Watchlist und Tagebuch sind gebaut; gefiltert und sortiert wird bei
 beiden **im Client**, weil beide Listen klein sind. Das Tagebuch
-gruppiert nach Monat und lässt Einträge bearbeiten und löschen. Nur
+gruppiert nach Monat und lässt Einträge bearbeiten und löschen.
+
+Eine Rezension kann als Spoiler markiert sein (`diary_entries.
+has_spoilers`); die Oberfläche verdeckt sie dann, bis jemand tippt.
+**Das ist kein Zugriffsschutz** — der Text kommt über dieselbe Antwort
+wie jeder andere. Das Spoiler-Gate der Diskussion ist etwas anderes und
+steht in der Policy (ADR-010). Nur
 Profil ist noch ein Platzhalter. **Die Suche ist keiner davon** — sie sitzt als Lupe im
 Kopf von Entdecken, wie im Web. Watchlist, Tagebuch und Profil sind
 Platzhalter, die sagen, was fehlt und woran es hängt; das Abmelden ist

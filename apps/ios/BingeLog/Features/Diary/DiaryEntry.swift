@@ -13,6 +13,7 @@ nonisolated struct DiaryEntry: Decodable, Identifiable, Sendable {
     let posterURL: String?
     let rating: Int?
     let review: String?
+    let hasSpoilers: Bool
     let watchedOn: String?
     let isRewatch: Bool
     let visibility: EntryVisibility
@@ -44,8 +45,23 @@ nonisolated struct DiaryEntry: Decodable, Identifiable, Sendable {
     /// Ob das Datum geraten ist. Die Zeile sagt es dann dazu.
     var hasWatchedDate: Bool { watchedOn != nil }
 
+    /// Wann der Eintrag geschrieben wurde.
+    var createdDate: Date? { FeedEntry.timestamp(from: createdAt) }
+
+    /// Ob Sehdatum und Eintragszeitpunkt auseinanderliegen.
+    ///
+    /// Nur dann steht „eingetragen am" klein darunter. Bei einem Film,
+    /// den man am selben Abend einträgt, wäre die Zeile Lärm.
+    var wasLoggedLater: Bool {
+        guard let watched = effectiveDate, let created = createdDate, hasWatchedDate else {
+            return false
+        }
+        return !Calendar.current.isDate(watched, inSameDayAs: created)
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, rating, review, visibility
+        case hasSpoilers = "has_spoilers"
         case filmID = "film_id"
         case titleDE = "title_de"
         case titleOriginal = "title_original"
@@ -72,6 +88,7 @@ nonisolated struct DiaryEntry: Decodable, Identifiable, Sendable {
         posterURL = try c.decodeIfPresent(String.self, forKey: .posterURL)
         rating = try c.decodeIfPresent(Int.self, forKey: .rating)
         review = try c.decodeIfPresent(String.self, forKey: .review)
+        hasSpoilers = (try? c.decode(Bool.self, forKey: .hasSpoilers)) ?? false
         watchedOn = try c.decodeIfPresent(String.self, forKey: .watchedOn)
         isRewatch = (try? c.decode(Bool.self, forKey: .isRewatch)) ?? false
         visibility =
@@ -79,6 +96,34 @@ nonisolated struct DiaryEntry: Decodable, Identifiable, Sendable {
         createdAt = try c.decode(String.self, forKey: .createdAt)
         genreIDs = (try? c.decode([String].self, forKey: .genreIDs)) ?? []
         genreLabels = (try? c.decode([String].self, forKey: .genreLabels)) ?? []
+    }
+}
+
+extension Array where Element == DiaryEntry {
+    /// Die wievielte Sichtung ein Eintrag ist.
+    ///
+    /// Gezählt wird über alle Einträge zum selben Film, in zeitlicher
+    /// Ordnung — „3. Sichtung" sagt mehr als „Wiedergesehen", und jede
+    /// Sichtung bleibt ihr eigener Eintrag mit eigener Bewertung.
+    ///
+    /// Als eigene Funktion, weil sich eine Liste schlecht prüfen lässt,
+    /// das Zählen aber gut.
+    func viewingNumbers() -> [UUID: Int] {
+        var byFilm: [String: [DiaryEntry]] = [:]
+        for entry in self { byFilm[entry.filmID, default: []].append(entry) }
+
+        var out: [UUID: Int] = [:]
+        for (_, entries) in byFilm {
+            // Die ältesten zuerst: die erste Sichtung ist die erste.
+            let ordered = entries.sorted { a, b in
+                let x = a.effectiveDate ?? .distantPast
+                let y = b.effectiveDate ?? .distantPast
+                if x != y { return x < y }
+                return a.createdAt < b.createdAt
+            }
+            for (index, entry) in ordered.enumerated() { out[entry.id] = index + 1 }
+        }
+        return out
     }
 }
 
@@ -123,6 +168,9 @@ nonisolated enum DiaryOrder: String, CaseIterable, Identifiable, Sendable {
     case oldest
     case bestRated
     case worstRated
+    case alphabetical
+    case releaseYear
+    case lastLogged
 
     var id: String { rawValue }
 
@@ -132,7 +180,18 @@ nonisolated enum DiaryOrder: String, CaseIterable, Identifiable, Sendable {
         case .oldest: return "Zuerst gesehen"
         case .bestRated: return "Beste Bewertung"
         case .worstRated: return "Niedrigste Bewertung"
+        case .alphabetical: return "Alphabetisch"
+        case .releaseYear: return "Erscheinungsjahr"
+        case .lastLogged: return "Zuletzt eingetragen"
         }
+    }
+
+    /// Nur bei diesen dreien ergeben Monatsüberschriften einen Sinn.
+    ///
+    /// Nach Bewertung oder Titel gruppiert stünden Monate über
+    /// Einträgen, die nichts miteinander zu tun haben.
+    var groupsByMonth: Bool {
+        self == .newest || self == .oldest || self == .lastLogged
     }
 
     /// Fehlende Angaben stehen in jeder Richtung hinten — dieselbe Regel
@@ -153,15 +212,27 @@ nonisolated enum DiaryOrder: String, CaseIterable, Identifiable, Sendable {
         case .worstRated:
             return WatchlistOrder.compare(
                 a.rating.map(Double.init), b.rating.map(Double.init), ascending: true)
+        case .alphabetical:
+            return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+        case .releaseYear:
+            return WatchlistOrder.compare(
+                a.releaseYear.map(Double.init), b.releaseYear.map(Double.init), ascending: false)
+        case .lastLogged:
+            // Eingetragen am, nicht gesehen am. Das Konzept verlangt
+            // ausdrücklich, dass die beiden getrennt bleiben.
+            return WatchlistOrder.compare(
+                a.createdDate?.timeIntervalSince1970, b.createdDate?.timeIntervalSince1970,
+                ascending: false)
         }
     }
 }
 
 extension LiveFilmEntryRepository {
-    private struct EntryUpdate: Encodable {
+    nonisolated private struct EntryUpdate: Encodable {
         let rating: Int
         let watched_on: String?
         let review: String?
+        let has_spoilers: Bool
         let visibility: String
     }
 
@@ -188,7 +259,8 @@ extension LiveFilmEntryRepository {
     /// zweiter Eintrag zum selben Film; wer hier nach `film_id` schriebe,
     /// änderte den falschen.
     func updateEntry(
-        id: UUID, rating: Int, watchedOn: Date?, review: String?, visibility: EntryVisibility
+        id: UUID, rating: Int, watchedOn: Date?, review: String?, hasSpoilers: Bool,
+        visibility: EntryVisibility
     ) async -> SaveOutcome {
         guard (1...10).contains(rating) else {
             return .failed("Wähl eine Bewertung von einem halben bis fünf Popcorn.")
@@ -204,6 +276,8 @@ extension LiveFilmEntryRepository {
                     EntryUpdate(
                         rating: rating, watched_on: day,
                         review: (text?.isEmpty ?? true) ? nil : text,
+                        // Ohne Rezension gibt es nichts zu verdecken.
+                        has_spoilers: (text?.isEmpty ?? true) ? false : hasSpoilers,
                         visibility: visibility.rawValue)
                 )
                 .eq("id", value: id)

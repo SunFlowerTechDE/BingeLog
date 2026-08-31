@@ -266,6 +266,19 @@ Sehdatum wird unter seinem Eintragszeitpunkt einsortiert, und die Zeile
 sagt dazu „eingetragen am". Sonst stuende er als Eintrag von 1970 ganz
 unten.
 
+Dazu aus dem Tagebuch-Konzept vom 31.08.2026, Prioritaet 1: sieben
+Sortierungen statt vier, Jahresauswahl, Filter „mit" und „ohne
+Bewertung", „3. Sichtung" statt „Wiedergesehen", Drei-Punkte-Menue je
+Eintrag, und das Nachtragen von Bewertung oder Rezension.
+
+**Der Spoilerschutz gilt fuer beide Plattformen.** `diary_entries`
+traegt jetzt `has_spoilers`, und `diary_for_me`, `following_feed` sowie
+die Rezensionsliste reichen es durch. Im Web wird jede Rezension
+weiterhin offen angezeigt — im Tagebuch, im Feed und unter dem Film.
+Das ist **kein** Zugriffsschutz und soll keiner sein (das Spoiler-Gate
+der Diskussion steht in der Policy, ADR-010), aber die Bitte des
+Verfassers gehoert respektiert.
+
 ## 12. Das Logo
 
 Die Bildmarke liegt als Asset in der App

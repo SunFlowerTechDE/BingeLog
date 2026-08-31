@@ -311,10 +311,7 @@ private struct FeedRow: View {
                 }
 
                 if let review = entry.review, !review.isEmpty {
-                    Text(review)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.muted)
-                        .lineLimit(3)
+                    SpoilerText(text: review, hasSpoilers: entry.hasSpoilers)
                 }
             }
 
