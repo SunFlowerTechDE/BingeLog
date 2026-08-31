@@ -39,6 +39,11 @@ struct RootView: View {
 }
 
 /// iPhone: Tab Bar.
+///
+/// Fünf Einträge, wie im Entwurf vom 31.08.2026. **Die Suche ist keiner
+/// davon** — sie sitzt als Lupe im Kopf von Entdecken, so wie im Web.
+/// Eine Leiste ist für die Orte da, an denen man sich aufhält; die Suche
+/// ist ein Werkzeug, das man von überall greift.
 private struct CompactShell: View {
     @Environment(SessionStore.self) private var session
     let films: FilmRepository
@@ -53,18 +58,38 @@ private struct CompactShell: View {
             // Anmelden und nach jedem Kaltstart.
             NavigationStack {
                 DiscoverView(repository: discover, details: details, entries: entries)
+                    .toolbar { searchButton }
             }
-            .tabItem { Label("Entdecken", systemImage: "sparkles") }
+            .tabItem { Label("Entdecken", systemImage: "house") }
 
-            NavigationStack {
-                SearchView(repository: films, lazyFilms: lazyFilms, details: details, entries: entries)
-            }
-            .tabItem { Label("Suche", systemImage: "magnifyingglass") }
+            NavigationStack { WatchlistView() }
+                .tabItem { Label("Watchlist", systemImage: "bookmark") }
 
-            NavigationStack {
-                AccountView()
+            NavigationStack { DiaryView() }
+                .tabItem { Label("Tagebuch", systemImage: "calendar") }
+
+            NavigationStack { ProfileView() }
+                .tabItem { Label("Profil", systemImage: "person") }
+
+            NavigationStack { SettingsView() }
+                .tabItem { Label("Einstellungen", systemImage: "gearshape") }
+        }
+        // Gold und nicht das Systemblau: die Tönung ist das
+        // Erkennungszeichen, und im Web ist die aktive Markierung
+        // ebenfalls golden.
+        .tint(Theme.primary)
+    }
+
+    @ToolbarContentBuilder private var searchButton: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink {
+                SearchView(
+                    repository: films, lazyFilms: lazyFilms,
+                    details: details, entries: entries)
+            } label: {
+                Image(systemName: "magnifyingglass")
             }
-            .tabItem { Label("Konto", systemImage: "person") }
+            .accessibilityLabel("Suche")
         }
     }
 }
@@ -81,40 +106,45 @@ private struct RegularShell: View {
     private enum Section: Hashable {
         case discover
         case search
-        case account
+        case watchlist
+        case diary
+        case profile
+        case settings
     }
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                Label("Entdecken", systemImage: "sparkles").tag(Section.discover)
+                Label("Entdecken", systemImage: "house").tag(Section.discover)
+                // Am Schreibtisch ist Platz, also steht die Suche hier
+                // in der Leiste statt hinter einer Lupe.
                 Label("Suche", systemImage: "magnifyingglass").tag(Section.search)
-                Label("Konto", systemImage: "person").tag(Section.account)
+                Label("Watchlist", systemImage: "bookmark").tag(Section.watchlist)
+                Label("Tagebuch", systemImage: "calendar").tag(Section.diary)
+                Label("Profil", systemImage: "person").tag(Section.profile)
+                Label("Einstellungen", systemImage: "gearshape").tag(Section.settings)
             }
             .navigationTitle("BingeLog")
         } detail: {
-            switch selection {
-            case .account:
-                AccountView()
-            case .search:
-                SearchView(repository: films, lazyFilms: lazyFilms, details: details, entries: entries)
-            case .discover, nil:
-                DiscoverView(repository: discover, details: details, entries: entries)
+            NavigationStack {
+                switch selection {
+                case .search:
+                    SearchView(
+                        repository: films, lazyFilms: lazyFilms,
+                        details: details, entries: entries)
+                case .watchlist:
+                    WatchlistView()
+                case .diary:
+                    DiaryView()
+                case .profile:
+                    ProfileView()
+                case .settings:
+                    SettingsView()
+                case .discover, nil:
+                    DiscoverView(repository: discover, details: details, entries: entries)
+                }
             }
         }
-    }
-}
-
-/// Vorläufig: nur abmelden. Das Profil kommt in einem eigenen Schritt.
-private struct AccountView: View {
-    @Environment(SessionStore.self) private var session
-
-    var body: some View {
-        List {
-            Button("Abmelden", role: .destructive) {
-                Task { await session.signOut() }
-            }
-        }
-        .navigationTitle("Konto")
+        .tint(Theme.primary)
     }
 }

@@ -379,7 +379,13 @@ private struct RatingCards: View {
 
             if canRate {
                 Panel(title: "Deine Bewertung") {
-                    PopcornPicker(rating: $rating, size: 22)
+                    // So gross, wie die Karte es hergibt: mit 22 Punkten
+                    // gingen die Eimer unter dem Finger unter.
+                    GeometryReader { geometry in
+                        PopcornPicker(
+                            rating: $rating, size: Popcorn.size(fitting: geometry.size.width))
+                    }
+                    .frame(height: 44)
                     Text(rating == 0 ? "Noch keine" : Popcorn.format(rating))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(rating == 0 ? Theme.quiet : Theme.foreground)
@@ -554,6 +560,7 @@ private struct FacetForm: View {
                         Text(facet.label)
                             .font(.footnote)
                             .foregroundStyle(Theme.foreground)
+                            .lineLimit(2)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                         PopcornPicker(
@@ -561,7 +568,7 @@ private struct FacetForm: View {
                                 get: { scores[facet] ?? 0 },
                                 set: { scores[facet] = $0 }
                             ),
-                            size: 18
+                            size: 26
                         )
                     }
                 }

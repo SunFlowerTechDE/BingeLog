@@ -103,6 +103,12 @@ Repository-Schicht, `@Observable`, typisierte Fehler. Anmelden,
 Registrieren, Namenswahl und Filmsuche laufen — geprüft im Simulator und
 auf einem echten iPhone.
 
+Die Leiste hat fünf Einträge: Entdecken, Watchlist, Tagebuch, Profil,
+Einstellungen. **Die Suche ist keiner davon** — sie sitzt als Lupe im
+Kopf von Entdecken, wie im Web. Watchlist, Tagebuch und Profil sind
+Platzhalter, die sagen, was fehlt und woran es hängt; das Abmelden ist
+mit nach Einstellungen gezogen und funktioniert dort.
+
 Entdecken ist auch auf dem iPhone die Startseite: Genre-Schieber,
 Top 10 der Woche, chronologischer Feed, Neu im Katalog — dieselbe
 Ordnung wie im Web. Filme sind überall antippbar und führen auf die

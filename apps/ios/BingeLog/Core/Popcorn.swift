@@ -21,6 +21,18 @@ enum Popcorn {
     /// Kleiner geht nicht, ohne dass die drei Zustände verschwimmen.
     static let minimumSize: CGFloat = 18
 
+    /// Wie gross ein Eimer sein darf, damit fünf davon in eine Breite
+    /// passen.
+    ///
+    /// Zum Setzen sollen sie so gross sein wie der Platz hergibt — sie
+    /// waren mit 22 Punkten zu klein, um sie mit dem Finger sicher zu
+    /// treffen. Die Zeichnung wächst also mit der Karte statt fest zu
+    /// stehen.
+    static func size(fitting width: CGFloat, spacing: CGFloat = 2) -> CGFloat {
+        let available = width - spacing * 4
+        return max(minimumSize, min(38, available / 5))
+    }
+
     /// „7" wird zu „3,5" — mit deutschem Komma.
     static func format(_ rating: Int) -> String {
         String(format: "%.1f", Double(rating) / 2).replacingOccurrences(of: ".", with: ",")
@@ -88,12 +100,21 @@ struct PopcornRating: View {
 /// Eimer; die halbe Stufe liegt auf der linken Hälfte.
 struct PopcornPicker: View {
     @Binding var rating: Int
-    var size: CGFloat = 30
+    var size: CGFloat = 32
+
+    /// Wie viel Luft um einen Eimer herum noch mitzählt.
+    ///
+    /// Apple nennt 44 Punkte als kleinstes Ziel, das ein Finger sicher
+    /// trifft. Ein Eimer von 28 ist kleiner — die fehlenden Punkte
+    /// kommen als unsichtbarer Rand dazu, statt die Zeichnung
+    /// aufzublasen, bis sie nicht mehr in die Karte passt.
+    private var padding: CGFloat { max(0, (44 - size) / 2) }
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(0..<5, id: \.self) { index in
                 PopcornBucket(fill: Popcorn.fill(rating: Double(rating), index: index), size: size)
+                    .padding(.vertical, padding)
                     .contentShape(Rectangle())
                     .onTapGesture { location in
                         // Linke Hälfte ist die halbe Stufe, rechte die
