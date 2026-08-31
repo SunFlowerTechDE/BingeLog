@@ -86,6 +86,8 @@ protocol FilmEntryRepository: Sendable {
     func recommend(film: String, to friends: [UUID], note: String?) async -> SaveOutcome
     func recommendationsForMe(limit: Int) async -> [Recommendation]
     func dismissRecommendation(film: String) async
+
+    func watchlist() async -> [WatchlistEntry]
 }
 
 /// Was beim Speichern herauskam.

@@ -62,7 +62,7 @@ private struct CompactShell: View {
             }
             .tabItem { Label("Entdecken", systemImage: "house") }
 
-            NavigationStack { WatchlistView() }
+            NavigationStack { WatchlistView(entries: entries, details: details) }
                 .tabItem { Label("Watchlist", systemImage: "bookmark") }
 
             NavigationStack { DiaryView() }
@@ -133,7 +133,7 @@ private struct RegularShell: View {
                         repository: films, lazyFilms: lazyFilms,
                         details: details, entries: entries)
                 case .watchlist:
-                    WatchlistView()
+                    WatchlistView(entries: entries, details: details)
                 case .diary:
                     DiaryView()
                 case .profile:

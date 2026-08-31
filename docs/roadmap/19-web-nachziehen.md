@@ -201,7 +201,21 @@ Film gefallen hat", „Heute passend", „Ueberrasch mich" und die
 intelligente Watchlist-Auswahl. Das Konzept ordnet sie selbst unter
 „Danach" ein.
 
-## 9. Das Logo
+## 9. Die Watchlist
+
+Das Watchlist-Konzept vom 31.08.2026, Prioritaet 1, ist auf dem iPhone
+umgesetzt: Plakatraster, Suche, neun Sortierungen, Genre- und
+Laufzeitfilter, „von Freunden empfohlen"-Kennzeichnung samt Filter,
+„Ueberrasch mich", Entfernen und „als gesehen markieren" mit sofortiger
+Bewertung.
+
+Die Funktion `watchlist_for_me()` liefert alles in einer Antwort. Das
+Web kann sie unveraendert benutzen. **Gefiltert und sortiert wird im
+Client** — eine Watchlist hat Dutzende Eintraege, keine
+Hunderttausend; sollte das je nicht mehr stimmen, ist das der Punkt zum
+Umdrehen.
+
+## 10. Das Logo
 
 Die Bildmarke liegt als Asset in der App
 (`apps/ios/BingeLog/Assets.xcassets/LogoMark.imageset`). Im Web wird der

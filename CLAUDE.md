@@ -104,7 +104,10 @@ Registrieren, Namenswahl und Filmsuche laufen — geprüft im Simulator und
 auf einem echten iPhone.
 
 Die Leiste hat fünf Einträge: Entdecken, Watchlist, Tagebuch, Profil,
-Einstellungen. **Die Suche ist keiner davon** — sie sitzt als Lupe im
+Einstellungen. Die Watchlist ist gebaut (Raster, Suche, Sortierung,
+Genre- und Laufzeitfilter, „Überrasch mich", als gesehen eintragen);
+gefiltert und sortiert wird **im Client**, weil eine Watchlist klein
+ist. **Die Suche ist keiner davon** — sie sitzt als Lupe im
 Kopf von Entdecken, wie im Web. Watchlist, Tagebuch und Profil sind
 Platzhalter, die sagen, was fehlt und woran es hängt; das Abmelden ist
 mit nach Einstellungen gezogen und funktioniert dort.

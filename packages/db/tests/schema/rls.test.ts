@@ -1406,6 +1406,97 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.follows where follower_id = any($1)`, [[ich, freund]]);
   });
 
+  it('shows only your own watchlist, with the marks the page needs', async () => {
+    const ich = await seedUser(h, 'wlich');
+    const freund = await seedUser(h, 'wlfreund');
+    const fremd = await seedUser(h, 'wlfremd');
+
+    await h.sql.query(
+      `insert into public.follows (follower_id, followee_id) values ($1, $2), ($2, $1)`,
+      [ich, freund],
+    );
+
+    await h.sql.query(`insert into public.watchlist (user_id, film_id) values ($1, $2)`, [
+      ich,
+      FILM,
+    ]);
+    // Der Fremde merkt sich etwas anderes vor. Das darf nicht bei mir
+    // auftauchen.
+    await h.sql.query(`insert into public.watchlist (user_id, film_id) values ($1, $2)`, [
+      fremd,
+      QUIET_FILM,
+    ]);
+
+    // Der Freund empfiehlt mir denselben Film.
+    await h
+      .as('authenticated', freund)
+      .query(
+        `insert into public.recommendations (from_user, to_user, film_id) values ($1, $2, $3)`,
+        [freund, ich, FILM],
+      );
+
+    interface Zeile { film_id: string; recommenders: number; first_friend: string | null }
+    const meine = await h
+      .as('authenticated', ich)
+      .query<Zeile>(`select film_id, recommenders, first_friend from public.watchlist_for_me()`);
+
+    assert.deepEqual(
+      meine.map((r) => r.film_id),
+      [FILM],
+      'nur die eigene Watchlist',
+    );
+    assert.equal(meine[0]?.recommenders, 1, 'die Empfehlung ist gezaehlt');
+    assert.equal(meine[0]?.first_friend, 'wlfreund', 'und benannt');
+
+    // Ausgeblendet heisst: die Kennzeichnung ist weg. Was ich
+    // weggewischt habe, soll nicht ueber die Watchlist zurueckkommen.
+    await h
+      .as('authenticated', ich)
+      .query(`update public.recommendations set dismissed_at = now() where to_user = $1`, [ich]);
+    const danach = await h
+      .as('authenticated', ich)
+      .query<Zeile>(`select film_id, recommenders from public.watchlist_for_me()`);
+    assert.equal(danach[0]?.recommenders, 0, 'die ausgeblendete zaehlt nicht mehr');
+
+    await h.sql.query(`delete from public.recommendations`);
+    await h.sql.query(`delete from public.watchlist where user_id = any($1)`, [[ich, fremd]]);
+    await h.sql.query(`delete from public.follows where follower_id = any($1)`, [[ich, freund]]);
+  });
+
+  it('gives every viewer the same community average in the watchlist', async () => {
+    // Der Durchschnitt kommt aus film_rating_summary, damit er nicht
+    // davon abhaengt, mit wem der Lesende befreundet ist. Rechnete die
+    // Funktion selbst, saehe sie nur, was die Policy ihr zeigt.
+    const ich = await seedUser(h, 'wlschnitt');
+    const anderer = await seedUser(h, 'wlanderer');
+
+    const film = 'Q100908';
+    await seedFilm(h, film);
+    await h.sql.query(`insert into public.watchlist (user_id, film_id) values ($1, $2)`, [
+      ich,
+      film,
+    ]);
+
+    // Ein Eintrag "nur fuer Freunde" von jemandem, mit dem ich nicht
+    // befreundet bin. Er zaehlt trotzdem in den Durchschnitt.
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $2, 8, 'friends')`,
+      [anderer, film],
+    );
+
+    const zeilen = await h
+      .as('authenticated', ich)
+      .query<{ average: string; votes: number }>(
+        `select average, votes from public.watchlist_for_me()`,
+      );
+    assert.equal(zeilen[0]?.votes, 1, 'der Eintrag zaehlt, obwohl ich ihn nicht lesen darf');
+    assert.equal(Number(zeilen[0]?.average), 8);
+
+    await h.sql.query(`delete from public.diary_entries where film_id = $1`, [film]);
+    await h.sql.query(`delete from public.watchlist where user_id = $1`, [ich]);
+  });
+
   it('refuses films_for_me to an anonymous caller', async () => {
     // Ein Grant fuegt hinzu, er nimmt nicht weg. Ohne den Entzug war die
     // Funktion fuer `anon` ausfuehrbar — harmlos, weil `auth.uid()`

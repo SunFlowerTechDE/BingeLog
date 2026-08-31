@@ -371,6 +371,107 @@ struct PopcornTests {
     }
 }
 
+/// Die Watchlist.
+@Suite("Watchlist")
+struct WatchlistTests {
+    private func entry(
+        id: String, title: String, year: Int?, runtime: Int?, average: Double?,
+        genres: [String] = [], recommenders: Int = 0
+    ) -> WatchlistEntry {
+        let ids = genres.map { "\"\($0)\"" }.joined(separator: ",")
+        let json = """
+            {"film_id":"\(id)","title_de":"\(title)","title_original":"\(title)",
+             "release_year":\(year.map(String.init) ?? "null"),
+             "runtime_min":\(runtime.map(String.init) ?? "null"),
+             "poster_source":null,"poster_url":null,
+             "added_at":"2026-08-01T10:00:00+00:00",
+             "average":\(average.map { "\"\($0)\"" } ?? "null"),"votes":1,
+             "genre_ids":[\(ids)],"genre_labels":[\(ids)],
+             "recommenders":\(recommenders),"first_friend":null}
+            """
+        // swiftlint:disable:next force_try
+        return try! JSONDecoder().decode(WatchlistEntry.self, from: Data(json.utf8))
+    }
+
+    /// Fehlende Angaben stehen in **jeder** Richtung hinten.
+    ///
+    /// Ein Film ohne Laufzeit ist nicht der kürzeste, und einer ohne
+    /// Bewertung nicht der schlechteste. Ohne diese Regel wandern alle
+    /// unvollständigen Einträge beim Umschalten der Richtung nach vorn.
+    @Test("Ein Film ohne Angabe steht nie vorn")
+    func missingValuesSortLast() {
+        let mit = entry(id: "Q1", title: "Mit", year: 2000, runtime: 90, average: 8)
+        let ohne = entry(id: "Q2", title: "Ohne", year: nil, runtime: nil, average: nil)
+
+        for order in [
+            WatchlistOrder.bestRated, .worstRated, .newestFilm, .oldestFilm, .shortest, .longest,
+        ] {
+            let sortiert = [ohne, mit].sorted(by: order.sorts)
+            #expect(sortiert.first?.filmID == "Q1", "\(order.label) stellt den leeren nach vorn")
+        }
+    }
+
+    /// Der Laufzeitfilter wirft Filme ohne Laufzeit heraus.
+    ///
+    /// Dieselbe Regel wie beim Jahr in der Suche: unbekannt ist nicht
+    /// kurz.
+    @Test("Ohne Laufzeit passt ein Film zu keiner Höchstlaufzeit")
+    func runtimeFilterExcludesUnknown() {
+        let kurz = entry(id: "Q1", title: "Kurz", year: 2000, runtime: 80, average: nil)
+        let lang = entry(id: "Q2", title: "Lang", year: 2000, runtime: 180, average: nil)
+        let ohne = entry(id: "Q3", title: "Ohne", year: 2000, runtime: nil, average: nil)
+        let alle = [kurz, lang, ohne]
+
+        let gefiltert = WatchlistModel.select(
+            from: alle, term: "", genre: nil, maximumRuntime: 90, onlyRecommended: false)
+        #expect(gefiltert.map(\.filmID) == ["Q1"])
+
+        // Ohne Filter ist er wieder dabei.
+        #expect(
+            WatchlistModel.select(
+                from: alle, term: "", genre: nil, maximumRuntime: nil, onlyRecommended: false
+            ).count == 3)
+    }
+
+    /// Suche, Genre und „von Freunden" greifen zusammen.
+    @Test("Die Filter wirken gemeinsam, nicht nacheinander")
+    func filtersCombine() {
+        let a = entry(
+            id: "Q1", title: "Horror eins", year: 2000, runtime: 90, average: nil,
+            genres: ["Q200092"], recommenders: 2)
+        let b = entry(
+            id: "Q2", title: "Horror zwei", year: 2000, runtime: 90, average: nil,
+            genres: ["Q200092"])
+        let c = entry(
+            id: "Q3", title: "Komödie", year: 2000, runtime: 90, average: nil,
+            genres: ["Q157443"], recommenders: 1)
+        let alle = [a, b, c]
+
+        #expect(
+            WatchlistModel.select(
+                from: alle, term: "horror", genre: nil, maximumRuntime: nil,
+                onlyRecommended: false
+            ).map(\.filmID) == ["Q1", "Q2"], "die Suche ignoriert Gross- und Kleinschreibung")
+
+        #expect(
+            WatchlistModel.select(
+                from: alle, term: "", genre: "Q200092", maximumRuntime: nil,
+                onlyRecommended: true
+            ).map(\.filmID) == ["Q1"], "Genre und Empfehlung zusammen lassen einen uebrig")
+    }
+
+    /// Die Kennzeichnung nennt einen beim Namen und zählt mehrere.
+    @Test("Ohne Empfehlung steht kein Hinweis da")
+    func recommendationNoteAppearsOnlyWhenThereIsOne() {
+        #expect(
+            entry(id: "Q1", title: "A", year: nil, runtime: nil, average: nil).recommendationNote
+                == nil)
+        #expect(
+            entry(id: "Q2", title: "B", year: nil, runtime: nil, average: nil, recommenders: 3)
+                .recommendationNote == "Von 3 Freunden empfohlen")
+    }
+}
+
 /// Empfehlungen unter Freunden.
 @Suite("Empfehlen")
 struct RecommendationTests {

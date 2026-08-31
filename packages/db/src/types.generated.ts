@@ -1246,6 +1246,25 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
       swap_favourites: { Args: { a: number; b: number }; Returns: undefined }
       username_available: { Args: { candidate: string }; Returns: boolean }
+      watchlist_for_me: {
+        Args: never
+        Returns: {
+          added_at: string
+          average: number
+          film_id: string
+          first_friend: string
+          genre_ids: string[]
+          genre_labels: string[]
+          poster_source: string
+          poster_url: string
+          recommenders: number
+          release_year: number
+          runtime_min: number
+          title_de: string
+          title_original: string
+          votes: number
+        }[]
+      }
       watchlist_is_public: { Args: { profile: string }; Returns: boolean }
       weekly_top_films: {
         Args: { max_results?: number }
