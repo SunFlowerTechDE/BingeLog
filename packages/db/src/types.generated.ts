@@ -1137,7 +1137,7 @@ export type Database = {
       refresh_film_facet_averages: { Args: never; Returns: undefined }
       report_accepts_uploads: { Args: { report: string }; Returns: boolean }
       search_films: {
-        Args: { max_results?: number; query: string }
+        Args: { in_year?: number; max_results?: number; query: string }
         Returns: {
           director: string
           poster_source: string
@@ -1157,6 +1157,20 @@ export type Database = {
       swap_favourites: { Args: { a: number; b: number }; Returns: undefined }
       username_available: { Args: { candidate: string }; Returns: boolean }
       watchlist_is_public: { Args: { profile: string }; Returns: boolean }
+      weekly_top_films: {
+        Args: { max_results?: number }
+        Returns: {
+          average: number
+          place: number
+          poster_source: string
+          poster_url: string
+          ratings: number
+          release_year: number
+          title_de: string
+          title_original: string
+          wikidata_id: string
+        }[]
+      }
     }
     Enums: {
       account_action:
