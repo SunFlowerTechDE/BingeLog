@@ -112,7 +112,14 @@ struct CardBuildView: View {
         // man abbrechen könnte.
         .contentShape(Rectangle())
         .onTapGesture { finish() }
-        .onAppear { start() }
+        .onAppear {
+            // Doppelt gesichert: der Knopf schliesst die Tastatur schon,
+            // aber der Vorhang darf unter keinen Umständen dahinter
+            // liegen — herantippen kann man nicht, ein Tippen
+            // überspringt.
+            dismissKeyboard()
+            start()
+        }
         .onDisappear { clock?.cancel() }
     }
 

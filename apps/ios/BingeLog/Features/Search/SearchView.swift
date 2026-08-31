@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Filme suchen.
 struct SearchView: View {
@@ -39,6 +40,10 @@ struct SearchView: View {
                     isBusy: model.isCreating,
                     isEnabled: model.canCreate
                 ) {
+                    // Erst die Tastatur weg, dann anlegen. Sonst steht
+                    // sie vor der Zeremonie, und wegtippen geht nicht:
+                    // ein Tippen auf den Vorhang überspringt sie.
+                    dismissKeyboard()
                     Task { await model.createMissingFilm() }
                 }
             }
@@ -54,6 +59,10 @@ struct SearchView: View {
             }
         }
         .listStyle(.plain)
+        // Wegwischen geht immer. Der Ziffernblock des Jahresfeldes hat
+        // keine Return-Taste — ohne das hier kommt man aus ihm nicht
+        // heraus, ausser über die Umschalttaste des Systems.
+        .scrollDismissesKeyboard(.immediately)
         .searchable(
             text: $model.term,
             placement: .navigationBarDrawer(displayMode: .always),
@@ -151,6 +160,8 @@ private struct YearField: View {
     @Binding var text: String
     let isIncomplete: Bool
 
+    @FocusState private var isFocused: Bool
+
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "calendar")
@@ -158,6 +169,18 @@ private struct YearField: View {
 
             TextField("Jahr (optional)", text: $text)
                 .keyboardType(.numberPad)
+                .focused($isFocused)
+                .toolbar {
+                    // Der Ziffernblock bringt keine Return-Taste mit.
+                    // Ohne diesen Knopf gibt es keinen Weg aus dem Feld
+                    // heraus.
+                    ToolbarItemGroup(placement: .keyboard) {
+                        if isFocused {
+                            Spacer()
+                            Button("Fertig") { isFocused = false }
+                        }
+                    }
+                }
                 .textContentType(.none)
                 .autocorrectionDisabled()
                 // YYYY: mehr als vier Ziffern nimmt das Feld gar nicht
@@ -187,4 +210,15 @@ private struct YearField: View {
         }
         .padding(.bottom, isIncomplete ? 16 : 0)
     }
+}
+
+/// Schliesst die Tastatur, egal welches Feld sie geöffnet hat.
+///
+/// Über den Responder und nicht über `@FocusState`: die Suchleiste
+/// kommt von `.searchable` und führt ihren Fokus selbst, an ihn kommt
+/// die Ansicht nicht heran.
+@MainActor
+func dismissKeyboard() {
+    UIApplication.shared.sendAction(
+        #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 }
