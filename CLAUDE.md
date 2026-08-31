@@ -88,7 +88,7 @@ M3 ist durch: Auth, Suche, Filmdetail, Bewerten, Tagebuch, Watchlist und
 Reviews stehen; die fünf Pflicht-Testfälle der Suche laufen gegen
 lokales Postgres, also ohne Projekt.
 
-M4 ist durch. Profil, Kopf- und Profilbild, Folgen, Favoriten (vier
+M4 ist durch. Profil, Kopf- und Profilbild, Folgen, Favoriten (zehn
 Plätze) und Binge-Listen stehen. Der Header hat drei Zonen: Ziele in der
 Mitte, Suche als Lupe, das eigene Konto rechts hinter einem Klappmenü.
 Entdecken ist für Angemeldete die Startseite: Genre-Kacheln als
@@ -115,8 +115,9 @@ wie jeder andere. Das Spoiler-Gate der Diskussion ist etwas anderes und
 steht in der Policy (ADR-010). Das Profil steht ebenfalls — dieselbe Ansicht für das eigene und ein
 fremdes, was sich unterscheidet, ist der Folgen-Knopf und wie viel die
 Policy hergibt. **Kein Platzhalter mehr in der Leiste.** Name,
-Beschreibung, Profil- und Kopfbild lassen sich ändern; die Favoriten
-noch nicht. Dazu die vier Auswertungen (Notenverteilung, Filme pro
+Beschreibung, Profil- und Kopfbild lassen sich ändern, und die
+**zehn** Favoritenplätze ebenfalls — von vier erweitert am 31.08.2026,
+in App, Web und `favourites.position` gleichzeitig. Dazu die vier Auswertungen (Notenverteilung, Filme pro
 Jahr, Jahrzehnte, häufigste Regie), die Watchlist-Vorschau, Blockieren
 und Melden.
 

@@ -16,6 +16,7 @@ struct ProfileView: View {
     @State private var isEditing = false
     @State private var isReporting = false
     @State private var confirmingBlock = false
+    @State private var isEditingFavourites = false
 
     var body: some View {
         Group {
@@ -68,6 +69,11 @@ struct ProfileView: View {
         .sheet(isPresented: $isReporting) {
             if let head = model?.overview {
                 ReportSheet(targetKind: "profile", targetID: head.id.uuidString)
+            }
+        }
+        .sheet(isPresented: $isEditingFavourites) {
+            EditFavouritesSheet(slots: model?.favourites ?? []) {
+                Task { await model?.load() }
             }
         }
         .sheet(isPresented: $isEditing) {
@@ -123,8 +129,13 @@ struct ProfileView: View {
 
                 numbers(model)
 
-                if !model.favourites.isEmpty {
-                    Favourites(slots: model.favourites)
+                // Auf dem eigenen Profil steht die Tafel auch leer da:
+                // sonst gäbe es keinen Weg, den ersten zu setzen.
+                if !model.favourites.isEmpty || head.isMe {
+                    Favourites(
+                        slots: model.favourites,
+                        canEdit: head.isMe,
+                        onEdit: { isEditingFavourites = true })
                 }
 
                 if !model.genres.isEmpty {
@@ -193,7 +204,12 @@ struct ProfileView: View {
                 // dann ist auch die Überschrift fehl am Platz, sonst
                 // liest sich „leer" als „hat nichts vorgemerkt".
                 if head.isMe || head.watchlistPublic {
-                    Section(title: "Watchlist") {
+                    SectionWithMore(
+                        title: "Watchlist",
+                        more: head.isMe ? "Alle" : nil,
+                        destination: { AnyView(WatchlistView(
+                            entries: repos.entries, details: repos.details)) }
+                    ) {
                         if model.watchlist.isEmpty {
                             Text(head.isMe ? "Noch nichts vorgemerkt." : "Nichts zu sehen.")
                                 .font(.footnote)
@@ -223,7 +239,15 @@ struct ProfileView: View {
                 }
 
                 if !model.recent.isEmpty {
-                    Section(title: head.isMe ? "Zuletzt eingetragen" : "Zuletzt gesehen") {
+                    SectionWithMore(
+                        title: head.isMe ? "Zuletzt eingetragen" : "Zuletzt gesehen",
+                        // „Alle" führt ins eigene Tagebuch. Bei einem
+                        // fremden Profil gibt es diese Seite nicht —
+                        // was von ihm sichtbar ist, steht hier schon.
+                        more: head.isMe ? "Alle" : nil,
+                        destination: { AnyView(DiaryView(
+                            entries: repos.entries, details: repos.details)) }
+                    ) {
                         VStack(spacing: 0) {
                             ForEach(model.recent) { entry in
                                 NavigationLink {
@@ -296,8 +320,21 @@ private struct ProfileHeader: View {
                 }
 
                 HStack(spacing: 14) {
-                    Count(value: head.followers, label: "Follower")
-                    Count(value: head.following, label: "folgt")
+                    NavigationLink {
+                        FollowListView(
+                            profileID: head.id, incoming: true, avatarBase: avatarBase)
+                    } label: {
+                        Count(value: head.followers, label: "Follower")
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        FollowListView(
+                            profileID: head.id, incoming: false, avatarBase: avatarBase)
+                    } label: {
+                        Count(value: head.following, label: "folgt")
+                    }
+                    .buttonStyle(.plain)
                     if head.areFriends {
                         Text("befreundet")
                             .font(.caption2)
@@ -399,34 +436,70 @@ private struct Count: View {
 /// Lücken bleiben Lücken: wer nur zwei gewählt hat, hat zwei gewählt.
 private struct Favourites: View {
     let slots: [FavouriteSlot]
+    let canEdit: Bool
+    let onEdit: () -> Void
+
+    /// Zehn, seit dem 31.08.2026.
+    private static let places = 10
 
     var body: some View {
-        Section(title: "Favoriten") {
-            HStack(alignment: .top, spacing: 10) {
-                ForEach(1...4, id: \.self) { position in
-                    if let slot = slots.first(where: { $0.slot == position }) {
-                        NavigationLink {
-                            FilmDetailView(film: slot.film)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                PosterThumbnail(film: slot.film, width: 76)
-                                Text(slot.film.title)
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.foreground)
-                                    .lineLimit(2)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Favoriten")
+                    .font(.headline)
+                    .foregroundStyle(Theme.foreground)
+                Spacer()
+                if canEdit {
+                    Button("Bearbeiten", action: onEdit)
+                        .font(.caption)
+                        .foregroundStyle(Theme.primary)
+                }
+            }
+            .padding(.horizontal, 20)
+
+            // Waagerecht: zehn Plakate nebeneinander passen auf kein
+            // Telefon, und untereinander wären sie eine Wand.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(1...Self.places, id: \.self) { position in
+                        if let slot = slots.first(where: { $0.slot == position }) {
+                            NavigationLink {
+                                FilmDetailView(film: slot.film)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    PosterThumbnail(film: slot.film, width: 76)
+                                    Text(slot.film.title)
+                                        .font(.caption2)
+                                        .foregroundStyle(Theme.foreground)
+                                        .lineLimit(2)
+                                }
+                                .frame(width: 76, alignment: .leading)
                             }
-                            .frame(width: 76, alignment: .leading)
+                            .buttonStyle(.plain)
+                        } else if canEdit {
+                            // Leere Plätze nur auf dem eigenen Profil.
+                            // Bei einem fremden sagt eine gestrichelte
+                            // Kachel nichts, ausser dass jemand nicht
+                            // fertig geworden ist.
+                            Button(action: onEdit) {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .strokeBorder(
+                                        Theme.border,
+                                        style: StrokeStyle(lineWidth: 1, dash: [4, 3])
+                                    )
+                                    .frame(width: 76, height: 114)
+                                    .overlay {
+                                        Text("\(position)")
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.quiet)
+                                            .monospacedDigit()
+                                    }
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                    } else {
-                        RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(
-                                Theme.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3])
-                            )
-                            .frame(width: 76, height: 114)
                     }
                 }
-                Spacer(minLength: 0)
+                .padding(.horizontal, 20)
             }
         }
     }
@@ -582,5 +655,36 @@ private struct Bars: View {
                 "\(title): "
                     + data.map { "\($0.label) \($0.films) \(unit)" }.joined(separator: ", "))
         }
+    }
+}
+
+
+/// Eine Überschrift mit einem Weg zu allem.
+private struct SectionWithMore<Content: View>: View {
+    let title: String
+    /// `nil` heisst: es gibt keinen Weg. Ein „mehr", das nirgendwohin
+    /// führt, ist schlechter als keins.
+    let more: String?
+    let destination: () -> AnyView
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(Theme.foreground)
+                Spacer()
+                if let more {
+                    NavigationLink(more) { destination() }
+                        .font(.caption)
+                        .foregroundStyle(Theme.primary)
+                }
+            }
+            .padding(.horizontal, 20)
+
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

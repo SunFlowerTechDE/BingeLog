@@ -17,7 +17,9 @@ export interface Favorit {
   film: FilmTreffer;
 }
 
-const PLAETZE = [1, 2, 3, 4];
+// Zehn seit dem 31.08.2026, wie in `favourites.position` und in der
+// iOS-App.
+const PLAETZE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 function plakat(film: FilmTreffer): string {
   return film.poster_source === 'tvdb' && film.poster_url
@@ -33,7 +35,7 @@ function titel(film: FilmTreffer): string {
  * Die vier Lieblingsfilme waehlen.
  *
  * Die Suche erscheint **nur im Bearbeiten-Modus**. Ausserhalb zeigt der
- * Bereich vier Plaetze und sonst nichts — ein Suchfeld, das immer offen
+ * Bereich zehn Plaetze und sonst nichts — ein Suchfeld, das immer offen
  * steht, sieht aus wie eine Aufgabe, die noch offen ist.
  *
  * Gesucht wird im ganzen Katalog. Einen Lieblingsfilm hat man oft, lange
@@ -182,7 +184,7 @@ export function FavouriteEditor({ anfang }: { anfang: Favorit[] }) {
                 </span>
               ) : null}
 
-              {/* Tauschen statt Ziehen: vier Plaetze, und ein
+              {/* Tauschen statt Ziehen: zehn Plaetze, und ein
                   Ziehen-und-Fallenlassen auf dem Handy ist mehr
                   Fehlerquelle als Bequemlichkeit. */}
               {bearbeitet && favorit ? (
@@ -200,7 +202,7 @@ export function FavouriteEditor({ anfang }: { anfang: Favorit[] }) {
                   </button>
                   <button
                     type="button"
-                    disabled={laeuft || p === 4}
+                    disabled={laeuft || p === PLAETZE.length}
                     aria-label="Nach hinten"
                     onClick={() => {
                       tauschen(p, p + 1);
@@ -220,7 +222,7 @@ export function FavouriteEditor({ anfang }: { anfang: Favorit[] }) {
         <div className="border-border bg-card/40 flex flex-col gap-3 rounded-lg border p-4">
           {voll ? (
             <p className="text-muted-foreground text-sm">
-              Alle vier Plätze sind belegt. Nimm erst einen heraus.
+              Alle Plätze sind belegt. Nimm erst einen heraus.
             </p>
           ) : (
             <>

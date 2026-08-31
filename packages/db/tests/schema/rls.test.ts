@@ -787,7 +787,7 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.favourites where user_id = $1`, [eigner]);
   });
 
-  it('holds four places, each once, each film once', async () => {
+  it('holds ten places, each once, each film once', async () => {
     const eigner = await seedUser(h, 'favoritgrenzen');
 
     await h
@@ -797,12 +797,12 @@ describe('diary and facet visibility', () => {
         FILM,
       ]);
 
-    // Platz fuenf gibt es nicht.
+    // Platz elf gibt es nicht.
     await assert.rejects(
       () =>
         h
           .as('authenticated', eigner)
-          .query(`insert into public.favourites (user_id, film_id, position) values ($1, $2, 5)`, [
+          .query(`insert into public.favourites (user_id, film_id, position) values ($1, $2, 11)`, [
             eigner,
             QUIET_FILM,
           ]),

@@ -297,9 +297,8 @@ Rohgenres. Im Web stand dadurch "Kriminalfilm", "Neo-Noir" und
 gibt zusaetzlich `genre_id` zurueck; der bisherige Aufruf muss die neue
 Spalte nur ignorieren.
 
-Bearbeiten geht inzwischen: Name, Beschreibung, Profil- und Kopfbild.
-**Die Favoriten noch nicht** — dafuer braucht es eine Filmsuche im
-Formular, und die gehoert nicht in ein Blatt mit vier Feldern.
+Bearbeiten geht inzwischen vollstaendig: Name, Beschreibung, Profil-
+und Kopfbild und die zehn Favoritenplaetze.
 
 Die Profilseite ist am 31.08.2026 mit der Webansicht abgeglichen worden
 und traegt jetzt dasselbe: die vier Auswertungen, die
@@ -308,9 +307,10 @@ Watchlist-Vorschau samt Kennzahl, Blockieren und Melden.
 `i_blocked` zurueck — der bisherige Aufruf muss die neuen Spalten nur
 ignorieren.
 
-Was im Web steht und in der App fehlt: **Wege zu allen Eintraegen und
-allen Listen** („mehr"-Links der Tafeln) und die **antippbaren
-Follower-Zahlen**.
+Beides ist inzwischen da: die „mehr"-Wege zu Tagebuch und Watchlist und
+die antippbaren Follower-Zahlen. **Der Weg zu allen Binge-Listen fehlt
+noch in der App** — im Web ist das `/@name/listen`, und eine Listenseite
+gibt es auf dem iPhone noch gar nicht.
 
 ## 13. Das Logo
 

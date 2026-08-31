@@ -34,7 +34,7 @@ export default async function SettingsPage() {
   if (!profile) redirect('/willkommen');
 
   const { data: bild } = supabase.storage.from('avatars').getPublicUrl(profile.avatar_path ?? '');
-  // Die vier Plaetze. Nach Platz sortiert, nicht nach Aufnahme: Platz
+  // Die zehn Plaetze. Nach Platz sortiert, nicht nach Aufnahme: Platz
   // eins ist Platz eins.
   const { data: favRows } = await supabase
     .from('favourites')

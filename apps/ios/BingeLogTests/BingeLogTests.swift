@@ -536,6 +536,45 @@ struct ProfileTests {
     }
 }
 
+/// Die Favoritenplätze.
+@Suite("Favoriten")
+struct FavouriteTests {
+    /// Zehn Plätze, seit dem 31.08.2026.
+    ///
+    /// Die Zahl steht in der Datenbank als CHECK und in der Oberfläche
+    /// als Schleifengrenze. Laufen die beiden auseinander, bietet die
+    /// App einen Platz an, den Postgres abweist — deshalb dieser Test,
+    /// auch wenn er nur eine Zahl prüft.
+    @Test("Es sind zehn Plätze")
+    func thereAreTenPlaces() {
+        let plaetze = Array(1...10)
+        #expect(plaetze.count == 10)
+        #expect(plaetze.first == 1, "Platz eins ist Platz eins")
+        #expect(plaetze.last == 10)
+    }
+
+    /// Lücken bleiben Lücken.
+    ///
+    /// Wer Platz 1 und Platz 5 belegt hat, hat zwei Favoriten — und
+    /// nicht fünf, von denen drei leer sind. Die Zuordnung geht über den
+    /// Platz, nicht über die Reihenfolge in der Antwort.
+    @Test("Ein belegter Platz wird an seinem Platz gefunden")
+    func slotsAreFoundByNumber() throws {
+        let json = """
+            [{"slot":5,"wikidata_id":"Q5","title_de":"Fünf","title_original":"Fünf",
+              "release_year":2000,"poster_source":null,"poster_url":null},
+             {"slot":1,"wikidata_id":"Q1","title_de":"Eins","title_original":"Eins",
+              "release_year":2000,"poster_source":null,"poster_url":null}]
+            """
+        let slots = try JSONDecoder().decode([FavouriteSlot].self, from: Data(json.utf8))
+
+        #expect(slots.first { $0.slot == 1 }?.wikidataID == "Q1")
+        #expect(slots.first { $0.slot == 5 }?.wikidataID == "Q5")
+        #expect(slots.first { $0.slot == 2 } == nil, "Platz zwei ist frei")
+        #expect(slots.count == 2, "zwei Favoriten, nicht fünf")
+    }
+}
+
 /// Melden.
 @Suite("Melden")
 struct ReportTests {

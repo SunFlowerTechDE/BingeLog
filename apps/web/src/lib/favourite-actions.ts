@@ -13,7 +13,10 @@ export interface FavouriteResult {
   message?: string;
 }
 
-const PLAETZE = 4;
+// Zehn seit dem 31.08.2026. Dieselbe Zahl steht als CHECK in
+// `favourites.position` und in der iOS-App — laufen sie auseinander,
+// bietet die eine Seite einen Platz an, den Postgres abweist.
+const PLAETZE = 10;
 
 /**
  * Einen Film auf den naechsten freien Platz legen.
@@ -42,7 +45,7 @@ export async function addFavourite(wikidataId: string): Promise<FavouriteResult>
     (p) => !genommen.some((f) => f.position === p),
   );
   if (frei === undefined) {
-    return { error: 'Alle vier Plätze sind belegt. Nimm erst einen heraus.' };
+    return { error: `Alle ${String(PLAETZE)} Plätze sind belegt. Nimm erst einen heraus.` };
   }
 
   const { error } = await supabase
@@ -87,7 +90,7 @@ export async function removeFavourite(position: number): Promise<FavouriteResult
  *
  * Tauschen und nicht verschieben: der Primaerschluessel steht auf
  * (user_id, position), und ein Verschieben muesste alle dazwischen
- * anfassen. Fuer vier Plaetze ist der Tausch das, was der Nutzer
+ * anfassen. Fuer eine Handvoll Plaetze ist der Tausch das, was der Nutzer
  * ohnehin meint, wenn er einen Film nach vorn holt.
  *
  * In einer Transaktion ueber eine Datenbankfunktion, weil zwei einzelne

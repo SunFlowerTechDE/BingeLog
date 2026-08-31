@@ -540,10 +540,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           </Panel>
         </div>
 
-        {/* Die vier Plaetze stehen nur, wenn jemand sie besetzt hat. Vier
-            leere Rahmen auf einem fremden Profil sind eine Aufgabe, die
-            den Besucher nichts angeht. Auf dem eigenen Profil ist es
-            eine — deshalb dort der Hinweis. */}
+        {/* Die Plaetze stehen nur, wenn jemand sie besetzt hat. Leere
+            Rahmen auf einem fremden Profil sind eine Aufgabe, die den
+            Besucher nichts angeht. Auf dem eigenen Profil ist es eine —
+            deshalb dort der Hinweis. */}
         {favoriten.length > 0 || eigenes ? (
           <Panel
             titel="Favoriten"

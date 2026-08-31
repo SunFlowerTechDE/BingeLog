@@ -291,7 +291,7 @@ private struct FeedRow: View {
                         ProfileView(username: entry.username)
                     } label: {
                         HStack(spacing: 6) {
-                            Avatar(path: entry.avatarPath, base: avatarBase)
+                            Avatar(path: entry.avatarPath, base: avatarBase, size: 18)
                             Text(entry.username)
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(Theme.foreground)
@@ -332,26 +332,6 @@ private struct FeedRow: View {
     }
 }
 
-private struct Avatar: View {
-    let path: String?
-    let base: URL?
-
-    var body: some View {
-        Group {
-            if let path, let base {
-                AsyncImage(url: base.appendingPathComponent(path)) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Circle().fill(Theme.card)
-                }
-            } else {
-                Circle().fill(Theme.card)
-            }
-        }
-        .frame(width: 18, height: 18)
-        .clipShape(Circle())
-    }
-}
 
 // --------------------------------------------------------------------
 // Top 10 in dieser Woche
