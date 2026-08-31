@@ -117,6 +117,11 @@ Filmseite; **Bewerten, Tagebuch und Watchlist stehen dort noch aus**
 fünfzehnsekündigen Zeremonie wie im Web, und das Jahr grenzt ein,
 welcher der Wikidata-Treffer gemeint ist.
 
+Empfehlen geht **nur unter Freunden** — beidseitiges Folgen. Die Regel
+steht in der Policy auf `recommendations`, nicht in der Auswahlliste:
+eine Oberfläche, die nur Freunde anbietet, ist eine Auswahl und keine
+Sperre. Die Notiz ist auf 50 Zeichen begrenzt.
+
 Die prozedurale Karte ist ein SVG. `AsyncImage` kann keins — sie läuft
 über `PosterThumbnail`/`PosterImage`, die nach dem Inhaltstyp
 entscheiden und das SVG über WebKit anzeigen. Ein neues `AsyncImage`

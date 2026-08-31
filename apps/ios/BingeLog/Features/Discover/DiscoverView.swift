@@ -27,7 +27,7 @@ struct DiscoverView: View {
         self.repository = repository
         self.details = details
         self.entries = entries
-        _model = State(initialValue: DiscoverModel(repository: repository))
+        _model = State(initialValue: DiscoverModel(repository: repository, entries: entries))
     }
 
     var body: some View {
@@ -46,6 +46,14 @@ struct DiscoverView: View {
 
                 if !model.top.isEmpty {
                     WeeklyTopSection(entries: model.top, details: details, filmEntries: entries)
+                }
+
+                // Erscheint nur, wenn es konkrete Empfehlungen gibt —
+                // sonst wird der ganze Bereich ausgeblendet
+                // (Konzept, 5).
+                if !model.recommended.isEmpty {
+                    RecommendedSection(
+                        model: model, details: details, entries: entries)
                 }
 
                 if !model.forMe.isEmpty {
@@ -520,5 +528,83 @@ private struct FilmLine: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+
+// --------------------------------------------------------------------
+// Von Freunden empfohlen
+// --------------------------------------------------------------------
+
+private struct RecommendedSection: View {
+    @Bindable var model: DiscoverModel
+    let details: FilmDetailRepository
+    let entries: FilmEntryRepository
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle(text: "Von Freunden empfohlen")
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(model.recommended) { entry in
+                        RecommendationCard(entry: entry, details: details, entries: entries) {
+                            Task { await model.dismiss(entry) }
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+}
+
+private struct RecommendationCard: View {
+    let entry: Recommendation
+    let details: FilmDetailRepository
+    let entries: FilmEntryRepository
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            NavigationLink {
+                FilmDetailView(film: entry.film, details: details, entries: entries)
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    PosterThumbnail(film: entry.film, width: 104)
+
+                    Text(entry.film.title)
+                        .font(.caption)
+                        .foregroundStyle(Theme.foreground)
+                        .lineLimit(2)
+
+                    Text(entry.headline)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.primary)
+                        .lineLimit(2)
+
+                    // Die Bewertung des Freundes, wenn er sie zeigt. Ein
+                    // privater Eintrag gibt keine Zahl her, und das ist
+                    // richtig.
+                    if let rating = entry.friendRating {
+                        PopcornRating(rating: Double(rating), size: 12)
+                    }
+
+                    if let note = entry.note, !note.isEmpty {
+                        Text("„\(note)")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.muted)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(width: 104, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Button("Ausblenden", action: onDismiss)
+                .font(.caption2)
+                .foregroundStyle(Theme.quiet)
+        }
+        .frame(width: 104, alignment: .leading)
     }
 }

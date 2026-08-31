@@ -655,6 +655,58 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendations: {
+        Row: {
+          created_at: string
+          dismissed_at: string | null
+          film_id: string
+          from_user: string
+          id: string
+          note: string | null
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_at?: string | null
+          film_id: string
+          from_user: string
+          id?: string
+          note?: string | null
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_at?: string | null
+          film_id?: string
+          from_user?: string
+          id?: string
+          note?: string | null
+          to_user?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "recommendations_from_user_fkey"
+            columns: ["from_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendations_to_user_fkey"
+            columns: ["to_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_images: {
         Row: {
           added_at: string
@@ -1034,6 +1086,7 @@ export type Database = {
         }[]
       }
       are_friends: { Args: { a: string; b: string }; Returns: boolean }
+      blocked_by: { Args: { wer: string }; Returns: boolean }
       blocks_me: { Args: { autor: string }; Returns: boolean }
       claim_lazy_creation: {
         Args: { per_minute?: number; search_term: string }
@@ -1079,6 +1132,15 @@ export type Database = {
           title_original: string
           username: string
           watched_on: string
+        }[]
+      }
+      friends_for_recommendation: {
+        Args: { film: string }
+        Returns: {
+          already_sent: boolean
+          avatar_path: string
+          id: string
+          username: string
         }[]
       }
       genre_tiles: {
@@ -1146,6 +1208,22 @@ export type Database = {
         }[]
       }
       prune_lazy_creation_attempts: { Args: never; Returns: undefined }
+      recommendations_for_me: {
+        Args: { max_results?: number }
+        Returns: {
+          film_id: string
+          first_friend: string
+          friend_rating: number
+          friends: number
+          note: string
+          poster_source: string
+          poster_url: string
+          recommended_at: string
+          release_year: number
+          title_de: string
+          title_original: string
+        }[]
+      }
       refresh_film_facet_averages: { Args: never; Returns: undefined }
       report_accepts_uploads: { Args: { report: string }; Returns: boolean }
       search_films: {

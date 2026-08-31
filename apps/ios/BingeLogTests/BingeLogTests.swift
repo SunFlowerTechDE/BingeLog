@@ -371,6 +371,48 @@ struct PopcornTests {
     }
 }
 
+/// Empfehlungen unter Freunden.
+@Suite("Empfehlen")
+struct RecommendationTests {
+    private func entry(friends: Int, first: String, note: String? = nil) -> Recommendation {
+        let json = """
+            {"film_id":"Q1","title_de":null,"title_original":"A","release_year":2000,
+             "poster_source":null,"poster_url":null,"friends":\(friends),
+             "first_friend":"\(first)","note":\(note.map { "\"\($0)\"" } ?? "null"),
+             "friend_rating":9}
+            """
+        // swiftlint:disable:next force_try
+        return try! JSONDecoder().decode(Recommendation.self, from: Data(json.utf8))
+    }
+
+    /// Einer wird benannt, mehrere werden gezählt.
+    @Test("Einer heisst beim Namen, mehrere werden gezählt")
+    func headlineCountsOrNames() {
+        #expect(entry(friends: 1, first: "Pascal").headline == "Pascal empfiehlt dir diesen Film")
+        #expect(entry(friends: 3, first: "Pascal").headline == "3 Freunde empfehlen dir diesen Film")
+        // Nicht "1 Freunde" und nicht "Pascal und 2 andere" — der eine
+        // Fall ist ein Name, der andere eine Zahl.
+        #expect(!entry(friends: 1, first: "Pascal").headline.contains("1 Freund"))
+    }
+
+    /// Die Bewertung des Freundes steht auf der internen Skala.
+    @Test("Die Bewertung des Freundes wird einmal halbiert")
+    func friendRatingIsOnTheInternalScale() throws {
+        let one = entry(friends: 1, first: "Sarah")
+        #expect(one.friendRating == 9)
+        // Die Ansicht reicht sie als Double an PopcornRating weiter, das
+        // selbst halbiert — 9 von 10 sind 4,5 Popcorn.
+        #expect(Popcorn.format(9) == "4,5")
+    }
+
+    /// Eine fehlende Notiz ist kein leerer Text.
+    @Test("Ohne Notiz steht kein leeres Anführungszeichen da")
+    func missingNoteStaysNil() {
+        #expect(entry(friends: 1, first: "Pascal").note == nil)
+        #expect(entry(friends: 1, first: "Pascal", note: "Musst du sehen").note == "Musst du sehen")
+    }
+}
+
 /// Die erweiterte Bewertung.
 @Suite("Facetten")
 struct FacetTests {

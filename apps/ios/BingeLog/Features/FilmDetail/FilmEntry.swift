@@ -81,6 +81,11 @@ protocol FilmEntryRepository: Sendable {
     func discussionThreshold() async -> Int
     func messages(for filmID: String) async -> [ThreadMessage]
     func post(filmID: String, body: String, replyingTo parent: UUID?) async -> SaveOutcome
+
+    func friendsForRecommendation(film: String) async -> [RecommendationTarget]
+    func recommend(film: String, to friends: [UUID], note: String?) async -> SaveOutcome
+    func recommendationsForMe(limit: Int) async -> [Recommendation]
+    func dismissRecommendation(film: String) async
 }
 
 /// Was beim Speichern herauskam.

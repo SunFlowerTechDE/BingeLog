@@ -14,10 +14,14 @@ final class DiscoverModel {
 
     let avatarBase: URL?
 
-    private let repository: DiscoverRepository
+    private(set) var recommended: [Recommendation] = []
 
-    init(repository: DiscoverRepository) {
+    private let repository: DiscoverRepository
+    private let entries: FilmEntryRepository
+
+    init(repository: DiscoverRepository, entries: FilmEntryRepository) {
         self.repository = repository
+        self.entries = entries
         self.avatarBase = repository.avatarBase()
     }
 
@@ -30,6 +34,7 @@ final class DiscoverModel {
         async let top = repository.weeklyTop(limit: 10)
         async let forMe = repository.forMe(limit: 12)
         async let upcoming = repository.upcoming(limit: 12)
+        async let recommended = entries.recommendationsForMe(limit: 12)
         async let feed = repository.followingFeed(limit: 20)
         async let newest = repository.newestFilms(limit: 12)
 
@@ -37,8 +42,20 @@ final class DiscoverModel {
         self.top = await top
         self.forMe = await forMe
         self.upcoming = await upcoming
+        self.recommended = await recommended
         self.feed = await feed
         self.newest = await newest
         isLoading = false
+    }
+}
+
+extension DiscoverModel {
+    /// Eine Empfehlung ausblenden.
+    ///
+    /// Sofort aus der Liste nehmen und dann schreiben: eine Karte, die
+    /// erst nach der Antwort verschwindet, fühlt sich kaputt an.
+    func dismiss(_ recommendation: Recommendation) async {
+        recommended.removeAll { $0.filmID == recommendation.filmID }
+        await entries.dismissRecommendation(film: recommendation.filmID)
     }
 }

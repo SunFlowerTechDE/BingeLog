@@ -55,7 +55,10 @@ final class FilmDetailModel {
     var hasRated: Bool { rating > 0 && hadEntry }
 
     private let details: FilmDetailRepository
-    private let entries: FilmEntryRepository
+    /// Nicht privat: die Empfehlungsliste braucht dasselbe Repository,
+    /// und ein zweites durchzureichen wäre eine zweite Verdrahtung
+    /// derselben Sache.
+    let entries: FilmEntryRepository
 
     init(film: Film, details: FilmDetailRepository, entries: FilmEntryRepository) {
         self.film = film

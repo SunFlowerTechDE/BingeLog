@@ -18,6 +18,8 @@ struct FilmDetailView: View {
     /// Damit die Rezension die Tastatur wieder hergibt.
     @FocusState private var isWriting: Bool
 
+    @State private var isRecommending = false
+
     init(film: Film, details: FilmDetailRepository, entries: FilmEntryRepository) {
         _model = State(
             initialValue: FilmDetailModel(film: film, details: details, entries: entries))
@@ -38,6 +40,28 @@ struct FilmDetailView: View {
                         rating: $model.rating,
                         canRate: session.isSignedIn
                     )
+
+                    if session.isSignedIn {
+                        // Präsent und nicht im Menü: Empfehlen ist der
+                        // soziale Kern der App, kein Randbefehl.
+                        Button {
+                            dismissKeyboard()
+                            isRecommending = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "paperplane.fill")
+                                Text("Freunden empfehlen")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                        }
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.primary)
+                        }
+                        .foregroundStyle(Theme.primary)
+                        .font(.headline)
+                    }
 
                     if let detail = model.detail, !detail.cast.isEmpty {
                         CastBlock(names: detail.cast)
@@ -76,6 +100,9 @@ struct FilmDetailView: View {
         .navigationBarBackButtonHidden()
         .overlay(alignment: .top) { headerButtons }
         .task { await model.load() }
+        .sheet(isPresented: $isRecommending) {
+            RecommendSheet(film: model.film, entries: model.entries)
+        }
     }
 
     // ----------------------------------------------------------------

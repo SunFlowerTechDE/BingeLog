@@ -1025,7 +1025,12 @@ describe('diary and facet visibility', () => {
       [einer, andere, laut, leise],
     );
 
-    interface Zeile { place: number; wikidata_id: string; ratings: number; average: string }
+    interface Zeile {
+      place: number;
+      wikidata_id: string;
+      ratings: number;
+      average: string;
+    }
     const gelesen = (rolle: 'anon' | 'authenticated', wer: string | null) =>
       h
         .as(rolle, wer)
@@ -1217,6 +1222,188 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.genres where wikidata_id = any($1)`, [
       [genre, fremdesGenre],
     ]);
+  });
+
+  it('lets only friends recommend, and only in their own name', async () => {
+    const ich = await seedUser(h, 'empfehler');
+    const freund = await seedUser(h, 'empffreund');
+    const einseitig = await seedUser(h, 'empfeinseitig');
+    const fremd = await seedUser(h, 'empffremd');
+
+    // Beidseitig: das ist eine Freundschaft.
+    await h.sql.query(
+      `insert into public.follows (follower_id, followee_id) values ($1, $2), ($2, $1)`,
+      [ich, freund],
+    );
+    // Einseitig: ich folge, es wird nicht zurueckgefolgt.
+    await h.sql.query(`insert into public.follows (follower_id, followee_id) values ($1, $2)`, [
+      ich,
+      einseitig,
+    ]);
+
+    const alsIch = h.as('authenticated', ich);
+
+    await alsIch.query(
+      `insert into public.recommendations (from_user, to_user, film_id, note)
+       values ($1, $2, $3, 'Musst du sehen')`,
+      [ich, freund, FILM],
+    );
+
+    // Einseitiges Folgen genuegt nicht. Sonst waere die Empfehlung ein
+    // Kanal, ueber den jeder jedem in die Startseite schreibt.
+    await assert.rejects(
+      () =>
+        alsIch.query(
+          `insert into public.recommendations (from_user, to_user, film_id)
+           values ($1, $2, $3)`,
+          [ich, einseitig, FILM],
+        ),
+      /row-level security/i,
+      'einseitiges Folgen ist keine Freundschaft',
+    );
+
+    // Und nicht im Namen eines anderen.
+    await assert.rejects(
+      () =>
+        alsIch.query(
+          `insert into public.recommendations (from_user, to_user, film_id)
+           values ($1, $2, $3)`,
+          [freund, ich, QUIET_FILM],
+        ),
+      /row-level security/i,
+      'niemand empfiehlt im Namen eines anderen',
+    );
+
+    // Lesen darf nur, wer beteiligt ist.
+    const beimEmpfaenger = await h
+      .as('authenticated', freund)
+      .query<{ film_id: string }>(`select film_id from public.recommendations`);
+    assert.equal(beimEmpfaenger.length, 1, 'der Empfaenger sieht sie');
+
+    const beimFremden = await h
+      .as('authenticated', fremd)
+      .query(`select film_id from public.recommendations`);
+    assert.deepEqual(beimFremden, [], 'ein Unbeteiligter sieht nichts');
+
+    await h.sql.query(`delete from public.recommendations`);
+    await h.sql.query(`delete from public.follows where follower_id = any($1)`, [
+      [ich, freund, einseitig],
+    ]);
+  });
+
+  it('will not recommend to someone who blocked you', async () => {
+    const ich = await seedUser(h, 'blockempf');
+    const blockt = await seedUser(h, 'blockmich');
+
+    await h.sql.query(
+      `insert into public.follows (follower_id, followee_id) values ($1, $2), ($2, $1)`,
+      [ich, blockt],
+    );
+    // Freunde — und trotzdem blockiert. Die Sperre wiegt schwerer.
+    await h.sql.query(`insert into public.blocks (blocker_id, blocked_id) values ($1, $2)`, [
+      blockt,
+      ich,
+    ]);
+
+    await assert.rejects(
+      () =>
+        h.as('authenticated', ich).query(
+          `insert into public.recommendations (from_user, to_user, film_id)
+             values ($1, $2, $3)`,
+          [ich, blockt, FILM],
+        ),
+      /row-level security/i,
+      'wer blockiert hat, bekommt keine Empfehlungen',
+    );
+
+    await h.sql.query(`delete from public.blocks where blocker_id = $1`, [blockt]);
+    await h.sql.query(`delete from public.follows where follower_id = any($1)`, [[ich, blockt]]);
+  });
+
+  it('counts several friends as one card and hides what you dismissed', async () => {
+    const ich = await seedUser(h, 'posteingang');
+    const a = await seedUser(h, 'empfa');
+    const b = await seedUser(h, 'empfb');
+
+    for (const wer of [a, b]) {
+      await h.sql.query(
+        `insert into public.follows (follower_id, followee_id) values ($1, $2), ($2, $1)`,
+        [ich, wer],
+      );
+    }
+
+    // Beide empfehlen denselben Film. Das ist eine Karte, nicht zwei.
+    await h
+      .as('authenticated', a)
+      .query(
+        `insert into public.recommendations (from_user, to_user, film_id) values ($1, $2, $3)`,
+        [a, ich, FILM],
+      );
+    await h.as('authenticated', b).query(
+      `insert into public.recommendations (from_user, to_user, film_id, note)
+         values ($1, $2, $3, 'Der beste des Jahres')`,
+      [b, ich, FILM],
+    );
+
+    const alsIch = h.as('authenticated', ich);
+    const eingang = await alsIch.query<{ film_id: string; friends: number; note: string | null }>(
+      `select film_id, friends, note from public.recommendations_for_me(20)`,
+    );
+
+    assert.equal(eingang.length, 1, 'ein Film, eine Zeile');
+    assert.equal(eingang[0]?.friends, 2, 'zwei Freunde empfehlen ihn');
+    assert.equal(eingang[0]?.note, 'Der beste des Jahres', 'die juengste Notiz steht dabei');
+
+    // Ausblenden: der Empfaenger darf, und danach ist die Zeile weg —
+    // aber nicht geloescht, sonst koennte derselbe Freund sie morgen
+    // wieder schicken.
+    await alsIch.query(`update public.recommendations set dismissed_at = now()`);
+    const danach = await alsIch.query(`select film_id from public.recommendations_for_me(20)`);
+    assert.deepEqual(danach, [], 'ausgeblendet heisst weg aus dem Posteingang');
+    const zeilen = await alsIch.query(`select id from public.recommendations`);
+    assert.equal(zeilen.length, 2, 'die Zeilen bleiben aber stehen');
+
+    await h.sql.query(`delete from public.recommendations`);
+    await h.sql.query(`delete from public.follows where follower_id = any($1)`, [[ich, a, b]]);
+  });
+
+  it('drops a recommendation once you have logged the film yourself', async () => {
+    const ich = await seedUser(h, 'schongesehen');
+    const freund = await seedUser(h, 'empfschon');
+
+    await h.sql.query(
+      `insert into public.follows (follower_id, followee_id) values ($1, $2), ($2, $1)`,
+      [ich, freund],
+    );
+    await h
+      .as('authenticated', freund)
+      .query(
+        `insert into public.recommendations (from_user, to_user, film_id) values ($1, $2, $3)`,
+        [freund, ich, FILM],
+      );
+
+    const alsIch = h.as('authenticated', ich);
+    assert.equal(
+      (await alsIch.query(`select film_id from public.recommendations_for_me(20)`)).length,
+      1,
+      'vorher steht sie da',
+    );
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $2, 8, 'public')`,
+      [ich, FILM],
+    );
+
+    assert.deepEqual(
+      await alsIch.query(`select film_id from public.recommendations_for_me(20)`),
+      [],
+      'was ich selbst eingetragen habe, braucht keine Empfehlung mehr',
+    );
+
+    await h.sql.query(`delete from public.diary_entries where user_id = $1`, [ich]);
+    await h.sql.query(`delete from public.recommendations`);
+    await h.sql.query(`delete from public.follows where follower_id = any($1)`, [[ich, freund]]);
   });
 
   it('refuses films_for_me to an anonymous caller', async () => {

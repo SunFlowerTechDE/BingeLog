@@ -190,8 +190,13 @@ deutsches Erscheinungsdatum. Der Katalog fuehrt nur `release_year`.
 Wikidata hat P577 mit Landesqualifikator — das waere eine Erweiterung der
 Pipeline, keine der Oberflaeche.
 
-Ebenfalls offen: „Von Freunden empfohlen" (braucht eine eigene Tabelle
-samt Weg, eine Empfehlung ueberhaupt auszusprechen), „Weil dir dieser
+- **„Von Freunden empfohlen"** samt Knopf auf der Filmseite. Die
+  Tabelle `recommendations` und die drei Funktionen stehen und sind
+  eingespielt; im Web fehlt beides — der Knopf und die Sektion.
+  Empfohlen wird nur unter Freunden, und das steht in der Policy, nicht
+  in der Auswahlliste.
+
+Ebenfalls offen: „Weil dir dieser
 Film gefallen hat", „Heute passend", „Ueberrasch mich" und die
 intelligente Watchlist-Auswahl. Das Konzept ordnet sie selbst unter
 „Danach" ein.
