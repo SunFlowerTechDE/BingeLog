@@ -119,6 +119,123 @@ struct LiveProfilePageRepository: ProfilePageRepository {
         }
     }
 
+    // ----------------------------------------------------------------
+    // Die Auswertungen
+    // ----------------------------------------------------------------
+
+    nonisolated private struct YearRow: Decodable { let year: Int; let films: Int }
+    nonisolated private struct SpreadRow: Decodable { let rating: String; let films: Int }
+    nonisolated private struct DecadeRow: Decodable { let decade: Int; let films: Int }
+    nonisolated private struct NameRow: Decodable { let name: String; let films: Int }
+    nonisolated private struct WatchedRow: Decodable { let films: WatchlistPreviewItem }
+    nonisolated private struct BlockRow: Encodable {
+        let blocker_id: String
+        let blocked_id: String
+    }
+
+    func years(for id: UUID) async -> [ProfileBar] {
+        let rows: [YearRow]? = try? await backend.client
+            .rpc("profile_years", params: ProfileArgument(profile: id.uuidString))
+            .execute()
+            .value
+        return (rows ?? []).map { ProfileBar(label: String($0.year), films: $0.films) }
+    }
+
+    /// Die Verteilung der eigenen Noten.
+    ///
+    /// `rating` kommt als `numeric`, also als Zeichenkette, und steht auf
+    /// der internen Skala 1 bis 10. Beschriftet wird in Popcorn — hier
+    /// wird **einmal** halbiert.
+    func ratingSpread(for id: UUID) async -> [ProfileBar] {
+        let rows: [SpreadRow]? = try? await backend.client
+            .rpc("profile_rating_spread", params: ProfileArgument(profile: id.uuidString))
+            .execute()
+            .value
+        return (rows ?? []).map {
+            ProfileBar(label: Popcorn.format(Double($0.rating) ?? 0), films: $0.films)
+        }
+    }
+
+    func decades(for id: UUID) async -> [ProfileBar] {
+        let rows: [DecadeRow]? = try? await backend.client
+            .rpc("profile_decades", params: ProfileArgument(profile: id.uuidString))
+            .execute()
+            .value
+        return (rows ?? []).map { ProfileBar(label: "\($0.decade)er", films: $0.films) }
+    }
+
+    func directors(for id: UUID) async -> [ProfileBar] {
+        let rows: [NameRow]? = try? await backend.client
+            .rpc(
+                "profile_directors",
+                params: GenreArguments(profile: id.uuidString, max_results: 5)
+            )
+            .execute()
+            .value
+        return (rows ?? []).map { ProfileBar(label: $0.name, films: $0.films) }
+    }
+
+    // ----------------------------------------------------------------
+    // Watchlist
+    // ----------------------------------------------------------------
+    //
+    // Ob ein fremder etwas zu sehen bekommt, entscheidet die Policy auf
+    // `watchlist` — sie prueft `profiles.watchlist_public`. Hier wird
+    // gefragt, nicht selbst gefiltert.
+
+    func watchlistPreview(for id: UUID, limit: Int) async -> [WatchlistPreviewItem] {
+        let rows: [WatchedRow]? = try? await backend.client
+            .from("watchlist")
+            .select(
+                "films(wikidata_id, title_de, title_original, release_year, "
+                    + "poster_source, poster_url)"
+            )
+            .eq("user_id", value: id)
+            .order("added_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+        return (rows ?? []).map(\.films)
+    }
+
+    func watchlistCount(for id: UUID) async -> Int {
+        let rows: [WatchedRow]? = try? await backend.client
+            .from("watchlist")
+            .select("films(wikidata_id, title_de, title_original, release_year, "
+                + "poster_source, poster_url)")
+            .eq("user_id", value: id)
+            .execute()
+            .value
+        return (rows ?? []).count
+    }
+
+    /// Blockieren ist einseitig und still: der Blockierte erfährt es
+    /// nicht (M4 4.5).
+    func setBlock(_ id: UUID, on: Bool) async -> Bool {
+        guard let user = backend.client.auth.currentUser else { return !on }
+        do {
+            if on {
+                try await backend.client
+                    .from("blocks")
+                    .upsert(
+                        BlockRow(blocker_id: user.id.uuidString, blocked_id: id.uuidString),
+                        onConflict: "blocker_id,blocked_id"
+                    )
+                    .execute()
+            } else {
+                try await backend.client
+                    .from("blocks")
+                    .delete()
+                    .eq("blocker_id", value: user.id)
+                    .eq("blocked_id", value: id)
+                    .execute()
+            }
+            return on
+        } catch {
+            return !on
+        }
+    }
+
     func avatarBase() -> URL? {
         try? backend.client.storage.from("avatars").getPublicURL(path: "")
     }

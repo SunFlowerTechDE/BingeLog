@@ -24,6 +24,7 @@ struct FilmDetailView: View {
     @FocusState private var isWriting: Bool
 
     @State private var isRecommending = false
+    @State private var isReporting = false
 
 
     var body: some View {
@@ -115,6 +116,11 @@ struct FilmDetailView: View {
         .ignoresSafeArea(edges: .top)
         .navigationBarBackButtonHidden()
         .overlay(alignment: .top) { headerButtons(model) }
+        .sheet(isPresented: $isReporting) {
+            // Gemeldet wird der Film, nicht eine bestimmte Rezension —
+            // die haben ihren eigenen Weg, sobald es einen gibt.
+            ReportSheet(targetKind: "other", targetID: film.wikidataID)
+        }
         .sheet(isPresented: $isRecommending) {
             RecommendSheet(film: film, entries: repos.entries)
         }
@@ -143,10 +149,14 @@ struct FilmDetailView: View {
             Menu {
                 // Melden ist **immer und überall** erreichbar — das ist
                 // eine Zusage und keine Bequemlichkeit (M4 4.7).
-                Button("Melden", systemImage: "flag") {}
-                    .disabled(true)
-                Button("Teilen", systemImage: "square.and.arrow.up") {}
-                    .disabled(true)
+                Button("Melden", systemImage: "flag") { isReporting = true }
+
+                ShareLink(
+                    item: URL(string: "https://bingelog.eu/film/\(film.wikidataID)")!,
+                    subject: Text(film.title)
+                ) {
+                    Label("Teilen", systemImage: "square.and.arrow.up")
+                }
             } label: {
                 CircleLabel(symbol: "ellipsis")
             }

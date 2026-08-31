@@ -301,6 +301,17 @@ Bearbeiten geht inzwischen: Name, Beschreibung, Profil- und Kopfbild.
 **Die Favoriten noch nicht** — dafuer braucht es eine Filmsuche im
 Formular, und die gehoert nicht in ein Blatt mit vier Feldern.
 
+Die Profilseite ist am 31.08.2026 mit der Webansicht abgeglichen worden
+und traegt jetzt dasselbe: die vier Auswertungen, die
+Watchlist-Vorschau samt Kennzahl, Blockieren und Melden.
+`profile_overview` gibt dafuer zusaetzlich `watchlist_public` und
+`i_blocked` zurueck — der bisherige Aufruf muss die neuen Spalten nur
+ignorieren.
+
+Was im Web steht und in der App fehlt: **Wege zu allen Eintraegen und
+allen Listen** („mehr"-Links der Tafeln) und die **antippbaren
+Follower-Zahlen**.
+
 ## 13. Das Logo
 
 Die Bildmarke liegt als Asset in der App

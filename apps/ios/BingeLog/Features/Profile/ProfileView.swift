@@ -14,6 +14,8 @@ struct ProfileView: View {
     @State private var model: ProfileModel?
     @Environment(Repositories.self) private var repos
     @State private var isEditing = false
+    @State private var isReporting = false
+    @State private var confirmingBlock = false
 
     var body: some View {
         Group {
@@ -23,10 +25,49 @@ struct ProfileView: View {
         .navigationTitle(model?.overview?.title ?? username)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let head = model?.overview, head.isMe {
+            if let head = model?.overview {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Bearbeiten") { isEditing = true }
+                    if head.isMe {
+                        Button("Bearbeiten") { isEditing = true }
+                    } else {
+                        Menu {
+                            // Melden ist **immer und überall**
+                            // erreichbar — das ist eine Zusage (M4 4.7).
+                            Button("Melden", systemImage: "flag") { isReporting = true }
+
+                            // Blockieren ist einseitig und still: der
+                            // Blockierte erfährt es nicht (M4 4.5).
+                            Button(
+                                head.iBlocked ? "Blockierung aufheben" : "Blockieren",
+                                systemImage: head.iBlocked ? "hand.raised.slash" : "hand.raised",
+                                role: head.iBlocked ? nil : .destructive
+                            ) {
+                                if head.iBlocked {
+                                    Task { await model?.toggleBlock() }
+                                } else {
+                                    confirmingBlock = true
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .accessibilityLabel("Mehr")
+                    }
                 }
+            }
+        }
+        .confirmationDialog(
+            "\(model?.overview?.username ?? "") blockieren?",
+            isPresented: $confirmingBlock, titleVisibility: .visible
+        ) {
+            Button("Blockieren", role: .destructive) { Task { await model?.toggleBlock() } }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Ihr seht einander dann nicht mehr. Er erfährt es nicht.")
+        }
+        .sheet(isPresented: $isReporting) {
+            if let head = model?.overview {
+                ReportSheet(targetKind: "profile", targetID: head.id.uuidString)
             }
         }
         .sheet(isPresented: $isEditing) {
@@ -143,6 +184,44 @@ struct ProfileView: View {
                     }
                 }
 
+                if model.hasCharts {
+                    Charts(model: model)
+                }
+
+                // Ob hier etwas steht, entscheidet die Policy auf
+                // `watchlist`. Bei einer privaten kommt nichts zurück —
+                // dann ist auch die Überschrift fehl am Platz, sonst
+                // liest sich „leer" als „hat nichts vorgemerkt".
+                if head.isMe || head.watchlistPublic {
+                    Section(title: "Watchlist") {
+                        if model.watchlist.isEmpty {
+                            Text(head.isMe ? "Noch nichts vorgemerkt." : "Nichts zu sehen.")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.muted)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(alignment: .top, spacing: 10) {
+                                    ForEach(model.watchlist) { item in
+                                        NavigationLink {
+                                            FilmDetailView(film: item.film)
+                                        } label: {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                PosterThumbnail(film: item.film, width: 76)
+                                                Text(item.film.title)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(Theme.foreground)
+                                                    .lineLimit(2)
+                                            }
+                                            .frame(width: 76, alignment: .leading)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if !model.recent.isEmpty {
                     Section(title: head.isMe ? "Zuletzt eingetragen" : "Zuletzt gesehen") {
                         VStack(spacing: 0) {
@@ -170,6 +249,9 @@ struct ProfileView: View {
             Figure(
                 value: model.stats.average.map(Popcorn.format) ?? "—", label: "im Schnitt")
             Figure(value: "\(model.stats.reviews)", label: "Rezensionen")
+            if model.overview?.isMe == true || model.overview?.watchlistPublic == true {
+                Figure(value: "\(model.watchlistCount)", label: "Watchlist")
+            }
         }
         .padding(.horizontal, 20)
     }
@@ -423,5 +505,82 @@ private struct Figure: View {
         .padding(.vertical, 10)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
         .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border) }
+    }
+}
+
+
+/// Die vier Auswertungen.
+///
+/// Sie erscheinen einzeln, jede erst wenn sie etwas sagt: ein Diagramm
+/// mit einem Balken ist keins.
+private struct Charts: View {
+    let model: ProfileModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            if model.spread.contains(where: { $0.films > 0 }) {
+                Bars(title: "Wie du bewertest", data: model.spread, unit: "Filme")
+            }
+            if model.years.count > 1 {
+                Bars(title: "Filme pro Jahr", data: model.years, unit: "Filme")
+            }
+            if model.decades.count > 1 {
+                Bars(title: "Aus welchen Jahrzehnten", data: model.decades, unit: "Filme")
+            }
+            // Ab zwei Filmen je Person — einer macht keinen
+            // Lieblingsregisseur. Die Untergrenze steckt in der
+            // Funktion; hier fällt nur die leere Tafel weg.
+            if !model.directors.isEmpty {
+                Bars(title: "Häufigste Regie", data: model.directors, unit: "Filme")
+            }
+        }
+    }
+}
+
+/// Ein Balkendiagramm, waagerecht.
+///
+/// Waagerecht und nicht als Säulen: die Beschriftungen sind Jahreszahlen
+/// und Namen, und die stehen auf einem Telefon nebeneinander nicht mehr
+/// lesbar.
+private struct Bars: View {
+    let title: String
+    let data: [ProfileBar]
+    let unit: String
+
+    private var maximum: Int { max(1, data.map(\.films).max() ?? 1) }
+
+    var body: some View {
+        Section(title: title) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(data) { bar in
+                    HStack(spacing: 8) {
+                        Text(bar.label)
+                            .font(.caption)
+                            .foregroundStyle(Theme.muted)
+                            .frame(width: 74, alignment: .leading)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+
+                        GeometryReader { geometry in
+                            let share = Double(bar.films) / Double(maximum)
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Theme.primary.opacity(bar.films == 0 ? 0.15 : 0.85))
+                                .frame(width: max(2, geometry.size.width * share))
+                        }
+                        .frame(height: 14)
+
+                        Text("\(bar.films)")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.quiet)
+                            .monospacedDigit()
+                            .frame(width: 28, alignment: .trailing)
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                "\(title): "
+                    + data.map { "\($0.label) \($0.films) \(unit)" }.joined(separator: ", "))
+        }
     }
 }

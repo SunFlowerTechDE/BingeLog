@@ -536,6 +536,24 @@ struct ProfileTests {
     }
 }
 
+/// Melden.
+@Suite("Melden")
+struct ReportTests {
+    /// Die Gründe heissen wie das Enum im Schema.
+    ///
+    /// Ein Tippfehler ergäbe keinen Übersetzungsfehler, sondern eine
+    /// abgewiesene Meldung zur Laufzeit — und eine Meldung, die nicht
+    /// ankommt, ist schlimmer als keine.
+    @Test("Die Meldegründe heissen wie report_reason in der Datenbank")
+    func reasonsMatchTheSchema() {
+        #expect(ReportReason.allCases.map(\.rawValue) == [
+            "spoiler", "harassment", "hate", "sexual", "violence", "spam", "illegal", "other",
+        ])
+        #expect(ReportReason.allCases.allSatisfy { !$0.label.isEmpty })
+        #expect(ReportReason.allCases.count == 8)
+    }
+}
+
 /// Bilder fürs Profil.
 @Suite("Bilder vorbereiten")
 struct ImagePreparationTests {

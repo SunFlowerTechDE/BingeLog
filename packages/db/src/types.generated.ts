@@ -1279,10 +1279,12 @@ export type Database = {
           followers: number
           following: number
           follows_me: boolean
+          i_blocked: boolean
           i_follow: boolean
           id: string
           is_me: boolean
           username: string
+          watchlist_public: boolean
         }[]
       }
       profile_rating_spread: {

@@ -12,10 +12,13 @@ nonisolated struct ProfileOverview: Decodable, Sendable {
     let createdAt: String
     let followers: Int
     let following: Int
+    let watchlistPublic: Bool
     let isMe: Bool
     let iFollow: Bool
     let followsMe: Bool
     let blockedMe: Bool
+    /// Ob **ich** dieses Profil blockiert habe.
+    let iBlocked: Bool
 
     /// Der Name, der oben steht.
     var title: String { displayName ?? username }
@@ -35,7 +38,8 @@ nonisolated struct ProfileOverview: Decodable, Sendable {
             id: id, username: username, displayName: displayName, bio: bio,
             avatarPath: avatarPath, bannerPath: bannerPath, createdAt: createdAt,
             followers: max(0, followers + followerDelta), following: following,
-            isMe: isMe, iFollow: iFollow, followsMe: followsMe, blockedMe: blockedMe)
+            watchlistPublic: watchlistPublic, isMe: isMe, iFollow: iFollow,
+            followsMe: followsMe, blockedMe: blockedMe, iBlocked: iBlocked)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -48,6 +52,8 @@ nonisolated struct ProfileOverview: Decodable, Sendable {
         case iFollow = "i_follow"
         case followsMe = "follows_me"
         case blockedMe = "blocked_me"
+        case iBlocked = "i_blocked"
+        case watchlistPublic = "watchlist_public"
     }
 }
 
@@ -152,4 +158,54 @@ protocol ProfilePageRepository: Sendable {
     func setFollow(_ id: UUID, on: Bool) async -> Bool
     func avatarBase() -> URL?
     func bannerBase() -> URL?
+
+    // --- Die Auswertungen ------------------------------------------------
+    //
+    // Alle vier sind `security invoker` und zaehlen nur, was der Lesende
+    // sehen darf. Auf einem fremden Profil ist das weniger als auf dem
+    // eigenen, und das ist richtig.
+    func years(for id: UUID) async -> [ProfileBar]
+    func ratingSpread(for id: UUID) async -> [ProfileBar]
+    func decades(for id: UUID) async -> [ProfileBar]
+    func directors(for id: UUID) async -> [ProfileBar]
+
+    func watchlistPreview(for id: UUID, limit: Int) async -> [WatchlistPreviewItem]
+    func watchlistCount(for id: UUID) async -> Int
+
+    func setBlock(_ id: UUID, on: Bool) async -> Bool
+}
+
+/// Ein Wert einer Auswertung — Jahr, Note, Jahrzehnt oder Regie.
+nonisolated struct ProfileBar: Decodable, Identifiable, Sendable {
+    let label: String
+    let films: Int
+
+    var id: String { label }
+}
+
+/// Ein vorgemerkter Film auf einem fremden Profil.
+nonisolated struct WatchlistPreviewItem: Decodable, Identifiable, Sendable {
+    let wikidataID: String
+    let titleDE: String?
+    let titleOriginal: String
+    let releaseYear: Int?
+    let posterSource: String?
+    let posterURL: String?
+
+    var id: String { wikidataID }
+
+    var film: Film {
+        Film(
+            wikidataID: wikidataID, titleDE: titleDE, titleOriginal: titleOriginal,
+            releaseYear: releaseYear, posterSource: posterSource, posterURL: posterURL)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case wikidataID = "wikidata_id"
+        case titleDE = "title_de"
+        case titleOriginal = "title_original"
+        case releaseYear = "release_year"
+        case posterSource = "poster_source"
+        case posterURL = "poster_url"
+    }
 }

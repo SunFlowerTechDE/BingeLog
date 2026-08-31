@@ -116,7 +116,13 @@ steht in der Policy (ADR-010). Das Profil steht ebenfalls — dieselbe Ansicht f
 fremdes, was sich unterscheidet, ist der Folgen-Knopf und wie viel die
 Policy hergibt. **Kein Platzhalter mehr in der Leiste.** Name,
 Beschreibung, Profil- und Kopfbild lassen sich ändern; die Favoriten
-noch nicht.
+noch nicht. Dazu die vier Auswertungen (Notenverteilung, Filme pro
+Jahr, Jahrzehnte, häufigste Regie), die Watchlist-Vorschau, Blockieren
+und Melden.
+
+**Melden geht jetzt überall** (`ReportSheet`) — auf der Filmseite und
+auf fremden Profilen. Ein ausgegrauter Menüpunkt war die vorherige
+Fassung und keine gute.
 
 Die Repositories liegen in der Umgebung (`Repositories`). **Nur die
 Blätter lesen dort** — `FilmDetailView` und `ProfileView` sind von
