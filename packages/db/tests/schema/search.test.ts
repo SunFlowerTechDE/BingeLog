@@ -39,10 +39,11 @@ interface Hit {
   score: number;
 }
 
-async function search(term: string, limit = 5): Promise<Hit[]> {
-  const { rows } = await h.sql.query<Hit>('select * from public.search_films($1, $2)', [
+async function search(term: string, limit = 5, year: number | null = null): Promise<Hit[]> {
+  const { rows } = await h.sql.query<Hit>('select * from public.search_films($1, $2, $3)', [
     term,
     limit,
+    year,
   ]);
   return rows;
 }
@@ -189,6 +190,58 @@ describe('what the ranking has to weigh', () => {
   it('honours the result limit', async () => {
     assert.ok((await search('a', 3)).length <= 3);
     assert.ok((await search('der', 2)).length <= 2);
+  });
+
+  it('narrows to a single year when one is given, and ignores it when not', async () => {
+    // Solaris gibt es zweimal im Katalog: 1972 und 2002. Ohne Jahr
+    // stehen beide da — genau deshalb taugt der Fall als Probe.
+    const ohneJahr = await search('Solaris', 10);
+    const jahre = ohneJahr.map((hit) => hit.release_year);
+    assert.ok(jahre.includes(1972) && jahre.includes(2002), 'ohne Jahr stehen beide da');
+
+    const mitJahr = await search('Solaris', 10, 1972);
+    assert.ok(mitJahr.length > 0, 'mit passendem Jahr bleibt ein Treffer');
+    assert.deepEqual(
+      [...new Set(mitJahr.map((hit) => hit.release_year))],
+      [1972],
+      'mit Jahr bleibt nur dieses Jahr uebrig',
+    );
+
+    // Und ein Jahr, in dem es den Film nicht gibt, ergibt nichts —
+    // kein Zurueckfallen auf die ungefilterte Liste. Ein Filter, der
+    // sich bei null Treffern selbst abschaltet, ist keiner.
+    assert.deepEqual(await search('Solaris', 10, 1900), [], 'ein falsches Jahr findet nichts');
+  });
+
+  it('drops films without a release year once a year is given', async () => {
+    await h.sql.query(
+      `insert into public.films (wikidata_id, imdb_id, title_original, release_year)
+       values ('Q900001', 'tt9000001', 'Solaris ohne Jahr', null)
+       on conflict do nothing`,
+    );
+
+    const ohneJahr = await search('Solaris ohne Jahr', 10);
+    assert.ok(
+      ohneJahr.some((hit) => hit.wikidata_id === 'Q900001'),
+      'ohne Jahresangabe ist der Film auffindbar',
+    );
+
+    // Unbekannt ist nicht 1972.
+    const mitJahr = await search('Solaris ohne Jahr', 10, 1972);
+    assert.ok(
+      !mitJahr.some((hit) => hit.wikidata_id === 'Q900001'),
+      'ein Film ohne Jahr passt zu keinem Jahr',
+    );
+
+    await h.sql.query(`delete from public.films where wikidata_id = 'Q900001'`);
+  });
+
+  it('still answers the old two-argument call', async () => {
+    // Das Web ruft weiterhin nur mit Suchbegriff und Anzahl auf. Stuende
+    // die alte Funktion noch daneben, waere dieser Aufruf mehrdeutig und
+    // Postgres antwortete mit "function is not unique".
+    const { rows } = await h.sql.query(`select wikidata_id from public.search_films('Solaris', 3)`);
+    assert.ok(rows.length > 0, 'der Aufruf ohne Jahr trifft weiterhin genau eine Funktion');
   });
 
   it('is readable by an anonymous visitor', async () => {

@@ -12,6 +12,12 @@ struct SearchView: View {
         @Bindable var model = model
 
         List {
+            // Das Jahr steht über der Trefferliste und nicht in der
+            // Suchleiste: die gehört dem Titel. Eine Leiste mit zwei
+            // Feldern ist eine Leiste, in der man das falsche trifft.
+            YearField(text: $model.yearText, isIncomplete: model.yearIsIncomplete)
+                .listRowSeparator(.hidden)
+
             if let problem = model.problem {
                 Text(problem)
                     .font(.footnote)
@@ -19,8 +25,14 @@ struct SearchView: View {
             }
 
             if model.term.count >= 2, model.films.isEmpty, !model.isSearching {
-                Text("Nichts gefunden.")
-                    .foregroundStyle(.secondary)
+                // Mit Jahr ist die häufigste Ursache das Jahr, nicht der
+                // Titel. Das zu sagen erspart das Rätselraten.
+                Text(
+                    model.year == nil
+                        ? "Nichts gefunden."
+                        : "Nichts gefunden. Ohne das Jahr gibt es vielleicht Treffer."
+                )
+                .foregroundStyle(.secondary)
             }
 
             ForEach(model.films) { film in
@@ -34,11 +46,14 @@ struct SearchView: View {
             prompt: "Film suchen"
         )
         .overlay {
-            if model.term.isEmpty {
+            if model.term.isEmpty, model.yearText.isEmpty {
                 ContentUnavailableView(
                     "Such einen Film",
                     systemImage: "magnifyingglass",
-                    description: Text("Tipp einen Titel. Ab zwei Zeichen wird gesucht.")
+                    description: Text(
+                        "Tipp einen Titel. Ab zwei Zeichen wird gesucht. "
+                            + "Das Jahr kannst du dazuschreiben, musst du aber nicht."
+                    )
                 )
             }
         }
@@ -73,5 +88,48 @@ private struct FilmRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+/// Das Jahr, vier Ziffern, freiwillig.
+private struct YearField: View {
+    @Binding var text: String
+    let isIncomplete: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "calendar")
+                .foregroundStyle(.secondary)
+
+            TextField("Jahr (optional)", text: $text)
+                .keyboardType(.numberPad)
+                .textContentType(.none)
+                .autocorrectionDisabled()
+                // YYYY: mehr als vier Ziffern nimmt das Feld gar nicht
+                // erst an, das erledigt `SearchViewModel.onlyDigits`.
+                .monospacedDigit()
+
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Jahr löschen")
+            }
+        }
+        .overlay(alignment: .bottomLeading) {
+            // Sagt, warum noch nichts passiert. Ohne den Hinweis wirkt
+            // ein halb getipptes Jahr wie ein Feld ohne Wirkung.
+            if isIncomplete {
+                Text("Vier Ziffern, zum Beispiel 1999")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .offset(y: 16)
+            }
+        }
+        .padding(.bottom, isIncomplete ? 16 : 0)
     }
 }

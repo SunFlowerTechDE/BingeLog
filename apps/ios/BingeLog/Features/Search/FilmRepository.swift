@@ -3,7 +3,7 @@ import Supabase
 
 /// Filme suchen.
 protocol FilmRepository: Sendable {
-    func search(term: String, limit: Int) async throws(BackendError) -> [Film]
+    func search(term: String, limit: Int, year: Int?) async throws(BackendError) -> [Film]
     /// Bekannte Filme mit echtem Plakat, für die Wand auf dem
     /// Anmeldebildschirm.
     func wellKnownWithArtwork(limit: Int) async -> [Film]
@@ -57,6 +57,8 @@ struct LiveFilmRepository: FilmRepository {
     private struct SearchArguments: Encodable {
         let query: String
         let max_results: Int
+        /// Ohne Angabe `nil`, und dann sucht die Funktion wie bisher.
+        let in_year: Int?
     }
 
     /// Gesucht wird **in der Datenbank**, nicht hier.
@@ -65,14 +67,23 @@ struct LiveFilmRepository: FilmRepository {
     /// zweiter Client, der sie nachbaut, baut sie leicht anders — und
     /// dieselbe Eingabe fände auf iPhone und im Browser Verschiedenes
     /// (M5, Grundsatzentscheidungen).
-    func search(term: String, limit: Int = 20) async throws(BackendError) -> [Film] {
+    /// Das Jahr grenzt ein, es gewichtet nicht.
+    ///
+    /// Gefiltert wird in `search_films`, nicht hier: wer das Jahr
+    /// eintippt, soll auf iPhone und im Browser dasselbe finden.
+    func search(term: String, limit: Int = 20, year: Int? = nil) async throws(BackendError)
+        -> [Film]
+    {
         let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
         // Unter zwei Zeichen trifft jede Anfrage den halben Katalog.
         guard trimmed.count >= 2 else { return [] }
 
         do {
             return try await backend.client
-                .rpc("search_films", params: SearchArguments(query: trimmed, max_results: limit))
+                .rpc(
+                    "search_films",
+                    params: SearchArguments(query: trimmed, max_results: limit, in_year: year)
+                )
                 .execute()
                 .value
         } catch {

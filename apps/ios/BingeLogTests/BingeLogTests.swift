@@ -173,6 +173,54 @@ struct SplashTests {
     }
 }
 
+/// Die Suche.
+@Suite("Suche")
+struct SearchYearTests {
+    /// Das Feld nimmt nur vier Ziffern.
+    @Test("Das Jahresfeld lässt nur vier Ziffern durch")
+    func yearFieldAcceptsFourDigits() {
+        #expect(SearchViewModel.onlyDigits("1999") == "1999")
+        #expect(SearchViewModel.onlyDigits("19a9") == "199")
+        #expect(SearchViewModel.onlyDigits("19999") == "1999")
+        #expect(SearchViewModel.onlyDigits("") == "")
+        #expect(SearchViewModel.onlyDigits("Jahr") == "")
+        // Getippt wird Zeichen für Zeichen — ein Zwischenstand bleibt
+        // stehen, er wird nur nicht zur Angabe.
+        #expect(SearchViewModel.onlyDigits("19") == "19")
+    }
+
+    /// Erst vier Ziffern grenzen ein.
+    ///
+    /// Bei dreien duerfte nicht nach dem Jahr 199 gesucht werden — die
+    /// Trefferliste waere beim Tippen von "1999" kurz leer, und das
+    /// sieht aus, als gaebe es den Film nicht.
+    @Test("Ein angefangenes Jahr grenzt noch nicht ein")
+    @MainActor
+    func partialYearDoesNotFilter() {
+        let model = SearchViewModel(repository: SilentFilmRepository())
+
+        model.yearText = "199"
+        #expect(model.year == nil)
+        #expect(model.yearIsIncomplete)
+
+        model.yearText = "1999"
+        #expect(model.year == 1999)
+        #expect(!model.yearIsIncomplete)
+
+        model.yearText = ""
+        #expect(model.year == nil)
+        #expect(!model.yearIsIncomplete, "ein leeres Feld ist nicht angefangen")
+    }
+}
+
+/// Antwortet nichts. Fuer Tests, die den Zustand pruefen und nicht das
+/// Netz.
+private struct SilentFilmRepository: FilmRepository {
+    func search(term: String, limit: Int, year: Int?) async throws(BackendError) -> [Film] { [] }
+    func wellKnownWithArtwork(limit: Int) async -> [Film] { [] }
+    func shuffledWithArtwork(count: Int) async -> [Film] { [] }
+}
+
 /// Entdecken.
 @Suite("Entdecken")
 struct DiscoverTests {
