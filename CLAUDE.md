@@ -103,6 +103,11 @@ Repository-Schicht, `@Observable`, typisierte Fehler. Anmelden,
 Registrieren, Namenswahl und Filmsuche laufen — geprüft im Simulator und
 auf einem echten iPhone.
 
+Entdecken ist auch auf dem iPhone die Startseite: Genre-Schieber,
+chronologischer Feed, Neu im Katalog — dieselbe Ordnung wie im Web.
+Die Genre-Bilder liegen in `Assets.xcassets/Genres` und sind über die
+**Wikidata-ID** zugeordnet (`GenreArtwork`), nie über die Beschriftung.
+
 Die Bestätigung per Mail führt in den Browser, nicht zurück in die App:
 beim Registrieren entsteht noch keine Sitzung. Ein Deep-Link zurück ist
 ein eigener Punkt (5.7).

@@ -11,6 +11,7 @@ struct RootView: View {
 
     let films: FilmRepository
     let profiles: ProfileRepository
+    let discover: DiscoverRepository
 
     var body: some View {
         if session.isLoading {
@@ -22,9 +23,9 @@ struct RootView: View {
             UsernameView(profiles: profiles)
         } else if session.isSignedIn {
             if sizeClass == .compact {
-                CompactShell(films: films)
+                CompactShell(films: films, discover: discover)
             } else {
-                RegularShell(films: films)
+                RegularShell(films: films, discover: discover)
             }
         } else {
             SignInView(films: films, profiles: profiles)
@@ -36,9 +37,17 @@ struct RootView: View {
 private struct CompactShell: View {
     @Environment(SessionStore.self) private var session
     let films: FilmRepository
+    let discover: DiscoverRepository
 
     var body: some View {
         TabView {
+            // Zuerst und damit voreingestellt: hier landet man nach dem
+            // Anmelden und nach jedem Kaltstart.
+            NavigationStack {
+                DiscoverView(repository: discover)
+            }
+            .tabItem { Label("Entdecken", systemImage: "sparkles") }
+
             NavigationStack {
                 SearchView(repository: films)
             }
@@ -55,9 +64,11 @@ private struct CompactShell: View {
 /// iPad: Seitenleiste und Detailspalte.
 private struct RegularShell: View {
     let films: FilmRepository
-    @State private var selection: Section? = .search
+    let discover: DiscoverRepository
+    @State private var selection: Section? = .discover
 
     private enum Section: Hashable {
+        case discover
         case search
         case account
     }
@@ -65,6 +76,7 @@ private struct RegularShell: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
+                Label("Entdecken", systemImage: "sparkles").tag(Section.discover)
                 Label("Suche", systemImage: "magnifyingglass").tag(Section.search)
                 Label("Konto", systemImage: "person").tag(Section.account)
             }
@@ -73,8 +85,10 @@ private struct RegularShell: View {
             switch selection {
             case .account:
                 AccountView()
-            case .search, nil:
+            case .search:
                 SearchView(repository: films)
+            case .discover, nil:
+                DiscoverView(repository: discover)
             }
         }
     }

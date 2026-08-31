@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Testing
+import UIKit
 
 @testable import BingeLog
 
@@ -169,6 +170,49 @@ struct SplashTests {
                 wallHeight >= screen.height,
                 "\(screen): die Wand ist mit \(wallHeight) nicht hoch genug")
         }
+    }
+}
+
+/// Entdecken.
+@Suite("Entdecken")
+struct DiscoverTests {
+    /// Jedes zugeordnete Bild liegt auch im Bündel.
+    ///
+    /// Die Zuordnung ist eine Tabelle von Hand. Ein Tippfehler oder eine
+    /// umbenannte Datei fällt sonst erst auf, wenn ein Nutzer eine leere
+    /// Kachel sieht — `Image(_:)` schweigt dazu.
+    @Test("Zu jeder Genre-ID mit Bild gibt es das Bild auch wirklich")
+    func artworkExists() {
+        #expect(!GenreArtwork.known.isEmpty)
+
+        for genreID in GenreArtwork.known {
+            let name = GenreArtwork.name(for: genreID)
+            #expect(name != nil, "\(genreID) hat keinen Namen")
+            guard let name else { continue }
+            #expect(
+                UIImage(named: name, in: .main, compatibleWith: nil) != nil,
+                "\(genreID): das Bild \(name) liegt nicht im Bündel")
+        }
+    }
+
+    /// Kein Bild wird zweimal vergeben.
+    @Test("Jedes Genre-Bild gehört zu genau einem Genre")
+    func artworkIsNotShared() {
+        let names = GenreArtwork.known.compactMap { GenreArtwork.name(for: $0) }
+        #expect(names.count == Set(names).count, "ein Bild ist doppelt vergeben")
+    }
+
+    /// Postgres liefert Zeitstempel mit und ohne Sekundenbruchteile.
+    ///
+    /// Beide müssen durchgehen. Ein Decoder, der nur eine Form kennt,
+    /// nähme beim ersten Zeitstempel ohne Bruchteile den ganzen Feed
+    /// mit.
+    @Test("Zeitstempel werden mit und ohne Bruchteile gelesen")
+    func timestampsParse() {
+        #expect(FeedEntry.timestamp(from: "2026-08-31T10:15:30.123456+00:00") != nil)
+        #expect(FeedEntry.timestamp(from: "2026-08-31T10:15:30+00:00") != nil)
+        #expect(FeedEntry.timestamp(from: "2026-08-31T10:15:30Z") != nil)
+        #expect(FeedEntry.timestamp(from: "kein Datum") == nil)
     }
 }
 

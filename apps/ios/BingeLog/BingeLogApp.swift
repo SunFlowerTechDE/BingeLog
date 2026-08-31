@@ -43,7 +43,8 @@ struct BingeLogApp: App {
             ZStack {
                 RootView(
                     films: LiveFilmRepository(backend: backend),
-                    profiles: LiveProfileRepository(backend: backend)
+                    profiles: LiveProfileRepository(backend: backend),
+                    discover: LiveDiscoverRepository(backend: backend)
                 )
                 .environment(session)
 
