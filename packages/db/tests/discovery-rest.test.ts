@@ -18,6 +18,15 @@ describe('discovery over the API', () => {
     assert.equal(error, null, 'weekly_top_films muss ohne Anmeldung antworten');
   });
 
+  it('answers films_for_me only for a signed-in caller', async () => {
+    // Ohne Anmeldung gibt es keine eigenen Bewertungen, also auch nichts
+    // zu empfehlen. Die Funktion ist `authenticated` vorbehalten — der
+    // anonyme Aufruf muss abgewiesen werden und nicht etwa fremde
+    // Tagebuecher auswerten.
+    const { error } = await anonClient().rpc('films_for_me', { max_results: 5 });
+    assert.notEqual(error, null, 'films_for_me darf ohne Konto nicht antworten');
+  });
+
   it('answers a search without a year', async () => {
     // Der Aufruf des Webs. Stuende die alte Funktion noch neben der
     // neuen, waere er mehrdeutig und PostgREST antwortete mit einem

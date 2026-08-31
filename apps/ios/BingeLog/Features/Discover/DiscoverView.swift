@@ -33,6 +33,11 @@ struct DiscoverView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
+                // Die Reihenfolge für den Fall, dass es noch kaum
+                // Nutzerdaten gibt (Entdecken-Konzept, 18). „Für dich"
+                // steht erst da, wenn genug bewertet wurde — dafür
+                // sorgt die Funktion selbst, indem sie sonst nichts
+                // zurückgibt.
                 if !model.tiles.isEmpty {
                     GenreSlider(
                         tiles: model.tiles, repository: repository,
@@ -43,12 +48,33 @@ struct DiscoverView: View {
                     WeeklyTopSection(entries: model.top, details: details, filmEntries: entries)
                 }
 
-                FeedSection(
-                    entries: model.feed, avatarBase: model.avatarBase,
-                    details: details, filmEntries: entries)
+                if !model.forMe.isEmpty {
+                    FilmStrip(
+                        title: "Für dich", films: model.forMe,
+                        details: details, entries: entries)
+                }
 
                 if !model.newest.isEmpty {
-                    NewestSection(films: model.newest, details: details, entries: entries)
+                    FilmStrip(
+                        title: "Neu veröffentlicht", films: model.newest,
+                        details: details, entries: entries)
+                }
+
+                if !model.upcoming.isEmpty {
+                    FilmStrip(
+                        title: "Bald verfügbar", films: model.upcoming,
+                        details: details, entries: entries)
+                }
+
+                // Leere Bereiche werden ausgeblendet statt mit
+                // erklärenden Texten gefüllt (Konzept, 19). Der Hinweis
+                // „folge jemandem" stand vorher dauerhaft auf der
+                // Startseite und verbrauchte Platz, ohne etwas zu
+                // zeigen.
+                if !model.feed.isEmpty {
+                    FeedSection(
+                        entries: model.feed, avatarBase: model.avatarBase,
+                        details: details, filmEntries: entries)
                 }
             }
             .padding(.vertical, 8)
@@ -225,25 +251,15 @@ private struct FeedSection: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle(text: "Letzte Aktivitäten")
 
-            if entries.isEmpty {
-                Text(
-                    "Hier steht, was die Leute eintragen, denen du folgst. "
-                        + "Noch ist es leer — folge jemandem, dann füllt es sich von selbst."
-                )
-                .font(.footnote)
-                .foregroundStyle(Theme.muted)
-                .padding(.horizontal, 20)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(entries) { entry in
-                        NavigationLink {
-                            FilmDetailView(film: entry.film, details: details, entries: filmEntries)
-                        } label: {
-                            FeedRow(entry: entry, avatarBase: avatarBase)
-                        }
-                        .buttonStyle(.plain)
-                        Divider().overlay(Theme.border).padding(.leading, 20)
+            VStack(spacing: 0) {
+                ForEach(entries) { entry in
+                    NavigationLink {
+                        FilmDetailView(film: entry.film, details: details, entries: filmEntries)
+                    } label: {
+                        FeedRow(entry: entry, avatarBase: avatarBase)
                     }
+                    .buttonStyle(.plain)
+                    Divider().overlay(Theme.border).padding(.leading, 20)
                 }
             }
         }
@@ -437,17 +453,23 @@ private struct RankedCard: View {
 }
 
 // --------------------------------------------------------------------
-// Neu im Katalog
+// Waagerechte Streifen
 // --------------------------------------------------------------------
 
-private struct NewestSection: View {
+/// Ein waagerechter Streifen Filme.
+///
+/// Einheitliche Postergrösse über alle Streifen hinweg (Konzept, 19) —
+/// vorher hatte jede Sektion ihre eigene, und die Seite wirkte
+/// zusammengestückelt.
+private struct FilmStrip: View {
+    let title: String
     let films: [Film]
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(text: "Neu im Katalog")
+            SectionTitle(text: title)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 12) {
@@ -455,20 +477,20 @@ private struct NewestSection: View {
                         NavigationLink {
                             FilmDetailView(film: film, details: details, entries: entries)
                         } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            PosterThumbnail(film: film, width: 104)
-                            Text(film.title)
-                                .font(.caption)
-                                .foregroundStyle(Theme.foreground)
-                                .lineLimit(2)
-                            if let year = film.releaseYear {
-                                Text(String(year))
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.quiet)
-                                    .monospacedDigit()
+                            VStack(alignment: .leading, spacing: 6) {
+                                PosterThumbnail(film: film, width: 104)
+                                Text(film.title)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.foreground)
+                                    .lineLimit(2)
+                                if let year = film.releaseYear {
+                                    Text(String(year))
+                                        .font(.caption2)
+                                        .foregroundStyle(Theme.quiet)
+                                        .monospacedDigit()
+                                }
                             }
-                        }
-                        .frame(width: 104)
+                            .frame(width: 104, alignment: .leading)
                         }
                         .buttonStyle(.plain)
                     }

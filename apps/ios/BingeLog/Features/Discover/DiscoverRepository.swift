@@ -7,6 +7,10 @@ protocol DiscoverRepository: Sendable {
     func newestFilms(limit: Int) async -> [Film]
     /// Die Rangliste der laufenden Woche.
     func weeklyTop(limit: Int) async -> [WeeklyTopFilm]
+    /// Vorschläge aus den eigenen guten Bewertungen.
+    func forMe(limit: Int) async -> [Film]
+    /// Filme, deren Erscheinungsjahr noch aussteht.
+    func upcoming(limit: Int) async -> [Film]
     func followingFeed(limit: Int) async -> [FeedEntry]
     /// Wo die Profilbilder liegen. Einmal gefragt, nicht je Zeile.
     func avatarBase() -> URL?
@@ -52,6 +56,10 @@ struct LiveDiscoverRepository: DiscoverRepository {
             .from("films")
             .select("wikidata_id, title_de, title_original, release_year, poster_source, poster_url")
             .gt("release_year", value: 0)
+            // Nicht in die Zukunft: was noch nicht erschienen ist,
+            // steht unter „Bald verfügbar" und ist nicht „neu".
+            .lte("release_year", value: Calendar(identifier: .gregorian).component(
+                .year, from: Date()))
             .order("release_year", ascending: false)
             .order("sitelink_count", ascending: false)
             .limit(limit)
@@ -72,6 +80,40 @@ struct LiveDiscoverRepository: DiscoverRepository {
             .execute()
             .value
         return rows ?? []
+    }
+
+    /// Vorschläge aus dem eigenen Geschmack.
+    ///
+    /// Gerechnet wird in `films_for_me`, nicht hier: eine Empfehlung,
+    /// die im Browser anders ausfällt als auf dem iPhone, ist keine.
+    /// Ohne Anmeldung und ohne eigene Bewertungen kommt nichts zurück,
+    /// und die Ansicht blendet den Bereich dann aus.
+    func forMe(limit: Int = 12) async -> [Film] {
+        let films: [Film]? = try? await backend.client
+            .rpc("films_for_me", params: TileArguments(max_results: limit))
+            .execute()
+            .value
+        return films ?? []
+    }
+
+    /// Was noch kommt.
+    ///
+    /// **Nach Jahr und nicht nach Datum.** Der Katalog führt
+    /// `release_year`, kein Erscheinungsdatum — ein „noch 12 Tage", wie
+    /// das Konzept es vorschlägt, wäre erfunden. Bis das Datum da ist,
+    /// steht hier das Jahr.
+    func upcoming(limit: Int = 12) async -> [Film] {
+        let year = Calendar(identifier: .gregorian).component(.year, from: Date())
+        let films: [Film]? = try? await backend.client
+            .from("films")
+            .select("wikidata_id, title_de, title_original, release_year, poster_source, poster_url")
+            .gt("release_year", value: year)
+            .order("release_year", ascending: true)
+            .order("sitelink_count", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+        return films ?? []
     }
 
     /// Der Feed der gefolgten Profile.

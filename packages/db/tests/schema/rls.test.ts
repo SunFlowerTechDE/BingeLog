@@ -1015,8 +1015,7 @@ describe('diary and facet visibility', () => {
     const fremd = await seedUser(h, 'topfremd');
 
     // Zwei oeffentliche auf `laut`. Auf `leise` eine oeffentliche und
-    // eine private — die private darf nicht zaehlen, sonst stuenden
-    // beide gleichauf.
+    // eine private — die private darf nicht zaehlen.
     await h.sql.query(
       `insert into public.diary_entries (user_id, film_id, rating, visibility)
        values ($1, $3, 8, 'public'),
@@ -1035,16 +1034,10 @@ describe('diary and facet visibility', () => {
         );
 
     const alsFremder = await gelesen('authenticated', fremd);
-    const meine = alsFremder.filter((r) => r.wikidata_id === laut || r.wikidata_id === leise);
+    const zaehlung = new Map(alsFremder.map((r) => [r.wikidata_id, r.ratings]));
 
-    assert.deepEqual(
-      meine.map((r) => [r.wikidata_id, r.ratings]),
-      [
-        [laut, 2],
-        [leise, 1],
-      ],
-      'die private Bewertung zaehlt nicht mit, und mehr Bewertungen stehen weiter oben',
-    );
+    assert.equal(zaehlung.get(laut), 2, 'beide oeffentlichen zaehlen');
+    assert.equal(zaehlung.get(leise), 1, 'die private zaehlt nicht mit');
 
     // Die Plaetze sind eine lueckenlose Folge ab eins — das ist die
     // Zusicherung, die "Platz 1" ueberhaupt bedeutet.
@@ -1064,9 +1057,177 @@ describe('diary and facet visibility', () => {
     // Der Durchschnitt steht auf der internen Skala 1..10 — der Client
     // halbiert fuer die Sterne. Ein zweites Halbieren war im Web schon
     // einmal der Fehler.
-    assert.equal(Number(meine[0]?.average), 8.5, 'der Durchschnitt ist (8+9)/2');
+    assert.equal(
+      Number(alsFremder.find((r) => r.wikidata_id === laut)?.average),
+      8.5,
+      'der Durchschnitt ist (8+9)/2',
+    );
 
     await h.sql.query(`delete from public.diary_entries where film_id = any($1)`, [[laut, leise]]);
+  });
+
+  it('does not let one perfect rating top the chart', async () => {
+    // Die Zusicherung, wegen der es den Score ueberhaupt gibt: ein Film
+    // mit einer einzigen 5,0 darf nicht ueber einem stehen, den viele
+    // fast genauso gut fanden.
+    const einzeln = 'Q100904';
+    const viele = 'Q100905';
+    const knapp = 'Q100906';
+    for (const id of [einzeln, viele, knapp]) await seedFilm(h, id);
+
+    // Die Schwelle hochsetzen, damit sie ueberhaupt greift. Sie steht
+    // auf 1, weil der Katalog jung ist — nicht, weil 1 richtig waere.
+    await h.sql.query(`update public.app_settings set value = 3 where key = 'weekly_top_minimum'`);
+
+    const leute: string[] = [];
+    for (let index = 0; index < 5; index++) {
+      leute.push(await seedUser(h, `topscore${String(index)}`));
+    }
+
+    // Einer gibt die volle Punktzahl. Fuenf geben je 9 von 10.
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $2, 10, 'public')`,
+      [leute[0], einzeln],
+    );
+    for (const wer of leute) {
+      await h.sql.query(
+        `insert into public.diary_entries (user_id, film_id, rating, visibility)
+         values ($1, $2, 9, 'public')`,
+        [wer, viele],
+      );
+    }
+    // Und zwei Bewertungen bleiben unter der Schwelle von drei.
+    for (const wer of leute.slice(0, 2)) {
+      await h.sql.query(
+        `insert into public.diary_entries (user_id, film_id, rating, visibility)
+         values ($1, $2, 10, 'public')`,
+        [wer, knapp],
+      );
+    }
+
+    const zeilen = await h
+      .as('anon', null)
+      .query<{ wikidata_id: string; place: number }>(
+        `select wikidata_id, place from public.weekly_top_films(50)`,
+      );
+    const platz = new Map(zeilen.map((r) => [r.wikidata_id, r.place]));
+
+    assert.ok(platz.has(viele), 'der viel bewertete Film steht in der Liste');
+    assert.ok(!platz.has(einzeln), 'eine einzelne Bewertung liegt unter der Schwelle von drei');
+    assert.ok(!platz.has(knapp), 'zwei Bewertungen ebenfalls');
+
+    // Die zweite Zusicherung: bei gleichem Durchschnitt steht der Film
+    // mit mehr Stimmen oben. Mehr sichert der Score nicht zu — drei
+    // glatte Zehner koennen weiterhin ueber zwanzig Neunern stehen, und
+    // ein Test, der das Gegenteil behauptet, waere schlicht falsch.
+    const wenige = 'Q100907';
+    await seedFilm(h, wenige);
+    for (const wer of leute.slice(0, 3)) {
+      await h.sql.query(
+        `insert into public.diary_entries (user_id, film_id, rating, visibility)
+         values ($1, $2, 9, 'public')`,
+        [wer, wenige],
+      );
+    }
+
+    const zweite = await h
+      .as('anon', null)
+      .query<{ wikidata_id: string; place: number }>(
+        `select wikidata_id, place from public.weekly_top_films(50)`,
+      );
+    const rang = new Map(zweite.map((r) => [r.wikidata_id, r.place]));
+    const platzVieler = rang.get(viele);
+    const platzWeniger = rang.get(wenige);
+    assert.ok(platzVieler !== undefined && platzWeniger !== undefined, 'beide stehen in der Liste');
+    assert.ok(
+      platzVieler < platzWeniger,
+      'bei gleichem Schnitt zaehlt die Stimmenzahl: fuenf schlagen drei',
+    );
+
+    await h.sql.query(`delete from public.diary_entries where film_id = $1`, [wenige]);
+
+    await h.sql.query(`update public.app_settings set value = 1 where key = 'weekly_top_minimum'`);
+    await h.sql.query(`delete from public.diary_entries where film_id = any($1)`, [
+      [einzeln, viele, knapp],
+    ]);
+  });
+
+  it("suggests from your own good ratings and never from someone else's", async () => {
+    const ich = await seedUser(h, 'fuermich');
+    const fremder = await seedUser(h, 'fuerfremd');
+
+    // Ein Genre, zwei Filme darin. Einen habe ich gut bewertet, der
+    // andere ist der Vorschlag.
+    const genre = 'Q900500';
+    const gemocht = 'Q900501';
+    const vorschlag = 'Q900502';
+    const fremdesGenre = 'Q900503';
+    const fremderFilm = 'Q900504';
+
+    for (const id of [gemocht, vorschlag, fremderFilm]) await seedFilm(h, id);
+    await h.sql.query(
+      `insert into public.genres (wikidata_id, label_de) values ($1, 'Testgenre'), ($2, 'Fremdgenre')`,
+      [genre, fremdesGenre],
+    );
+    await h.sql.query(
+      `insert into public.film_genres (film_id, genre_id)
+       values ($1, $3), ($2, $3), ($4, $5)`,
+      [gemocht, vorschlag, genre, fremderFilm, fremdesGenre],
+    );
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $2, 9, 'public')`,
+      [ich, gemocht],
+    );
+    // Der Fremde mag ein anderes Genre. Das darf mich nicht erreichen.
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $2, 10, 'public')`,
+      [fremder, fremderFilm],
+    );
+
+    const meine = await h
+      .as('authenticated', ich)
+      .query<{ wikidata_id: string }>(`select wikidata_id from public.films_for_me(40)`);
+    const ids = meine.map((r) => r.wikidata_id);
+
+    assert.ok(ids.includes(vorschlag), 'ein Film aus meinem Genre wird vorgeschlagen');
+    assert.ok(!ids.includes(gemocht), 'was ich schon eingetragen habe, kommt nicht zurueck');
+    assert.ok(
+      !ids.includes(fremderFilm),
+      'das Genre eines anderen faerbt nicht auf meine Vorschlaege ab',
+    );
+
+    // Wer nichts bewertet hat, bekommt nichts — und keinen Hinweis, den
+    // die Ansicht dann ausblenden muesste.
+    const leer = await h
+      .as('authenticated', fremder)
+      .query(`select wikidata_id from public.films_for_me(40)`);
+    assert.ok(
+      !leer.some((r) => (r as { wikidata_id: string }).wikidata_id === vorschlag),
+      'fremde Vorschlaege sind wirklich fremd',
+    );
+
+    await h.sql.query(`delete from public.diary_entries where user_id = any($1)`, [[ich, fremder]]);
+    await h.sql.query(`delete from public.film_genres where genre_id = any($1)`, [
+      [genre, fremdesGenre],
+    ]);
+    await h.sql.query(`delete from public.genres where wikidata_id = any($1)`, [
+      [genre, fremdesGenre],
+    ]);
+  });
+
+  it('refuses films_for_me to an anonymous caller', async () => {
+    // Ein Grant fuegt hinzu, er nimmt nicht weg. Ohne den Entzug war die
+    // Funktion fuer `anon` ausfuehrbar — harmlos, weil `auth.uid()`
+    // dann null ist, aber "es faellt nichts an" ist kein Zugriffsschutz.
+    await assert.rejects(
+      () => h.as('anon', null).query(`select * from public.films_for_me(5)`),
+      /permission denied/i,
+      'anon darf films_for_me nicht ausfuehren',
+    );
   });
 
   it('starts the week on Monday at midnight, German time', async () => {

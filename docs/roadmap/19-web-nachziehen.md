@@ -164,7 +164,39 @@ Telefon. **Die Popcorn-Skala, die FSK-Farben und die drei
 Sichtbarkeiten sind auf beiden gleich** — das ist der Teil, der gleich
 bleiben muss.
 
-## 8. Das Logo
+## 8. Entdecken nach dem Konzept
+
+Das Entdecken-Konzept vom 31.08.2026 ist auf dem iPhone in seiner ersten
+Stufe umgesetzt. Das Web hat davon noch nichts:
+
+- **Die Reihenfolge** (Konzept 18, Fall „kaum Nutzerdaten"): Nach Genre,
+  Top 10, Fuer dich, Neu veroeffentlicht, Bald verfuegbar, Letzte
+  Aktivitaeten.
+- **Der gewichtete Score** in `weekly_top_films` — die Funktion gibt jetzt
+  zusaetzlich `score` zurueck, und die Schwelle steht in
+  `app_settings.weekly_top_minimum`. Der bisherige Aufruf laeuft
+  unveraendert weiter.
+- **`films_for_me`** fuer „Fuer dich". Nur fuer Angemeldete; PUBLIC ist
+  das Ausfuehren entzogen.
+- **„Neu im Katalog" heisst „Neu veroeffentlicht"** und schliesst Filme
+  aus, deren Jahr noch aussteht — die stehen unter „Bald verfuegbar".
+- **Leere Bereiche werden ausgeblendet**, nicht mit erklaerendem Text
+  gefuellt. Der Hinweis „folge jemandem" stand dauerhaft auf der
+  Startseite.
+
+Zwei Punkte des Konzepts sind **bewusst offen**, weil die Daten fehlen:
+„Neu in Deutschland" und der Countdown „noch 12 Tage" brauchen ein
+deutsches Erscheinungsdatum. Der Katalog fuehrt nur `release_year`.
+Wikidata hat P577 mit Landesqualifikator — das waere eine Erweiterung der
+Pipeline, keine der Oberflaeche.
+
+Ebenfalls offen: „Von Freunden empfohlen" (braucht eine eigene Tabelle
+samt Weg, eine Empfehlung ueberhaupt auszusprechen), „Weil dir dieser
+Film gefallen hat", „Heute passend", „Ueberrasch mich" und die
+intelligente Watchlist-Auswahl. Das Konzept ordnet sie selbst unter
+„Danach" ein.
+
+## 9. Das Logo
 
 Die Bildmarke liegt als Asset in der App
 (`apps/ios/BingeLog/Assets.xcassets/LogoMark.imageset`). Im Web wird der

@@ -1050,6 +1050,18 @@ export type Database = {
         Args: { title_de: string; title_en: string; title_original: string }
         Returns: string
       }
+      films_for_me: {
+        Args: { max_results?: number }
+        Returns: {
+          poster_source: string
+          poster_url: string
+          release_year: number
+          title_de: string
+          title_original: string
+          weight: number
+          wikidata_id: string
+        }[]
+      }
       following_feed: {
         Args: { before_at?: string; before_id?: string; max_results?: number }
         Returns: {
@@ -1166,6 +1178,7 @@ export type Database = {
           poster_url: string
           ratings: number
           release_year: number
+          score: number
           title_de: string
           title_original: string
           wikidata_id: string

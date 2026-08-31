@@ -6,6 +6,8 @@ import Foundation
 final class DiscoverModel {
     private(set) var tiles: [GenreTile] = []
     private(set) var top: [WeeklyTopFilm] = []
+    private(set) var forMe: [Film] = []
+    private(set) var upcoming: [Film] = []
     private(set) var feed: [FeedEntry] = []
     private(set) var newest: [Film] = []
     private(set) var isLoading = true
@@ -26,11 +28,15 @@ final class DiscoverModel {
     func load() async {
         async let tiles = repository.genreTiles(limit: 16)
         async let top = repository.weeklyTop(limit: 10)
+        async let forMe = repository.forMe(limit: 12)
+        async let upcoming = repository.upcoming(limit: 12)
         async let feed = repository.followingFeed(limit: 20)
         async let newest = repository.newestFilms(limit: 12)
 
         self.tiles = await tiles
         self.top = await top
+        self.forMe = await forMe
+        self.upcoming = await upcoming
         self.feed = await feed
         self.newest = await newest
         isLoading = false
