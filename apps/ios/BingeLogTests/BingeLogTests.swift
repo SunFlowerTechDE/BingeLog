@@ -330,6 +330,21 @@ struct PopcornTests {
         #expect(Popcorn.format(8.5) == "4,3")
     }
 
+    /// Die Zahl neben der Skala steht mit deutschem Komma.
+    ///
+    /// In der Wochenrangliste stand "4.5" mit Punkt — daneben auf
+    /// derselben Seite "4,5" mit Komma. Zwei Schreibweisen für dieselbe
+    /// Zahl auf einem Bildschirm sind ein Fehler, kein Detail.
+    @Test("Die Zahl wird nie mit Punkt geschrieben")
+    func neverWritesADot() {
+        for raw in stride(from: 1, through: 10, by: 1) {
+            let text = Popcorn.format(raw)
+            #expect(!text.contains("."), "\(raw) wurde als \(text) geschrieben")
+            #expect(text.contains(","))
+        }
+        #expect(!Popcorn.format(8.5).contains("."))
+    }
+
     /// Die drei Sichtbarkeiten heissen so wie in der Datenbank.
     ///
     /// Ein Tippfehler hier ergäbe keinen Fehler beim Übersetzen, sondern

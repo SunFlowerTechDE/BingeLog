@@ -277,7 +277,7 @@ private struct FeedRow: View {
 
                 HStack(spacing: 8) {
                     if let rating = entry.rating {
-                        Stars(stars: Double(rating) / 2)
+                        PopcornRating(rating: Double(rating), size: 13)
                     }
                     if entry.isRewatch {
                         Text("Wiedersehen")
@@ -298,36 +298,6 @@ private struct FeedRow: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-    }
-}
-
-/// Die Bewertung als fünf Sterne.
-///
-/// Die Datenbank speichert 1 bis 10 — halbe Sterne gibt es, ganze
-/// Zahlen sind einfacher zu rechnen (M3 3.4). **Halbiert wird an der
-/// Grenze**, nicht hier: diese Ansicht bekommt schon Sterne. Zweimal
-/// halbieren war im Web bereits einmal der Fehler.
-private struct Stars: View {
-    let stars: Double
-    var size: Font = .caption2
-
-    var body: some View {
-        HStack(spacing: 1) {
-            ForEach(1...5, id: \.self) { star in
-                Image(systemName: symbol(for: star))
-                    .font(size)
-                    .foregroundStyle(Theme.primary)
-            }
-        }
-        .accessibilityElement()
-        .accessibilityLabel(Text("\(stars, specifier: "%.1f") von fünf Sternen"))
-    }
-
-    private func symbol(for star: Int) -> String {
-        let voll = Double(star)
-        if stars >= voll - 0.001 { return "star.fill" }
-        if stars >= voll - 0.501 { return "star.leadinghalf.filled" }
-        return "star"
     }
 }
 
@@ -405,11 +375,18 @@ private struct RankedCard: View {
     /// keine hervorgehoben.
     private var accent: Color { isPodium ? Theme.primary : Theme.border }
 
+    /// „4,5 · 12 Bewertungen" — deutsches Komma, wie überall sonst.
+    private var quickInfo: String {
+        let count = entry.ratings == 1 ? "1 Bewertung" : "\(entry.ratings) Bewertungen"
+        guard let average = entry.average else { return count }
+        return "\(Popcorn.format(average)) · \(count)"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Die Box um das Plakat. Sie trägt die Hervorhebung, damit
             // schon beim Überfliegen sichtbar ist, wo oben ist.
-            PosterThumbnail(film: entry.film, width: 118)
+            PosterThumbnail(film: entry.film, width: 128)
                 .padding(5)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
                 .overlay {
@@ -433,22 +410,24 @@ private struct RankedCard: View {
             }
 
             // Die schnelle Information: wie gut, und von wie vielen.
-            HStack(spacing: 6) {
-                if let stars = entry.stars {
-                    Stars(stars: stars)
-                    Text(String(format: "%.1f", stars))
-                        .font(.caption2)
-                        .foregroundStyle(Theme.muted)
-                        .monospacedDigit()
+            //
+            // Untereinander und nicht nebeneinander: in einer Zeile
+            // passte "1 Bewertung" nicht mehr neben die Skala und brach
+            // in eine Spalte aus einzelnen Silben um.
+            VStack(alignment: .leading, spacing: 3) {
+                if let average = entry.average {
+                    PopcornRating(rating: average, size: 13)
                 }
 
-                Text(entry.ratings == 1 ? "1 Bewertung" : "\(entry.ratings) Bewertungen")
+                Text(quickInfo)
                     .font(.caption2)
                     .foregroundStyle(Theme.quiet)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
-        .frame(width: 128, alignment: .leading)
+        .frame(width: 138, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             Text(
