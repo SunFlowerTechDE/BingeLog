@@ -1001,6 +1001,110 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.follows where follower_id = $1`, [leser]);
   });
 
+  it('counts only public ratings in the weekly top, and the same for everyone', async () => {
+    // Eigene Filme, keine geteilten. `FILM` traegt die Bewertungen der
+    // Tests davor — eine Rangliste ueber den ganzen Bestand haengt sonst
+    // daran, welcher Test vorher lief.
+    const laut = 'Q100901';
+    const leise = 'Q100902';
+    await seedFilm(h, laut);
+    await seedFilm(h, leise);
+
+    const einer = await seedUser(h, 'topeiner');
+    const andere = await seedUser(h, 'topandere');
+    const fremd = await seedUser(h, 'topfremd');
+
+    // Zwei oeffentliche auf `laut`. Auf `leise` eine oeffentliche und
+    // eine private — die private darf nicht zaehlen, sonst stuenden
+    // beide gleichauf.
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility)
+       values ($1, $3, 8, 'public'),
+              ($2, $3, 9, 'public'),
+              ($1, $4, 10, 'public'),
+              ($2, $4, 10, 'private')`,
+      [einer, andere, laut, leise],
+    );
+
+    interface Zeile { place: number; wikidata_id: string; ratings: number; average: string }
+    const gelesen = (rolle: 'anon' | 'authenticated', wer: string | null) =>
+      h
+        .as(rolle, wer)
+        .query<Zeile>(
+          `select place, wikidata_id, ratings, average from public.weekly_top_films(50)`,
+        );
+
+    const alsFremder = await gelesen('authenticated', fremd);
+    const meine = alsFremder.filter((r) => r.wikidata_id === laut || r.wikidata_id === leise);
+
+    assert.deepEqual(
+      meine.map((r) => [r.wikidata_id, r.ratings]),
+      [
+        [laut, 2],
+        [leise, 1],
+      ],
+      'die private Bewertung zaehlt nicht mit, und mehr Bewertungen stehen weiter oben',
+    );
+
+    // Die Plaetze sind eine lueckenlose Folge ab eins — das ist die
+    // Zusicherung, die "Platz 1" ueberhaupt bedeutet.
+    assert.deepEqual(
+      alsFremder.map((r) => r.place),
+      alsFremder.map((_, index) => index + 1),
+      'die Plaetze zaehlen bei eins los und lassen keinen aus',
+    );
+
+    // Der Eigner der privaten Bewertung sieht dieselbe Liste. Waere die
+    // Funktion allein der Policy ueberlassen, saehe er hier eine
+    // andere — und "Top 10 dieser Woche" waere eine persoenliche
+    // Auskunft statt einer Aussage ueber die Woche.
+    assert.deepEqual(await gelesen('authenticated', andere), alsFremder, 'jeder sieht dasselbe');
+    assert.deepEqual(await gelesen('anon', null), alsFremder, 'auch ohne Konto dasselbe');
+
+    // Der Durchschnitt steht auf der internen Skala 1..10 — der Client
+    // halbiert fuer die Sterne. Ein zweites Halbieren war im Web schon
+    // einmal der Fehler.
+    assert.equal(Number(meine[0]?.average), 8.5, 'der Durchschnitt ist (8+9)/2');
+
+    await h.sql.query(`delete from public.diary_entries where film_id = any($1)`, [[laut, leise]]);
+  });
+
+  it('starts the week on Monday at midnight, German time', async () => {
+    const film = 'Q100903';
+    await seedFilm(h, film);
+    const wer = await seedUser(h, 'topwoche');
+
+    const enthalten = async () => {
+      const zeilen = await h
+        .as('anon', null)
+        .query<{ wikidata_id: string }>(`select wikidata_id from public.weekly_top_films(50)`);
+      return zeilen.some((r) => r.wikidata_id === film);
+    };
+
+    // Eine Sekunde **vor** dem Wochenanfang. Gehoert zur Woche davor.
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility, created_at)
+       values ($1, $2, 9, 'public',
+               (date_trunc('week', (now() at time zone 'Europe/Berlin'))
+                  at time zone 'Europe/Berlin') - interval '1 second')`,
+      [wer, film],
+    );
+    assert.equal(await enthalten(), false, 'was vor Montag 00:00 liegt, zaehlt zur Woche davor');
+
+    // Und genau **auf** dem Wochenanfang. Gehoert dazu.
+    await h.sql.query(`delete from public.diary_entries where film_id = $1`, [film]);
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility, created_at)
+       values ($1, $2, 9, 'public',
+               date_trunc('week', (now() at time zone 'Europe/Berlin'))
+                 at time zone 'Europe/Berlin')`,
+      [wer, film],
+    );
+    assert.equal(await enthalten(), true, 'Montag 00:00 gehoert zur laufenden Woche');
+
+    await h.sql.query(`delete from public.diary_entries where film_id = $1`, [film]);
+  });
+
   it('lets anyone file a report and only moderators read it', async () => {
     const melder = await seedUser(h, 'melder');
     const moderator = await seedUser(h, 'moderatorin');

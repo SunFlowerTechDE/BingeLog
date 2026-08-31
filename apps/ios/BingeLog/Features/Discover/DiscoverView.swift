@@ -29,6 +29,10 @@ struct DiscoverView: View {
                     GenreSlider(tiles: model.tiles, repository: repository)
                 }
 
+                if !model.top.isEmpty {
+                    WeeklyTopSection(entries: model.top)
+                }
+
                 FeedSection(entries: model.feed, avatarBase: model.avatarBase)
 
                 if !model.newest.isEmpty {
@@ -246,7 +250,7 @@ private struct FeedRow: View {
 
                 HStack(spacing: 8) {
                     if let rating = entry.rating {
-                        Stars(rating: rating)
+                        Stars(stars: Double(rating) / 2)
                     }
                     if entry.isRewatch {
                         Text("Wiedersehen")
@@ -270,29 +274,32 @@ private struct FeedRow: View {
     }
 }
 
-/// Die Bewertung, zehn Halbe als fünf Sterne.
+/// Die Bewertung als fünf Sterne.
 ///
 /// Die Datenbank speichert 1 bis 10 — halbe Sterne gibt es, ganze
-/// Zahlen sind einfacher zu rechnen (M3 3.4). Fünf Sterne sieht der
-/// Nutzer.
+/// Zahlen sind einfacher zu rechnen (M3 3.4). **Halbiert wird an der
+/// Grenze**, nicht hier: diese Ansicht bekommt schon Sterne. Zweimal
+/// halbieren war im Web bereits einmal der Fehler.
 private struct Stars: View {
-    let rating: Int
+    let stars: Double
+    var size: Font = .caption2
 
     var body: some View {
         HStack(spacing: 1) {
             ForEach(1...5, id: \.self) { star in
                 Image(systemName: symbol(for: star))
-                    .font(.caption2)
+                    .font(size)
                     .foregroundStyle(Theme.primary)
             }
         }
         .accessibilityElement()
-        .accessibilityLabel("\(Double(rating) / 2, specifier: "%.1f") von fünf Sternen")
+        .accessibilityLabel(Text("\(stars, specifier: "%.1f") von fünf Sternen"))
     }
 
     private func symbol(for star: Int) -> String {
-        if rating >= star * 2 { return "star.fill" }
-        if rating == star * 2 - 1 { return "star.leadinghalf.filled" }
+        let voll = Double(star)
+        if stars >= voll - 0.001 { return "star.fill" }
+        if stars >= voll - 0.501 { return "star.leadinghalf.filled" }
         return "star"
     }
 }
@@ -315,6 +322,104 @@ private struct Avatar: View {
         }
         .frame(width: 18, height: 18)
         .clipShape(Circle())
+    }
+}
+
+// --------------------------------------------------------------------
+// Top 10 in dieser Woche
+// --------------------------------------------------------------------
+
+/// Die meistbewerteten Filme der laufenden Woche.
+///
+/// Der Zeitraum ist die Kalenderwoche, Montag 00:00 bis Sonntag 23:59
+/// deutscher Zeit, und er wird in `weekly_top_films` gezogen. Montags
+/// fängt die Liste neu an.
+///
+/// Gezählt werden **nur öffentliche** Bewertungen. Damit ist die Liste
+/// für jeden Leser dieselbe — eine Rangliste, die sich je nach Betrachter
+/// ändert, ist keine.
+private struct WeeklyTopSection: View {
+    let entries: [WeeklyTopFilm]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle(text: "Top 10 in dieser Woche")
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(entries) { entry in
+                        RankedCard(entry: entry)
+                    }
+                }
+                .padding(.horizontal, 20)
+                // Der Rahmen der ersten Karte darf nicht am Rand
+                // abgeschnitten werden.
+                .padding(.vertical, 4)
+            }
+        }
+    }
+}
+
+private struct RankedCard: View {
+    let entry: WeeklyTopFilm
+
+    private var isPodium: Bool { entry.place <= 3 }
+
+    /// Gold für die ersten drei, sonst der gewöhnliche Rand.
+    ///
+    /// Nicht alle zehn in Gold: wenn jede Karte hervorgehoben ist, ist
+    /// keine hervorgehoben.
+    private var accent: Color { isPodium ? Theme.primary : Theme.border }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Die Box um das Plakat. Sie trägt die Hervorhebung, damit
+            // schon beim Überfliegen sichtbar ist, wo oben ist.
+            PosterThumb(film: entry.film, width: 118)
+                .padding(5)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(accent, lineWidth: isPodium ? 2 : 1)
+                }
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                // Die Platzierung, präsent. Groß gesetzt und in der
+                // Farbe der Marke — sie ist der Grund, warum diese
+                // Sektion anders aussieht als die anderen.
+                Text("\(entry.place)")
+                    .font(.system(.title, design: .rounded, weight: .bold))
+                    .foregroundStyle(isPodium ? Theme.primary : Theme.foreground)
+                    .monospacedDigit()
+
+                Text(entry.film.title)
+                    .font(.caption)
+                    .foregroundStyle(Theme.foreground)
+                    .lineLimit(2)
+            }
+
+            // Die schnelle Information: wie gut, und von wie vielen.
+            HStack(spacing: 6) {
+                if let stars = entry.stars {
+                    Stars(stars: stars)
+                    Text(String(format: "%.1f", stars))
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                        .monospacedDigit()
+                }
+
+                Text(entry.ratings == 1 ? "1 Bewertung" : "\(entry.ratings) Bewertungen")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.quiet)
+                    .monospacedDigit()
+            }
+        }
+        .frame(width: 128, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            Text(
+                "Platz \(entry.place): \(entry.film.title), \(entry.ratings) Bewertungen"
+            ))
     }
 }
 

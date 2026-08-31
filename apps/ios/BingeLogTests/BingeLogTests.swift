@@ -232,6 +232,36 @@ struct DiscoverTests {
             "ein kurzer Name endet noch auf \"film\"")
     }
 
+    /// `numeric` kommt von PostgREST als Zeichenkette.
+    ///
+    /// Ein Decoder, der eine Zahl erwartet, nimmt beim ersten
+    /// Durchschnitt die ganze Rangliste mit. Beide Formen müssen durch.
+    @Test("Der Durchschnitt wird als Text und als Zahl gelesen")
+    func averageDecodes() throws {
+        let alsText = Data(
+            #"{"place":1,"wikidata_id":"Q1","title_de":null,"title_original":"A","release_year":2000,"poster_source":null,"poster_url":null,"ratings":2,"average":"8.5"}"#
+                .utf8)
+        let alsZahl = Data(
+            #"{"place":2,"wikidata_id":"Q2","title_de":null,"title_original":"B","release_year":2000,"poster_source":null,"poster_url":null,"ratings":1,"average":10}"#
+                .utf8)
+        let ohne = Data(
+            #"{"place":3,"wikidata_id":"Q3","title_de":null,"title_original":"C","release_year":2000,"poster_source":null,"poster_url":null,"ratings":1,"average":null}"#
+                .utf8)
+
+        let a = try JSONDecoder().decode(WeeklyTopFilm.self, from: alsText)
+        #expect(a.average == 8.5)
+        // Halbiert wird genau einmal: 8,5 von zehn sind 4,25 Sterne.
+        #expect(a.stars == 4.25)
+
+        let b = try JSONDecoder().decode(WeeklyTopFilm.self, from: alsZahl)
+        #expect(b.average == 10)
+        #expect(b.stars == 5)
+
+        let c = try JSONDecoder().decode(WeeklyTopFilm.self, from: ohne)
+        #expect(c.average == nil)
+        #expect(c.stars == nil)
+    }
+
     /// Postgres liefert Zeitstempel mit und ohne Sekundenbruchteile.
     ///
     /// Beide müssen durchgehen. Ein Decoder, der nur eine Form kennt,

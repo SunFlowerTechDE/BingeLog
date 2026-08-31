@@ -5,6 +5,8 @@ import Supabase
 protocol DiscoverRepository: Sendable {
     func genreTiles(limit: Int) async -> [GenreTile]
     func newestFilms(limit: Int) async -> [Film]
+    /// Die Rangliste der laufenden Woche.
+    func weeklyTop(limit: Int) async -> [WeeklyTopFilm]
     func followingFeed(limit: Int) async -> [FeedEntry]
     /// Wo die Profilbilder liegen. Einmal gefragt, nicht je Zeile.
     func avatarBase() -> URL?
@@ -56,6 +58,20 @@ struct LiveDiscoverRepository: DiscoverRepository {
             .execute()
             .value
         return films ?? []
+    }
+
+    /// Die meistbewerteten Filme der laufenden Woche.
+    ///
+    /// Der Zeitraum — Montag 00:00 bis Sonntag 23:59, deutsche Zeit —
+    /// steht in `weekly_top_films` und nicht hier. Ein Client, der die
+    /// Wochengrenze selbst zieht, zieht sie in seiner eigenen Zeitzone,
+    /// und dann steht auf dem iPhone eine andere Zehn als im Browser.
+    func weeklyTop(limit: Int = 10) async -> [WeeklyTopFilm] {
+        let rows: [WeeklyTopFilm]? = try? await backend.client
+            .rpc("weekly_top_films", params: TileArguments(max_results: limit))
+            .execute()
+            .value
+        return rows ?? []
     }
 
     /// Der Feed der gefolgten Profile.
