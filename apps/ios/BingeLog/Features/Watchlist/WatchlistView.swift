@@ -261,7 +261,7 @@ private struct WatchlistCard: View {
 
     var body: some View {
         NavigationLink {
-            FilmDetailView(film: entry.film, details: details, entries: entries)
+            FilmDetailView(film: entry.film)
         } label: {
             VStack(alignment: .leading, spacing: 5) {
                 PosterThumbnail(film: entry.film, width: 104)
@@ -402,7 +402,7 @@ private struct SurpriseSheet: View {
                 }
 
                 NavigationLink {
-                    FilmDetailView(film: entry.film, details: details, entries: entries)
+                    FilmDetailView(film: entry.film)
                 } label: {
                     Text("Zum Film")
                         .font(.subheadline.weight(.medium))

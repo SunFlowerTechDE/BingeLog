@@ -216,7 +216,7 @@ private struct GenreView: View {
     var body: some View {
         List(films) { film in
             NavigationLink {
-                FilmDetailView(film: film, details: details, entries: entries)
+                FilmDetailView(film: film)
             } label: {
                 FilmLine(film: film)
             }
@@ -262,7 +262,7 @@ private struct FeedSection: View {
             VStack(spacing: 0) {
                 ForEach(entries) { entry in
                     NavigationLink {
-                        FilmDetailView(film: entry.film, details: details, entries: filmEntries)
+                        FilmDetailView(film: entry.film)
                     } label: {
                         FeedRow(entry: entry, avatarBase: avatarBase)
                     }
@@ -284,10 +284,20 @@ private struct FeedRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Avatar(path: entry.avatarPath, base: avatarBase)
-                    Text(entry.username)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.foreground)
+                    // Der Name führt auf das Profil. Vorher war er
+                    // eine Sackgasse — man las, wer etwas eingetragen
+                    // hat, und kam nicht zu ihm.
+                    NavigationLink {
+                        ProfileView(username: entry.username)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Avatar(path: entry.avatarPath, base: avatarBase)
+                            Text(entry.username)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Theme.foreground)
+                        }
+                    }
+                    .buttonStyle(.plain)
                     if let when = entry.createdDate {
                         Text(when, format: .relative(presentation: .named))
                             .font(.caption)
@@ -369,7 +379,7 @@ private struct WeeklyTopSection: View {
                 HStack(alignment: .top, spacing: 14) {
                     ForEach(entries) { entry in
                         NavigationLink {
-                            FilmDetailView(film: entry.film, details: details, entries: filmEntries)
+                            FilmDetailView(film: entry.film)
                         } label: {
                             RankedCard(entry: entry)
                         }
@@ -480,7 +490,7 @@ private struct FilmStrip: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(films) { film in
                         NavigationLink {
-                            FilmDetailView(film: film, details: details, entries: entries)
+                            FilmDetailView(film: film)
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 PosterThumbnail(film: film, width: 104)
@@ -565,7 +575,7 @@ private struct RecommendationCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             NavigationLink {
-                FilmDetailView(film: entry.film, details: details, entries: entries)
+                FilmDetailView(film: entry.film)
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     PosterThumbnail(film: entry.film, width: 104)

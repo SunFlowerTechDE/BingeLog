@@ -7,22 +7,47 @@ import SwiftUI
 /// Eine zweite Ansicht für dasselbe wäre zwei Wahrheiten über einen
 /// Bildschirm.
 struct ProfileView: View {
-    @State private var model: ProfileModel
-    private let details: FilmDetailRepository
-    private let entries: FilmEntryRepository
-    private let profiles: ProfilePageRepository
+    let username: String
 
-    init(
-        username: String, profiles: ProfilePageRepository, details: FilmDetailRepository,
-        entries: FilmEntryRepository
-    ) {
-        self.profiles = profiles
-        self.details = details
-        self.entries = entries
-        _model = State(initialValue: ProfileModel(username: username, repository: profiles))
-    }
+    /// Erst in `.task` gebaut: ein `@State`-Initialisierer kommt an die
+    /// Umgebung nicht heran.
+    @State private var model: ProfileModel?
+    @Environment(Repositories.self) private var repos
+    @State private var isEditing = false
 
     var body: some View {
+        Group {
+            if let model { loaded(model) } else { ProgressView() }
+        }
+        .background(Theme.background)
+        .navigationTitle(model?.overview?.title ?? username)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let head = model?.overview, head.isMe {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Bearbeiten") { isEditing = true }
+                }
+            }
+        }
+        .sheet(isPresented: $isEditing) {
+            if let head = model?.overview {
+                EditProfileSheet(
+                    head: head, avatarBase: model?.avatarBase, bannerBase: model?.bannerBase
+                ) {
+                    Task { await model?.load() }
+                }
+            }
+        }
+        .task {
+            if model == nil {
+                model = ProfileModel(username: username, repository: repos.profilePages)
+            }
+            await model?.load()
+        }
+        .refreshable { await model?.load() }
+    }
+
+    private func loaded(_ model: ProfileModel) -> some View {
         Group {
             if model.isLoading {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -41,17 +66,12 @@ struct ProfileView: View {
                     description: Text("Dieses Profil ist für dich nicht sichtbar.")
                 )
             } else if let head = model.overview {
-                content(head)
+                content(model, head)
             }
         }
-        .background(Theme.background)
-        .navigationTitle(model.overview?.title ?? model.username)
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await model.load() }
-        .refreshable { await model.load() }
     }
 
-    private func content(_ head: ProfileOverview) -> some View {
+    private func content(_ model: ProfileModel, _ head: ProfileOverview) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 ProfileHeader(
@@ -60,10 +80,10 @@ struct ProfileView: View {
                     Task { await model.toggleFollow() }
                 }
 
-                numbers
+                numbers(model)
 
                 if !model.favourites.isEmpty {
-                    Favourites(slots: model.favourites, details: details, entries: entries)
+                    Favourites(slots: model.favourites)
                 }
 
                 if !model.genres.isEmpty {
@@ -128,8 +148,7 @@ struct ProfileView: View {
                         VStack(spacing: 0) {
                             ForEach(model.recent) { entry in
                                 NavigationLink {
-                                    FilmDetailView(
-                                        film: entry.film, details: details, entries: entries)
+                                    FilmDetailView(film: entry.film)
                                 } label: {
                                     RecentRow(entry: entry)
                                 }
@@ -144,7 +163,7 @@ struct ProfileView: View {
         }
     }
 
-    private var numbers: some View {
+    private func numbers(_ model: ProfileModel) -> some View {
         HStack(spacing: 10) {
             Figure(value: "\(model.stats.films)", label: "Filme")
             Figure(value: "\(model.stats.ratings)", label: "Bewertungen")
@@ -298,8 +317,6 @@ private struct Count: View {
 /// Lücken bleiben Lücken: wer nur zwei gewählt hat, hat zwei gewählt.
 private struct Favourites: View {
     let slots: [FavouriteSlot]
-    let details: FilmDetailRepository
-    let entries: FilmEntryRepository
 
     var body: some View {
         Section(title: "Favoriten") {
@@ -307,7 +324,7 @@ private struct Favourites: View {
                 ForEach(1...4, id: \.self) { position in
                     if let slot = slots.first(where: { $0.slot == position }) {
                         NavigationLink {
-                            FilmDetailView(film: slot.film, details: details, entries: entries)
+                            FilmDetailView(film: slot.film)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 PosterThumbnail(film: slot.film, width: 76)

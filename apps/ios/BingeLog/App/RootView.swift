@@ -72,7 +72,7 @@ private struct CompactShell: View {
             NavigationStack { DiaryView(entries: entries, details: details) }
                 .tabItem { Label("Tagebuch", systemImage: "calendar") }
 
-            NavigationStack { OwnProfileView(profiles: profilePages, details: details, entries: entries) }
+            NavigationStack { OwnProfileView() }
                 .tabItem { Label("Profil", systemImage: "person") }
 
             NavigationStack { SettingsView() }
@@ -142,8 +142,7 @@ private struct RegularShell: View {
                 case .diary:
                     DiaryView(entries: entries, details: details)
                 case .profile:
-                    OwnProfileView(
-                        profiles: profilePages, details: details, entries: entries)
+                    OwnProfileView()
                 case .settings:
                     SettingsView()
                 case .discover, nil:
@@ -162,14 +161,10 @@ private struct RegularShell: View {
 /// hier ein Ladekringel statt einer Fehlermeldung.
 private struct OwnProfileView: View {
     @Environment(SessionStore.self) private var session
-    let profiles: ProfilePageRepository
-    let details: FilmDetailRepository
-    let entries: FilmEntryRepository
 
     var body: some View {
         if let username = session.username {
-            ProfileView(
-                username: username, profiles: profiles, details: details, entries: entries)
+            ProfileView(username: username)
         } else {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         }

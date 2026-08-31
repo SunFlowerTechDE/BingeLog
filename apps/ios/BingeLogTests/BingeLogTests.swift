@@ -536,6 +536,51 @@ struct ProfileTests {
     }
 }
 
+/// Bilder fürs Profil.
+@Suite("Bilder vorbereiten")
+struct ImagePreparationTests {
+    /// Verkleinert wird nur, was zu groß ist.
+    ///
+    /// Ein kleines Bild hochzuskalieren macht es größer, nicht besser —
+    /// und die Datei damit auch.
+    @Test("Ein kleines Bild bleibt, wie es ist")
+    func onlyShrinks() {
+        let klein = ImagePreparation.fitting(CGSize(width: 300, height: 200), longestSide: 512)
+        #expect(klein == CGSize(width: 300, height: 200))
+
+        let gross = ImagePreparation.fitting(CGSize(width: 4032, height: 3024), longestSide: 512)
+        #expect(gross.width == 512, "die längere Kante gibt das Maß")
+        #expect(abs(gross.height - 384) < 0.5, "und das Seitenverhältnis bleibt")
+    }
+
+    /// Hochkant genauso: die längere Kante entscheidet.
+    @Test("Bei Hochformat zählt die Höhe")
+    func portraitUsesTheHeight() {
+        let hoch = ImagePreparation.fitting(CGSize(width: 3024, height: 4032), longestSide: 1280)
+        #expect(hoch.height == 1280)
+        #expect(abs(hoch.width - 960) < 0.5)
+    }
+
+    /// Die Qualitätsstufen werden von gut nach schlecht durchlaufen.
+    ///
+    /// Andersherum wäre jedes Bild so schlecht wie nötig statt so gut
+    /// wie möglich.
+    @Test("Erst die beste Qualität, dann die nächstschlechtere")
+    func qualitiesDescend() {
+        let stufen = ImagePreparation.qualities
+        #expect(stufen == stufen.sorted(by: >), "von gut nach schlecht")
+        #expect(stufen.first == 0.8)
+        #expect(!stufen.isEmpty)
+    }
+
+    /// Eine Kantenlänge von null bringt die Rechnung nicht durcheinander.
+    @Test("Ein leeres Bild ergibt keine Division durch null")
+    func emptySizeIsSafe() {
+        let leer = ImagePreparation.fitting(.zero, longestSide: 512)
+        #expect(leer == .zero)
+    }
+}
+
 /// Das Tagebuch.
 @Suite("Tagebuch")
 struct DiaryTests {

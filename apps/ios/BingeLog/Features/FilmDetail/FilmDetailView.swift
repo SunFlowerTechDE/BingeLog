@@ -11,7 +11,12 @@ import SwiftUI
 /// einer auf Speichern. Das ist die wichtigste Kennzahl, und alles
 /// andere auf dieser Seite ist freiwillig (ADR-009).
 struct FilmDetailView: View {
-    @State private var model: FilmDetailModel
+    let film: Film
+
+    /// Erst in `.task` gebaut: ein `@State`-Initialisierer kommt an die
+    /// Umgebung nicht heran.
+    @State private var model: FilmDetailModel?
+    @Environment(Repositories.self) private var repos
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
 
@@ -20,20 +25,31 @@ struct FilmDetailView: View {
 
     @State private var isRecommending = false
 
-    init(film: Film, details: FilmDetailRepository, entries: FilmEntryRepository) {
-        _model = State(
-            initialValue: FilmDetailModel(film: film, details: details, entries: entries))
-    }
 
     var body: some View {
+        Group {
+            if let model { loaded(model) } else { ProgressView() }
+        }
+        .background(Theme.background)
+        .task {
+            if model == nil {
+                model = FilmDetailModel(
+                    film: film, details: repos.details, entries: repos.entries)
+            }
+            await model?.load()
+        }
+    }
+
+    private func loaded(_ model: FilmDetailModel) -> some View {
         @Bindable var model = model
 
+        return
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Backdrop(film: model.film, artwork: model.artwork)
 
                 VStack(alignment: .leading, spacing: 20) {
-                    facts
+                    facts(model)
 
                     RatingCards(
                         summary: model.summary,
@@ -68,7 +84,7 @@ struct FilmDetailView: View {
                     }
 
                     if session.isSignedIn {
-                        entryForm
+                        entryForm(model)
                     } else {
                         Text("Melde dich an, um zu bewerten und einzutragen.")
                             .font(.footnote)
@@ -77,7 +93,7 @@ struct FilmDetailView: View {
 
                     Divider().overlay(Theme.border)
 
-                    catalogue
+                    catalogue(model)
 
                     Divider().overlay(Theme.border)
 
@@ -98,10 +114,9 @@ struct FilmDetailView: View {
         .background(Theme.background)
         .ignoresSafeArea(edges: .top)
         .navigationBarBackButtonHidden()
-        .overlay(alignment: .top) { headerButtons }
-        .task { await model.load() }
+        .overlay(alignment: .top) { headerButtons(model) }
         .sheet(isPresented: $isRecommending) {
-            RecommendSheet(film: model.film, entries: model.entries)
+            RecommendSheet(film: film, entries: repos.entries)
         }
     }
 
@@ -109,7 +124,7 @@ struct FilmDetailView: View {
     // Kopf
     // ----------------------------------------------------------------
 
-    private var headerButtons: some View {
+    private func headerButtons(_ model: FilmDetailModel) -> some View {
         HStack {
             CircleButton(symbol: "arrow.left", label: "Zurück") { dismiss() }
 
@@ -141,7 +156,7 @@ struct FilmDetailView: View {
         .padding(.top, 8)
     }
 
-    private var facts: some View {
+    private func facts(_ model: FilmDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(model.film.title)
                 .font(.largeTitle.weight(.bold))
@@ -160,7 +175,7 @@ struct FilmDetailView: View {
             HStack(spacing: 10) {
                 FSKBadge(value: model.detail?.fsk)
 
-                Text(factLine)
+                Text(factLine(model))
                     .font(.subheadline)
                     .foregroundStyle(Theme.muted)
                     .monospacedDigit()
@@ -170,7 +185,7 @@ struct FilmDetailView: View {
         }
     }
 
-    private var factLine: String {
+    private func factLine(_ model: FilmDetailModel) -> String {
         var parts: [String] = []
         if let year = model.film.releaseYear { parts.append(String(year)) }
         if let minutes = model.detail?.runtimeMinutes { parts.append("\(minutes) Minuten") }
@@ -182,7 +197,7 @@ struct FilmDetailView: View {
     // Der eigene Eintrag
     // ----------------------------------------------------------------
 
-    @ViewBuilder private var entryForm: some View {
+    @ViewBuilder private func entryForm(_ model: FilmDetailModel) -> some View {
         @Bindable var model = model
 
         VStack(alignment: .leading, spacing: 14) {
@@ -245,7 +260,7 @@ struct FilmDetailView: View {
             } label: {
                 HStack(spacing: 8) {
                     if model.isSaving { ProgressView().controlSize(.small) }
-                    Text(saveLabel)
+                    Text(saveLabel(model))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -260,7 +275,7 @@ struct FilmDetailView: View {
         }
     }
 
-    private var saveLabel: String {
+    private func saveLabel(_ model: FilmDetailModel) -> String {
         if model.savedAt != nil { return "Gespeichert" }
         // Die Bewertung ist der Pflichtteil. Wer noch keine gesetzt hat,
         // soll das lesen und nicht raten, warum der Knopf blass ist.
@@ -272,7 +287,7 @@ struct FilmDetailView: View {
     // Was fest zum Film gehört
     // ----------------------------------------------------------------
 
-    @ViewBuilder private var catalogue: some View {
+    @ViewBuilder private func catalogue(_ model: FilmDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             if let detail = model.detail {
                 if !detail.genres.isEmpty {
@@ -683,9 +698,20 @@ private struct ReviewList: View {
                 ForEach(reviews) { entry in
                     VStack(alignment: .leading, spacing: 5) {
                         HStack(spacing: 8) {
-                            Text(entry.username ?? "Jemand")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(Theme.foreground)
+                            if let name = entry.username {
+                                NavigationLink {
+                                    ProfileView(username: name)
+                                } label: {
+                                    Text(name)
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(Theme.foreground)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                Text("Jemand")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(Theme.foreground)
+                            }
 
                             if let rating = entry.rating {
                                 PopcornRating(rating: Double(rating), size: 13)
@@ -874,9 +900,20 @@ private struct MessageBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                Text(message.username ?? "Jemand")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Theme.foreground)
+                if let name = message.username {
+                    NavigationLink {
+                        ProfileView(username: name)
+                    } label: {
+                        Text(name)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.foreground)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text("Jemand")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.foreground)
+                }
                 if let when = message.created {
                     Text(when, format: .relative(presentation: .named))
                         .font(.caption2)

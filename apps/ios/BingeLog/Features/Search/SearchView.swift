@@ -122,7 +122,7 @@ struct SearchView: View {
 
             ForEach(model.films) { film in
                 NavigationLink {
-                    FilmDetailView(film: film, details: details, entries: entries)
+                    FilmDetailView(film: film)
                 } label: {
                     FilmRow(
                         film: film,

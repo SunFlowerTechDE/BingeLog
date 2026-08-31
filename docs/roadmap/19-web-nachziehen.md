@@ -297,9 +297,9 @@ Rohgenres. Im Web stand dadurch "Kriminalfilm", "Neo-Noir" und
 gibt zusaetzlich `genre_id` zurueck; der bisherige Aufruf muss die neue
 Spalte nur ignorieren.
 
-Noch nicht gebaut, in der App: **das Bearbeiten des eigenen Profils**
-(Bild, Kopfbild, Beschreibung, Favoriten, Listen). Im Web gibt es das
-bereits — hier ist es der naechste Schritt.
+Bearbeiten geht inzwischen: Name, Beschreibung, Profil- und Kopfbild.
+**Die Favoriten noch nicht** — dafuer braucht es eine Filmsuche im
+Formular, und die gehoert nicht in ein Blatt mit vier Feldern.
 
 ## 13. Das Logo
 

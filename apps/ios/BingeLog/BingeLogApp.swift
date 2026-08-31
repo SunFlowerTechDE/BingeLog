@@ -8,6 +8,10 @@ struct BingeLogApp: App {
     /// die Repositories. Keine Ansicht greift selbst auf das SDK zu
     /// (M5 5.2) — das ist die Zeile, an der das durchgesetzt wird.
     private let backend = Backend.live
+
+    /// Einmal gebaut, in der Umgebung. Die Blätter — Filmseite und
+    /// Profil — holen sich daraus, was sie brauchen.
+    private let repositories = Repositories.live(backend: Backend.live)
     @State private var session: SessionStore
 
     /// Der Startbildschirm, und zwar **nur beim Kaltstart**.
@@ -42,15 +46,16 @@ struct BingeLogApp: App {
         WindowGroup {
             ZStack {
                 RootView(
-                    films: LiveFilmRepository(backend: backend),
+                    films: repositories.films,
                     profiles: LiveProfileRepository(backend: backend),
-                    discover: LiveDiscoverRepository(backend: backend),
-                    lazyFilms: LiveLazyFilmRepository(backend: backend),
-                    details: LiveFilmDetailRepository(backend: backend),
-                    entries: LiveFilmEntryRepository(backend: backend),
-                    profilePages: LiveProfilePageRepository(backend: backend)
+                    discover: repositories.discover,
+                    lazyFilms: repositories.lazyFilms,
+                    details: repositories.details,
+                    entries: repositories.entries,
+                    profilePages: repositories.profilePages
                 )
                 .environment(session)
+                .environment(repositories)
 
                 if isStarting {
                     SplashView(posters: splashPosters, isLeaving: splashIsLeaving)

@@ -114,7 +114,15 @@ has_spoilers`); die Oberfläche verdeckt sie dann, bis jemand tippt.
 wie jeder andere. Das Spoiler-Gate der Diskussion ist etwas anderes und
 steht in der Policy (ADR-010). Das Profil steht ebenfalls — dieselbe Ansicht für das eigene und ein
 fremdes, was sich unterscheidet, ist der Folgen-Knopf und wie viel die
-Policy hergibt. **Kein Platzhalter mehr in der Leiste.** **Die Suche ist keiner davon** — sie sitzt als Lupe im
+Policy hergibt. **Kein Platzhalter mehr in der Leiste.** Name,
+Beschreibung, Profil- und Kopfbild lassen sich ändern; die Favoriten
+noch nicht.
+
+Die Repositories liegen in der Umgebung (`Repositories`). **Nur die
+Blätter lesen dort** — `FilmDetailView` und `ProfileView` sind von
+überall erreichbar. Alle anderen Ansichten bekommen ihre
+Abhängigkeiten weiterhin im Initialisierer, weil dort sichtbar ist,
+wovon sie abhängen. **Die Suche ist keiner davon** — sie sitzt als Lupe im
 Kopf von Entdecken, wie im Web. Watchlist, Tagebuch und Profil sind
 Platzhalter, die sagen, was fehlt und woran es hängt; das Abmelden ist
 mit nach Einstellungen gezogen und funktioniert dort.

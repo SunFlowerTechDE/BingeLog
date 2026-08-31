@@ -106,8 +106,7 @@ struct DiaryView: View {
                         VStack(spacing: 0) {
                             ForEach(month.entries) { entry in
                                 NavigationLink {
-                                    FilmDetailView(
-                                        film: entry.film, details: details, entries: entries)
+                                    FilmDetailView(film: entry.film)
                                 } label: {
                                     DiaryRow(
                                         entry: entry,
