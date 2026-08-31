@@ -53,11 +53,66 @@ final class SearchViewModel {
     private(set) var isSearching = false
     private(set) var problem: String?
 
+    /// Der Film, der gerade angelegt wird, und was danebensteht.
+    private(set) var building: CreatedFilm?
+    private(set) var buildArtwork: PosterArtwork?
+    private(set) var isCreating = false
+    private(set) var note: String?
+
+    /// Angeboten wird das Anlegen nur, wenn wirklich nichts da ist.
+    ///
+    /// Ein Knopf, der neben Treffern steht, lädt dazu ein, den Katalog
+    /// mit Dubletten zu füllen.
+    var canCreate: Bool {
+        term.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2
+            && films.isEmpty && !isSearching && !isCreating
+    }
+
     private let repository: FilmRepository
+    private let lazyFilms: LazyFilmRepository
     private var task: Task<Void, Never>?
 
-    init(repository: FilmRepository) {
+    init(repository: FilmRepository, lazyFilms: LazyFilmRepository) {
         self.repository = repository
+        self.lazyFilms = lazyFilms
+    }
+
+    /// Einen Knopf und keine selbsttätige Abfrage.
+    ///
+    /// Sonst würde jeder Tippfehler eine Anfrage an Wikidata — einen
+    /// gestifteten Dienst —, und ein vertippter Titel trifft trotzdem
+    /// manchmal etwas. Einen fremden Film in den Katalog zu schreiben,
+    /// weil jemand verrutscht ist, wäre schlimmer als ein Tippen mehr
+    /// auf einem Weg, der ohnehin selten ist.
+    func createMissingFilm() async {
+        note = nil
+        isCreating = true
+        defer { isCreating = false }
+
+        switch await lazyFilms.create(term: term, year: year) {
+        case .failure(let problem):
+            note = problem.message
+        case .success(let created):
+            // Nur der erste entsteht vor den Augen; die übrigen stehen
+            // in der Liste, sobald die Zeremonie vorbei ist.
+            guard let first = created.first else {
+                note = LazyFilmProblem.notFound.message
+                return
+            }
+            // Das Plakat **vor** dem ersten Takt holen: die Karte soll
+            // stehen, wenn sie sich zusammensetzt, und nicht mittendrin
+            // erscheinen.
+            buildArtwork = await PosterLoader.load(for: first.film)
+            building = first
+        }
+    }
+
+    /// Die Zeremonie ist vorbei. Der Katalog hat sich unter der
+    /// Trefferliste geändert, die dahinter noch steht.
+    func finishBuilding() {
+        building = nil
+        buildArtwork = nil
+        scheduleSearch()
     }
 
     /// Gebremst und abbrechbar.

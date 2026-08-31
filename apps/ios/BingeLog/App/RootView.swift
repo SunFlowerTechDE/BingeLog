@@ -12,6 +12,7 @@ struct RootView: View {
     let films: FilmRepository
     let profiles: ProfileRepository
     let discover: DiscoverRepository
+    let lazyFilms: LazyFilmRepository
 
     var body: some View {
         if session.isLoading {
@@ -23,9 +24,9 @@ struct RootView: View {
             UsernameView(profiles: profiles)
         } else if session.isSignedIn {
             if sizeClass == .compact {
-                CompactShell(films: films, discover: discover)
+                CompactShell(films: films, discover: discover, lazyFilms: lazyFilms)
             } else {
-                RegularShell(films: films, discover: discover)
+                RegularShell(films: films, discover: discover, lazyFilms: lazyFilms)
             }
         } else {
             SignInView(films: films, profiles: profiles)
@@ -38,6 +39,7 @@ private struct CompactShell: View {
     @Environment(SessionStore.self) private var session
     let films: FilmRepository
     let discover: DiscoverRepository
+    let lazyFilms: LazyFilmRepository
 
     var body: some View {
         TabView {
@@ -49,7 +51,7 @@ private struct CompactShell: View {
             .tabItem { Label("Entdecken", systemImage: "sparkles") }
 
             NavigationStack {
-                SearchView(repository: films)
+                SearchView(repository: films, lazyFilms: lazyFilms)
             }
             .tabItem { Label("Suche", systemImage: "magnifyingglass") }
 
@@ -65,6 +67,7 @@ private struct CompactShell: View {
 private struct RegularShell: View {
     let films: FilmRepository
     let discover: DiscoverRepository
+    let lazyFilms: LazyFilmRepository
     @State private var selection: Section? = .discover
 
     private enum Section: Hashable {
@@ -86,7 +89,7 @@ private struct RegularShell: View {
             case .account:
                 AccountView()
             case .search:
-                SearchView(repository: films)
+                SearchView(repository: films, lazyFilms: lazyFilms)
             case .discover, nil:
                 DiscoverView(repository: discover)
             }

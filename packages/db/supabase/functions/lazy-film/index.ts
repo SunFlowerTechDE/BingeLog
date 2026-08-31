@@ -28,6 +28,8 @@ const MAX_CANDIDATES = 5;
 interface RequestBody {
   term?: string;
   imdbId?: string;
+  /** Optional. Narrows the candidates to one release year. */
+  year?: number;
 }
 
 function json(body: unknown, status = 200): Response {
@@ -49,6 +51,13 @@ Deno.serve(async (request: Request) => {
 
   const term = (body.term ?? '').trim();
   const imdbId = (body.imdbId ?? '').trim();
+
+  // Four digits or nothing, same rule the clients apply to the field.
+  // A year outside that is not a narrower search, it is a typo.
+  const year =
+    typeof body.year === 'number' && Number.isInteger(body.year) && body.year >= 1000
+      ? body.year
+      : null;
   if (term.length < 2 && imdbId === '') return json({ error: 'term_too_short' }, 400);
 
   const supabase = createClient(
@@ -89,9 +98,21 @@ Deno.serve(async (request: Request) => {
   // --- extract ---------------------------------------------------------
 
   const entities = await fetchEntities(candidates);
-  const extracted = entities.map((entity) => extractFilm(entity)).filter((e) => e !== null);
+  const all = entities.map((entity) => extractFilm(entity)).filter((e) => e !== null);
 
-  if (extracted.length === 0) return json({ created: [], reason: 'not_a_film' });
+  if (all.length === 0) return json({ created: [], reason: 'not_a_film' });
+
+  // A title search at Wikidata answers with up to five films, and for a
+  // title like "Solaris" they are different films. The year says which
+  // one was meant, so the others are not written at all — creating four
+  // films nobody asked for is not a service, it is noise in a catalog
+  // that everyone else reads too.
+  //
+  // A film Wikidata has no year for does not match a given year. Unknown
+  // is not 1972 — the same rule the search itself applies.
+  const extracted = year === null ? all : all.filter((e) => e.film.releaseYear === year);
+
+  if (extracted.length === 0) return json({ created: [], reason: 'wrong_year' });
 
   // --- write -----------------------------------------------------------
   //

@@ -26,7 +26,22 @@ export interface LazyResult {
   error?: string;
 }
 
-export async function fetchMissingFilm(term: string): Promise<LazyResult> {
+/**
+ * Warum nichts angelegt wurde, auf Deutsch.
+ *
+ * Der Grund steht in der Antwort der Edge Function. Ihn hier zu
+ * uebersetzen statt eine Meldung fuer alles zu nehmen, ist der
+ * Unterschied zwischen "such anders" und "das Jahr passt nicht" — und
+ * der zweite Fall ist der einzige, den der Suchende selbst beheben kann.
+ */
+const LAZY_MESSAGES: Record<string, string> = {
+  rate_limited: 'Gerade zu viele Abfragen. Versuch es in einer Minute noch einmal.',
+  wrong_year:
+    'Bei Wikidata gibt es den Titel, aber nicht aus diesem Jahr. ' +
+    'Lass das Jahr weg oder prüf es.',
+};
+
+export async function fetchMissingFilm(term: string, year?: number): Promise<LazyResult> {
   const trimmed = term.trim();
   if (trimmed.length < 2) return { error: 'Gib mindestens zwei Zeichen ein.' };
 
@@ -34,7 +49,9 @@ export async function fetchMissingFilm(term: string): Promise<LazyResult> {
 
   const response = await supabase.functions.invoke<{ created?: string[]; reason?: string }>(
     'lazy-film',
-    { body: { term: trimmed } },
+    // Das Jahr grenzt ein, welcher der bis zu fuenf Wikidata-Treffer
+    // gemeint ist. Ohne Angabe bleibt es wie bisher.
+    { body: year === undefined ? { term: trimmed } : { term: trimmed, year } },
   );
 
   // invoke types its error loosely; narrow it rather than trust it.
@@ -54,9 +71,8 @@ export async function fetchMissingFilm(term: string): Promise<LazyResult> {
   if ((data?.created?.length ?? 0) === 0) {
     return {
       error:
-        data?.reason === 'rate_limited'
-          ? 'Gerade zu viele Abfragen. Versuch es in einer Minute noch einmal.'
-          : 'Auch bei Wikidata nichts gefunden. Prüf die Schreibweise oder such nach dem Originaltitel.',
+        LAZY_MESSAGES[data?.reason ?? ''] ??
+        'Auch bei Wikidata nichts gefunden. Prüf die Schreibweise oder such nach dem Originaltitel.',
     };
   }
 

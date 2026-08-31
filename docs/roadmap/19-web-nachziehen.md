@@ -138,7 +138,19 @@ Zwei Regeln aus der iOS-Umsetzung, die im Web genauso gelten:
   nichts, sagt sie das ausdruecklich: „Nichts gefunden. Ohne das Jahr
   gibt es vielleicht Treffer."
 
-## 6. Das Logo
+## 6. Das Jahr beim Anlegen
+
+Die Edge Function `lazy-film` nimmt jetzt ein optionales `year` und legt
+dann nur den Film aus diesem Jahr an. Eine Titelsuche bei Wikidata
+antwortet mit bis zu fuenf Filmen, und bei „Solaris" sind das
+verschiedene — ohne Jahr wandern alle fuenf in den Katalog, den alle
+anderen mitlesen.
+
+`fetchMissingFilm(term, year?)` reicht es schon durch, und der Grund
+`wrong_year` ist bereits uebersetzt. **Was fehlt, ist der Aufruf mit
+dem Jahr** — er kommt zusammen mit dem Feld aus Punkt 5.
+
+## 7. Das Logo
 
 Die Bildmarke liegt als Asset in der App
 (`apps/ios/BingeLog/Assets.xcassets/LogoMark.imageset`). Im Web wird der

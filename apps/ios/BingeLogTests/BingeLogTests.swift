@@ -197,7 +197,8 @@ struct SearchYearTests {
     @Test("Ein angefangenes Jahr grenzt noch nicht ein")
     @MainActor
     func partialYearDoesNotFilter() {
-        let model = SearchViewModel(repository: SilentFilmRepository())
+        let model = SearchViewModel(
+            repository: SilentFilmRepository(), lazyFilms: SilentLazyRepository())
 
         model.yearText = "199"
         #expect(model.year == nil)
@@ -215,10 +216,88 @@ struct SearchYearTests {
 
 /// Antwortet nichts. Fuer Tests, die den Zustand pruefen und nicht das
 /// Netz.
+private struct SilentLazyRepository: LazyFilmRepository {
+    func create(term: String, year: Int?) async -> Result<[CreatedFilm], LazyFilmProblem> {
+        .failure(.notFound)
+    }
+}
+
 private struct SilentFilmRepository: FilmRepository {
     func search(term: String, limit: Int, year: Int?) async throws(BackendError) -> [Film] { [] }
     func wellKnownWithArtwork(limit: Int) async -> [Film] { [] }
     func shuffledWithArtwork(count: Int) async -> [Film] { [] }
+}
+
+/// Die Karte, die vor den Augen entsteht.
+@Suite("Karte anlegen")
+struct CardBuildTests {
+    /// Fünfzehn Sekunden, in sechs Takten — wie im Web.
+    ///
+    /// Die Längen stehen an zwei Stellen: hier und in
+    /// `apps/web/src/components/card-build.tsx`. Dieser Test ist das,
+    /// was verhindert, dass sie auseinanderlaufen.
+    @Test("Die sechs Takte dauern zusammen fünfzehn Sekunden")
+    func beatsAddUp() {
+        #expect(BuildBeat.dim.seconds == 2)
+        #expect(BuildBeat.assemble.seconds == 3)
+        #expect(BuildBeat.title.seconds == 3)
+        #expect(BuildBeat.unroll.seconds == 2)
+        #expect(BuildBeat.flip.seconds == 3)
+        #expect(BuildBeat.restore.seconds == 2)
+        #expect(BuildBeat.total == 15)
+    }
+
+    /// Jeder Takt beginnt, wo der vorige aufhört.
+    @Test("Die Takte schließen lückenlos aneinander an")
+    func beatsFollowOn() {
+        var expected = 0.0
+        for beat in BuildBeat.allCases {
+            #expect(beat.start == expected, "\(beat) beginnt bei \(beat.start), nicht \(expected)")
+            expected += beat.seconds
+        }
+        #expect(BuildBeat.done.start == 15)
+    }
+
+    /// Der Streuwert stimmt mit dem des Webs überein.
+    ///
+    /// Die Werte sind mit der Web-Umsetzung gerechnet, nicht mit der
+    /// Swift-Fassung. Sonst prüfte der Test sich selbst.
+    @Test("Der Streuwert ist derselbe wie im Web")
+    func hashMatchesTheWeb() {
+        #expect(FragmentField.hash32("Q47703") == 2_476_066_363)
+        #expect(FragmentField.hash32("Q130232") == 1_561_731_379)
+        // Mit Zeichen jenseits von ASCII — daran haette eine Zaehlung
+        // ueber UTF-8 sich verraten.
+        #expect(FragmentField.hash32("Grüße") == 2_012_106_360)
+    }
+
+    /// Die Grundfarbe wird aus dem SVG des Servers gelesen.
+    @Test("Die Farben der Karte kommen aus der Antwort des Servers")
+    func coloursComeFromTheServer() {
+        let svg = #"""
+            <svg viewBox="0 0 400 600"><defs><clipPath id="frame"><rect width="400"/></clipPath></defs>            <rect width="400" height="600" fill="#101526"/>            <circle fill="none" stroke="#1a2340" stroke-width="7"/></svg>
+            """#
+
+        #expect(PosterArtwork.firstColour(in: svg, attribute: "fill") == Color(hex: 0x101526))
+        #expect(PosterArtwork.firstColour(in: svg, attribute: "stroke") == Color(hex: 0x1a2340))
+        // `fill="none"` ist keine Farbe und darf nicht als eine gelesen
+        // werden.
+        #expect(PosterArtwork.firstColour(in: "<rect fill=\"none\"/>", attribute: "fill") == nil)
+        #expect(PosterArtwork.firstColour(in: "", attribute: "fill") == nil)
+    }
+
+    /// Die Gründe, warum nichts angelegt wurde, sind unterscheidbar.
+    ///
+    /// „Das Jahr passt nicht" ist der einzige Fall, den der Suchende
+    /// selbst beheben kann — er darf nicht in „such anders" untergehen.
+    @Test("Ein falsches Jahr wird als solches gemeldet")
+    func wrongYearIsItsOwnAnswer() {
+        #expect(LazyFilmProblem.from(reason: "wrong_year") == .wrongYear)
+        #expect(LazyFilmProblem.from(reason: "rate_limited") == .rateLimited)
+        #expect(LazyFilmProblem.from(reason: "not_found") == .notFound)
+        #expect(LazyFilmProblem.from(reason: nil) == .notFound)
+        #expect(LazyFilmProblem.wrongYear.message.contains("Jahr"))
+    }
 }
 
 /// Entdecken.

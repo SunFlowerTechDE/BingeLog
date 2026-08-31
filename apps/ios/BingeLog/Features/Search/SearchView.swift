@@ -4,8 +4,9 @@ import SwiftUI
 struct SearchView: View {
     @State private var model: SearchViewModel
 
-    init(repository: FilmRepository) {
-        _model = State(initialValue: SearchViewModel(repository: repository))
+    init(repository: FilmRepository, lazyFilms: LazyFilmRepository) {
+        _model = State(
+            initialValue: SearchViewModel(repository: repository, lazyFilms: lazyFilms))
     }
 
     var body: some View {
@@ -33,6 +34,19 @@ struct SearchView: View {
                         : "Nichts gefunden. Ohne das Jahr gibt es vielleicht Treffer."
                 )
                 .foregroundStyle(.secondary)
+
+                CreateFilmRow(
+                    isBusy: model.isCreating,
+                    isEnabled: model.canCreate
+                ) {
+                    Task { await model.createMissingFilm() }
+                }
+            }
+
+            if let note = model.note {
+                Text(note)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             ForEach(model.films) { film in
@@ -58,6 +72,47 @@ struct SearchView: View {
             }
         }
         .navigationTitle("Suche")
+        .overlay {
+            if let building = model.building {
+                CardBuildView(
+                    film: building,
+                    artwork: model.buildArtwork,
+                    onDone: { model.finishBuilding() }
+                )
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: model.building)
+    }
+}
+
+/// Der Weg für einen Film, den der Katalog nicht hat.
+private struct CreateFilmRow: View {
+    let isBusy: Bool
+    let isEnabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(
+                "Nichts im Katalog. Wenn es den Film bei Wikidata gibt, "
+                    + "kannst du ihn hier anlegen — danach steht er für alle bereit."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            Button(action: action) {
+                HStack(spacing: 8) {
+                    if isBusy { ProgressView().controlSize(.small) }
+                    Text(isBusy ? "Sucht bei Wikidata" : "Film anlegen")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.primary)
+            .foregroundStyle(Theme.onPrimary)
+            .disabled(!isEnabled)
+        }
+        .padding(.vertical, 4)
     }
 }
 
