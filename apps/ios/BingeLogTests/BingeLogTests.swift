@@ -478,6 +478,64 @@ struct SearchHistoryTests {
     }
 }
 
+/// Das Profil.
+@Suite("Profil")
+struct ProfileTests {
+    private func overview(
+        display: String?, iFollow: Bool, followsMe: Bool, followers: Int = 3
+    ) -> ProfileOverview {
+        let json = """
+            {"id":"11111111-1111-1111-1111-111111111111","username":"pascal",
+             "display_name":\(display.map { "\"\($0)\"" } ?? "null"),
+             "bio":null,"avatar_path":null,"banner_path":null,
+             "created_at":"2026-01-01T10:00:00+00:00",
+             "followers":\(followers),"following":7,"is_me":false,
+             "i_follow":\(iFollow),"follows_me":\(followsMe),"blocked_me":false}
+            """
+        // swiftlint:disable:next force_try
+        return try! JSONDecoder().decode(ProfileOverview.self, from: Data(json.utf8))
+    }
+
+    /// Der Benutzername bleibt die Kennung, auch wenn es einen
+    /// Anzeigenamen gibt.
+    @Test("Ohne Anzeigenamen steht der Benutzername oben")
+    func titleFallsBackToUsername() {
+        #expect(overview(display: "Pascal M.", iFollow: false, followsMe: false).title == "Pascal M.")
+        #expect(overview(display: nil, iFollow: false, followsMe: false).title == "pascal")
+    }
+
+    /// Befreundet heisst beidseitig — dieselbe Regel wie in
+    /// `are_friends`. Einseitiges Folgen ist keine Freundschaft, und die
+    /// Oberfläche darf das nicht anders behaupten als die Datenbank.
+    @Test("Einseitiges Folgen ist keine Freundschaft")
+    func friendshipIsMutual() {
+        #expect(!overview(display: nil, iFollow: true, followsMe: false).areFriends)
+        #expect(!overview(display: nil, iFollow: false, followsMe: true).areFriends)
+        #expect(overview(display: nil, iFollow: true, followsMe: true).areFriends)
+    }
+
+    /// Der Folgen-Knopf legt sofort um — und die Zahl mit.
+    ///
+    /// Ein Knopf, der erst nach der Antwort umspringt, fühlt sich kaputt
+    /// an. Die Zählung darf dabei nicht unter null rutschen.
+    @Test("Folgen ändert Knopf und Zahl sofort")
+    func followUpdatesTheCountImmediately() {
+        let vorher = overview(display: nil, iFollow: false, followsMe: false, followers: 3)
+        let nachher = vorher.following(true, followerDelta: 1)
+        #expect(nachher.iFollow)
+        #expect(nachher.followers == 4)
+        #expect(nachher.following == 7, "die andere Zahl bleibt unberührt")
+
+        let zurueck = nachher.following(false, followerDelta: -1)
+        #expect(!zurueck.iFollow)
+        #expect(zurueck.followers == 3)
+
+        // Und nie unter null, falls die Zahl schon veraltet war.
+        let leer = overview(display: nil, iFollow: true, followsMe: false, followers: 0)
+        #expect(leer.following(false, followerDelta: -1).followers == 0)
+    }
+}
+
 /// Das Tagebuch.
 @Suite("Tagebuch")
 struct DiaryTests {

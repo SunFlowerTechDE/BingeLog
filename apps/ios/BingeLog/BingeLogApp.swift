@@ -47,7 +47,8 @@ struct BingeLogApp: App {
                     discover: LiveDiscoverRepository(backend: backend),
                     lazyFilms: LiveLazyFilmRepository(backend: backend),
                     details: LiveFilmDetailRepository(backend: backend),
-                    entries: LiveFilmEntryRepository(backend: backend)
+                    entries: LiveFilmEntryRepository(backend: backend),
+                    profilePages: LiveProfilePageRepository(backend: backend)
                 )
                 .environment(session)
 

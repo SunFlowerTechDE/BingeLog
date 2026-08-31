@@ -1247,11 +1247,42 @@ export type Database = {
           name: string
         }[]
       }
+      profile_favourites: {
+        Args: { profile: string }
+        Returns: {
+          poster_source: string
+          poster_url: string
+          release_year: number
+          slot: number
+          title_de: string
+          title_original: string
+          wikidata_id: string
+        }[]
+      }
       profile_genres: {
         Args: { max_results?: number; profile: string }
         Returns: {
           films: number
+          genre_id: string
           label: string
+        }[]
+      }
+      profile_overview: {
+        Args: { name: string }
+        Returns: {
+          avatar_path: string
+          banner_path: string
+          bio: string
+          blocked_me: boolean
+          created_at: string
+          display_name: string
+          followers: number
+          following: number
+          follows_me: boolean
+          i_follow: boolean
+          id: string
+          is_me: boolean
+          username: string
         }[]
       }
       profile_rating_spread: {

@@ -279,7 +279,29 @@ Das ist **kein** Zugriffsschutz und soll keiner sein (das Spoiler-Gate
 der Diskussion steht in der Policy, ADR-010), aber die Bitte des
 Verfassers gehoert respektiert.
 
-## 12. Das Logo
+## 12. Das Profil
+
+Auf dem iPhone gebaut: Kopfbild mit auslaufendem Verlauf, Profilbild,
+Name und Kennung, Beschreibung, Follower- und Folgt-Zahlen,
+Folgen-Knopf, vier Zahlen, die vier Favoritenplaetze mit Luecken als
+Luecken, Lieblingskategorien, Binge-Listen und die juengsten Eintraege.
+
+`profile_overview(name)` und `profile_favourites(profile)` sind neu und
+stehen dem Web offen. `profile_overview` beantwortet in einer Antwort,
+was die Seite beim Aufschlagen fragt — wer das ist, wie viele folgen,
+folge ich, folgt er zurueck, und hat er mich blockiert.
+
+**`profile_genres` rechnet jetzt ueber Kategorien** statt ueber
+Rohgenres. Im Web stand dadurch "Kriminalfilm", "Neo-Noir" und
+"Krimidrama" nebeneinander — dreimal dieselbe Vorliebe. Die Funktion
+gibt zusaetzlich `genre_id` zurueck; der bisherige Aufruf muss die neue
+Spalte nur ignorieren.
+
+Noch nicht gebaut, in der App: **das Bearbeiten des eigenen Profils**
+(Bild, Kopfbild, Beschreibung, Favoriten, Listen). Im Web gibt es das
+bereits — hier ist es der naechste Schritt.
+
+## 13. Das Logo
 
 Die Bildmarke liegt als Asset in der App
 (`apps/ios/BingeLog/Assets.xcassets/LogoMark.imageset`). Im Web wird der

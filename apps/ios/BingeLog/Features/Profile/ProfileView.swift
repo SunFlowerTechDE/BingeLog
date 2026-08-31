@@ -1,0 +1,410 @@
+import SwiftUI
+
+/// Ein Profil (M5 5.6).
+///
+/// Dieselbe Ansicht für das eigene und für ein fremdes: was sich
+/// unterscheidet, ist der Folgen-Knopf und wie viel die Policy hergibt.
+/// Eine zweite Ansicht für dasselbe wäre zwei Wahrheiten über einen
+/// Bildschirm.
+struct ProfileView: View {
+    @State private var model: ProfileModel
+    private let details: FilmDetailRepository
+    private let entries: FilmEntryRepository
+    private let profiles: ProfilePageRepository
+
+    init(
+        username: String, profiles: ProfilePageRepository, details: FilmDetailRepository,
+        entries: FilmEntryRepository
+    ) {
+        self.profiles = profiles
+        self.details = details
+        self.entries = entries
+        _model = State(initialValue: ProfileModel(username: username, repository: profiles))
+    }
+
+    var body: some View {
+        Group {
+            if model.isLoading {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if model.isMissing {
+                ContentUnavailableView(
+                    "Kein Profil",
+                    systemImage: "person.slash",
+                    description: Text("Den Namen \(model.username) gibt es nicht.")
+                )
+            } else if let head = model.overview, head.blockedMe {
+                // Wer blockiert hat, wird nicht gezeigt — und der Grund
+                // steht dabei, sonst sieht es aus wie ein Fehler.
+                ContentUnavailableView(
+                    "Nicht verfügbar",
+                    systemImage: "hand.raised",
+                    description: Text("Dieses Profil ist für dich nicht sichtbar.")
+                )
+            } else if let head = model.overview {
+                content(head)
+            }
+        }
+        .background(Theme.background)
+        .navigationTitle(model.overview?.title ?? model.username)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await model.load() }
+        .refreshable { await model.load() }
+    }
+
+    private func content(_ head: ProfileOverview) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                ProfileHeader(
+                    head: head, avatarBase: model.avatarBase, bannerBase: model.bannerBase
+                ) {
+                    Task { await model.toggleFollow() }
+                }
+
+                numbers
+
+                if !model.favourites.isEmpty {
+                    Favourites(slots: model.favourites, details: details, entries: entries)
+                }
+
+                if !model.genres.isEmpty {
+                    Section(title: "Sieht am liebsten") {
+                        FlowRow(spacing: 8) {
+                            ForEach(model.genres) { genre in
+                                HStack(spacing: 5) {
+                                    Text(genre.shortLabel)
+                                        .font(.caption.weight(.medium))
+                                    Text("\(genre.films)")
+                                        .font(.caption2)
+                                        .foregroundStyle(Theme.quiet)
+                                        .monospacedDigit()
+                                }
+                                .foregroundStyle(Theme.foreground)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Theme.card, in: Capsule())
+                                .overlay { Capsule().strokeBorder(Theme.border) }
+                            }
+                        }
+                    }
+                }
+
+                if !model.lists.isEmpty {
+                    Section(title: "Binge-Listen") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(model.lists) { list in
+                                HStack(spacing: 8) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(list.title)
+                                            .font(.subheadline.weight(.medium))
+                                            .foregroundStyle(Theme.foreground)
+                                        if let text = list.description, !text.isEmpty {
+                                            Text(text)
+                                                .font(.caption2)
+                                                .foregroundStyle(Theme.muted)
+                                                .lineLimit(2)
+                                        }
+                                    }
+                                    Spacer(minLength: 0)
+                                    // Nur auf dem eigenen Profil kann
+                                    // eine private Liste überhaupt
+                                    // auftauchen — dass sie privat ist,
+                                    // gehört dann dazu.
+                                    if !list.isPublic {
+                                        Text("privat")
+                                            .font(.caption2)
+                                            .foregroundStyle(Theme.quiet)
+                                    }
+                                }
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                            }
+                        }
+                    }
+                }
+
+                if !model.recent.isEmpty {
+                    Section(title: head.isMe ? "Zuletzt eingetragen" : "Zuletzt gesehen") {
+                        VStack(spacing: 0) {
+                            ForEach(model.recent) { entry in
+                                NavigationLink {
+                                    FilmDetailView(
+                                        film: entry.film, details: details, entries: entries)
+                                } label: {
+                                    RecentRow(entry: entry)
+                                }
+                                .buttonStyle(.plain)
+                                Divider().overlay(Theme.border)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.bottom, 24)
+        }
+    }
+
+    private var numbers: some View {
+        HStack(spacing: 10) {
+            Figure(value: "\(model.stats.films)", label: "Filme")
+            Figure(value: "\(model.stats.ratings)", label: "Bewertungen")
+            Figure(
+                value: model.stats.average.map(Popcorn.format) ?? "—", label: "im Schnitt")
+            Figure(value: "\(model.stats.reviews)", label: "Rezensionen")
+        }
+        .padding(.horizontal, 20)
+    }
+}
+
+// --------------------------------------------------------------------
+
+/// Kopfbild, Profilbild, Name, Beschreibung, Folgen.
+private struct ProfileHeader: View {
+    let head: ProfileOverview
+    let avatarBase: URL?
+    let bannerBase: URL?
+    let onFollow: () -> Void
+
+    @Environment(SessionStore.self) private var session
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ZStack(alignment: .bottomLeading) {
+                banner
+                avatar.offset(y: 34).padding(.leading, 20)
+            }
+            .padding(.bottom, 34)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(head.title)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(Theme.foreground)
+
+                // Der Benutzername steht auch dann da, wenn es einen
+                // Anzeigenamen gibt: er ist die Kennung, unter der man
+                // jemanden wiederfindet.
+                Text("@\(head.username)")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.muted)
+
+                if let bio = head.bio, !bio.isEmpty {
+                    Text(bio)
+                        .font(.callout)
+                        .foregroundStyle(Theme.foreground)
+                        .padding(.top, 4)
+                }
+
+                HStack(spacing: 14) {
+                    Count(value: head.followers, label: "Follower")
+                    Count(value: head.following, label: "folgt")
+                    if head.areFriends {
+                        Text("befreundet")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.primary)
+                    } else if head.followsMe {
+                        Text("folgt dir")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.quiet)
+                    }
+                }
+                .padding(.top, 6)
+            }
+            .padding(.horizontal, 20)
+
+            if !head.isMe, session.isSignedIn {
+                Button(action: onFollow) {
+                    Text(head.iFollow ? "Folge ich" : "Folgen")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(head.iFollow ? Theme.foreground : Theme.onPrimary)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 9)
+                        .background(head.iFollow ? Theme.card : Theme.primary, in: Capsule())
+                        .overlay {
+                            Capsule().strokeBorder(head.iFollow ? Theme.border : .clear)
+                        }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+
+    private var banner: some View {
+        Group {
+            if let path = head.bannerPath, let base = bannerBase {
+                AsyncImage(url: base.appendingPathComponent(path)) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Theme.card
+                }
+            } else {
+                Theme.card
+            }
+        }
+        .frame(height: 132)
+        .frame(maxWidth: .infinity)
+        .clipped()
+        .overlay {
+            // Unten ins Dunkle auslaufend, damit das Profilbild darauf
+            // steht und nicht darin verschwindet.
+            LinearGradient(
+                colors: [.clear, Theme.background.opacity(0.85)],
+                startPoint: .center, endPoint: .bottom)
+        }
+    }
+
+    private var avatar: some View {
+        Group {
+            if let path = head.avatarPath, let base = avatarBase {
+                AsyncImage(url: base.appendingPathComponent(path)) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Circle().fill(Theme.card)
+                }
+            } else {
+                Circle().fill(Theme.card)
+                    .overlay {
+                        Image(systemName: "person")
+                            .font(.title2)
+                            .foregroundStyle(Theme.quiet)
+                    }
+            }
+        }
+        .frame(width: 76, height: 76)
+        .clipShape(Circle())
+        .overlay { Circle().strokeBorder(Theme.background, lineWidth: 3) }
+    }
+}
+
+private struct Count: View {
+    let value: Int
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("\(value)")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.foreground)
+                .monospacedDigit()
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(Theme.muted)
+        }
+    }
+}
+
+/// Die vier Plätze.
+///
+/// Lücken bleiben Lücken: wer nur zwei gewählt hat, hat zwei gewählt.
+private struct Favourites: View {
+    let slots: [FavouriteSlot]
+    let details: FilmDetailRepository
+    let entries: FilmEntryRepository
+
+    var body: some View {
+        Section(title: "Favoriten") {
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(1...4, id: \.self) { position in
+                    if let slot = slots.first(where: { $0.slot == position }) {
+                        NavigationLink {
+                            FilmDetailView(film: slot.film, details: details, entries: entries)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                PosterThumbnail(film: slot.film, width: 76)
+                                Text(slot.film.title)
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.foreground)
+                                    .lineLimit(2)
+                            }
+                            .frame(width: 76, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(
+                                Theme.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3])
+                            )
+                            .frame(width: 76, height: 114)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+}
+
+private struct RecentRow: View {
+    let entry: FeedEntry
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            PosterThumbnail(film: entry.film, width: 44)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.film.title)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.foreground)
+                    .lineLimit(2)
+
+                HStack(spacing: 8) {
+                    if let rating = entry.rating {
+                        PopcornRating(rating: Double(rating), size: 12)
+                    }
+                    if let when = entry.createdDate {
+                        Text(when, format: .relative(presentation: .named))
+                            .font(.caption2)
+                            .foregroundStyle(Theme.quiet)
+                    }
+                }
+
+                if let review = entry.review, !review.isEmpty {
+                    SpoilerText(text: review, hasSpoilers: entry.hasSpoilers, lineLimit: 2)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Eine Überschrift mit Inhalt, wie sie auf dieser Seite mehrfach steht.
+private struct Section<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(Theme.foreground)
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+    }
+}
+
+private struct Figure: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.foreground)
+                .monospacedDigit()
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(Theme.muted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+        .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border) }
+    }
+}

@@ -112,8 +112,9 @@ Eine Rezension kann als Spoiler markiert sein (`diary_entries.
 has_spoilers`); die Oberfläche verdeckt sie dann, bis jemand tippt.
 **Das ist kein Zugriffsschutz** — der Text kommt über dieselbe Antwort
 wie jeder andere. Das Spoiler-Gate der Diskussion ist etwas anderes und
-steht in der Policy (ADR-010). Nur
-Profil ist noch ein Platzhalter. **Die Suche ist keiner davon** — sie sitzt als Lupe im
+steht in der Policy (ADR-010). Das Profil steht ebenfalls — dieselbe Ansicht für das eigene und ein
+fremdes, was sich unterscheidet, ist der Folgen-Knopf und wie viel die
+Policy hergibt. **Kein Platzhalter mehr in der Leiste.** **Die Suche ist keiner davon** — sie sitzt als Lupe im
 Kopf von Entdecken, wie im Web. Watchlist, Tagebuch und Profil sind
 Platzhalter, die sagen, was fehlt und woran es hängt; das Abmelden ist
 mit nach Einstellungen gezogen und funktioniert dort.

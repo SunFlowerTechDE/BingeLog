@@ -509,7 +509,8 @@ describe('profile statistics', () => {
     await seedFilm(h, b);
 
     await h.sql.query(
-      `insert into public.genres (wikidata_id, label_de) values ('Q900001', 'Probegenre')
+      `insert into public.genres (wikidata_id, label_de, is_category, category_id)
+       values ('Q900001', 'Probegenre', true, 'Q900001')
        on conflict do nothing`,
     );
     await h.sql.query(`insert into public.film_genres (film_id, genre_id) values ($1, 'Q900001')`, [
@@ -1556,6 +1557,96 @@ describe('diary and facet visibility', () => {
     assert.equal(Number(zahlen[0]?.average), 8.5, 'der Durchschnitt zaehlt beide');
 
     await h.sql.query(`delete from public.diary_entries where user_id = any($1)`, [[ich, fremd]]);
+  });
+
+  it('answers a profile with its relationship to the reader', async () => {
+    const ich = await seedUser(h, 'profilich');
+    const anderer = await seedUser(h, 'profilanderer');
+
+    await h.sql.query(`insert into public.follows (follower_id, followee_id) values ($1, $2)`, [
+      ich,
+      anderer,
+    ]);
+
+    interface Zeile {
+      username: string;
+      followers: number;
+      following: number;
+      is_me: boolean;
+      i_follow: boolean;
+      follows_me: boolean;
+      blocked_me: boolean;
+    }
+
+    const fremdes = await h
+      .as('authenticated', ich)
+      .query<Zeile>(`select * from public.profile_overview('profilanderer')`);
+
+    assert.equal(fremdes[0]?.followers, 1, 'einer folgt ihm');
+    assert.equal(fremdes[0]?.following, 0, 'er folgt niemandem');
+    assert.equal(fremdes[0]?.is_me, false);
+    assert.equal(fremdes[0]?.i_follow, true);
+    assert.equal(fremdes[0]?.follows_me, false, 'einseitig, also keine Freundschaft');
+    assert.equal(fremdes[0]?.blocked_me, false);
+
+    const eigenes = await h
+      .as('authenticated', ich)
+      .query<Zeile>(`select * from public.profile_overview('profilich')`);
+    assert.equal(eigenes[0]?.is_me, true, 'das eigene Profil erkennt sich');
+
+    // Wer blockiert, wird auch als solcher gemeldet — sonst zeigt die
+    // Seite einen Folgen-Knopf, der ins Leere greift.
+    await h.sql.query(`insert into public.blocks (blocker_id, blocked_id) values ($1, $2)`, [
+      anderer,
+      ich,
+    ]);
+    const nachSperre = await h
+      .as('authenticated', ich)
+      .query<Zeile>(`select blocked_me from public.profile_overview('profilanderer')`);
+    assert.equal(nachSperre[0]?.blocked_me, true);
+
+    // Und ein Name, den es nicht gibt, ergibt keine Zeile statt einer
+    // leeren.
+    const nichts = await h
+      .as('anon', null)
+      .query(`select username from public.profile_overview('gibtesnicht')`);
+    assert.deepEqual(nichts, []);
+
+    await h.sql.query(`delete from public.blocks where blocker_id = $1`, [anderer]);
+    await h.sql.query(`delete from public.follows where follower_id = $1`, [ich]);
+  });
+
+  it('keeps the four favourite slots in their order', async () => {
+    const wer = await seedUser(h, 'favprofil');
+    const eins = 'Q900800';
+    const zwei = 'Q900801';
+    for (const id of [eins, zwei]) await seedFilm(h, id);
+
+    // Absichtlich verkehrt herum eingefuegt: die Reihenfolge kommt aus
+    // dem Platz, nicht aus der Einfuegereihenfolge. Platz eins ist
+    // Platz eins.
+    await h.sql.query(
+      `insert into public.favourites (user_id, film_id, position) values ($1, $2, 3), ($1, $3, 1)`,
+      [wer, eins, zwei],
+    );
+
+    const plaetze = await h
+      .as('anon', null)
+      .query<{ slot: number; wikidata_id: string }>(
+        `select slot, wikidata_id from public.profile_favourites($1)`,
+        [wer],
+      );
+
+    assert.deepEqual(
+      plaetze.map((r) => [r.slot, r.wikidata_id]),
+      [
+        [1, zwei],
+        [3, eins],
+      ],
+      'nach Platz sortiert, Luecken bleiben Luecken',
+    );
+
+    await h.sql.query(`delete from public.favourites where user_id = $1`, [wer]);
   });
 
   it('maps foreign genres onto the sixteen, or onto none at all', async () => {

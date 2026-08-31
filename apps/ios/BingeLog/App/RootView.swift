@@ -15,6 +15,7 @@ struct RootView: View {
     let lazyFilms: LazyFilmRepository
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
+    let profilePages: ProfilePageRepository
 
     var body: some View {
         if session.isLoading {
@@ -27,10 +28,12 @@ struct RootView: View {
         } else if session.isSignedIn {
             if sizeClass == .compact {
                 CompactShell(
-                    films: films, discover: discover, lazyFilms: lazyFilms, details: details, entries: entries)
+                    films: films, discover: discover, lazyFilms: lazyFilms, details: details, entries: entries,
+                    profilePages: profilePages)
             } else {
                 RegularShell(
-                    films: films, discover: discover, lazyFilms: lazyFilms, details: details, entries: entries)
+                    films: films, discover: discover, lazyFilms: lazyFilms, details: details, entries: entries,
+                    profilePages: profilePages)
             }
         } else {
             SignInView(films: films, profiles: profiles)
@@ -51,6 +54,7 @@ private struct CompactShell: View {
     let lazyFilms: LazyFilmRepository
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
+    let profilePages: ProfilePageRepository
 
     var body: some View {
         TabView {
@@ -68,7 +72,7 @@ private struct CompactShell: View {
             NavigationStack { DiaryView(entries: entries, details: details) }
                 .tabItem { Label("Tagebuch", systemImage: "calendar") }
 
-            NavigationStack { ProfileView() }
+            NavigationStack { OwnProfileView(profiles: profilePages, details: details, entries: entries) }
                 .tabItem { Label("Profil", systemImage: "person") }
 
             NavigationStack { SettingsView() }
@@ -101,6 +105,7 @@ private struct RegularShell: View {
     let lazyFilms: LazyFilmRepository
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
+    let profilePages: ProfilePageRepository
     @State private var selection: Section? = .discover
 
     private enum Section: Hashable {
@@ -137,7 +142,8 @@ private struct RegularShell: View {
                 case .diary:
                     DiaryView(entries: entries, details: details)
                 case .profile:
-                    ProfileView()
+                    OwnProfileView(
+                        profiles: profilePages, details: details, entries: entries)
                 case .settings:
                     SettingsView()
                 case .discover, nil:
@@ -146,5 +152,26 @@ private struct RegularShell: View {
             }
         }
         .tint(Theme.primary)
+    }
+}
+
+/// Das eigene Profil.
+///
+/// Braucht den eigenen Benutzernamen, und den kennt erst die Sitzung.
+/// Ohne ihn — was nur zwischen Anmelden und Namenswahl vorkommt — steht
+/// hier ein Ladekringel statt einer Fehlermeldung.
+private struct OwnProfileView: View {
+    @Environment(SessionStore.self) private var session
+    let profiles: ProfilePageRepository
+    let details: FilmDetailRepository
+    let entries: FilmEntryRepository
+
+    var body: some View {
+        if let username = session.username {
+            ProfileView(
+                username: username, profiles: profiles, details: details, entries: entries)
+        } else {
+            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }
