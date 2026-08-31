@@ -29,16 +29,18 @@ struct GenreTile: Decodable, Identifiable, Hashable, Sendable {
 /// beim Abgleich mit TheTVDB (ADR-003): abgeglichen wird über
 /// Bezeichner, nie über Titel.
 ///
-/// Der Beweis, dass das die richtige Entscheidung war, steht gleich in
-/// der ersten Zeile: die Datei heißt `Dramady`, das Genre heißt
-/// `Dramedy`. Über die Beschriftung hätte diese Kachel kein Bild.
+/// Wie noetig das ist, hat sich beim Einpflegen gezeigt: eine der
+/// sechzehn Dateien war als `Dramady` benannt, das Genre heisst
+/// `Dramedy`. Ueber die Beschriftung haette diese Kachel kein Bild
+/// gehabt — ueber die ID lief sie. Der Name ist inzwischen berichtigt,
+/// der Grund gilt weiter.
 ///
 /// Genres ohne Bild bekommen eine Kachel ohne Bild. Der Katalog kennt
 /// vierzig Genres und wächst; sechzehn Bilder sind der Anfang, kein
 /// Vollstaendigkeitsanspruch.
 enum GenreArtwork {
     private static let byGenre: [String: String] = [
-        "Q859369": "Genres/Dramady",
+        "Q859369": "Genres/Dramedy",
         "Q130232": "Genres/Filmdrama",
         "Q157443": "Genres/Filmkomödie",
         "Q157394": "Genres/Fantasyfilm",

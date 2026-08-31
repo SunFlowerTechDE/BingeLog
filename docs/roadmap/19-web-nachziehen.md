@@ -21,17 +21,14 @@ Browser und auf dem iPhone dasselbe Bild zeigt.
 
 **Zugeordnet wird ueber die Wikidata-ID, nie ueber die Beschriftung.**
 Die Tabelle steht in `apps/ios/BingeLog/Features/Discover/GenreTile.swift`
-(`GenreArtwork`). Warum das wichtig ist, zeigt der erste Eintrag: die
-Datei heisst `Dramady`, das Genre heisst `Dramedy`. Ueber die
-Beschriftung haette diese Kachel kein Bild.
+(`GenreArtwork`). Wie noetig das ist, hat sich beim Einpflegen gezeigt:
+eine Datei war als `Dramady` benannt, das Genre heisst `Dramedy`. Ueber
+die Beschriftung haette diese Kachel kein Bild gehabt. Der Name ist
+berichtigt, der Grund gilt weiter — die Dateinamen sind eine Bequemlichkeit
+fuer uns, die Zuordnung haengt nicht an ihnen.
 
 Der Katalog kennt vierzig Genres, Bilder gibt es fuer sechzehn. Die
 uebrigen brauchen eine Kachel ohne Bild, so wie auf dem iPhone.
-
-**Offen und eine Entscheidung fuer dich:** die Datei `Dramady.png` ist
-ein Tippfehler gegenueber dem Genre `Dramedy`. Ueber die ID laeuft sie
-trotzdem. Vor der Uebernahme ins Web waere ein guter Zeitpunkt, sie
-umzubenennen — dann in beiden Tabellen.
 
 ## 2. Die kurzen Genre-Namen
 
