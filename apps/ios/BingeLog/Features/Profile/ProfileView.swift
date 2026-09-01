@@ -160,9 +160,23 @@ struct ProfileView: View {
                     }
                 }
 
-                if !model.lists.isEmpty {
-                    Section(title: "Binge-Listen") {
+                // Auf dem eigenen Profil auch leer: sonst gäbe es
+                // keinen Weg, die erste Liste anzulegen.
+                if !model.lists.isEmpty || head.isMe {
+                    SectionWithMore(
+                        title: "Binge-Listen",
+                        more: "Alle",
+                        destination: {
+                            AnyView(ListsView(profileID: head.id, isMine: head.isMe))
+                        }
+                    ) {
                         VStack(alignment: .leading, spacing: 8) {
+                            if model.lists.isEmpty {
+                                Text("Noch keine Liste.")
+                                    .font(.footnote)
+                                    .foregroundStyle(Theme.muted)
+                                    .padding(.horizontal, 20)
+                            }
                             ForEach(model.lists) { list in
                                 HStack(spacing: 8) {
                                     VStack(alignment: .leading, spacing: 2) {

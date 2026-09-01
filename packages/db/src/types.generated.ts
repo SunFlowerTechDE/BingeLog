@@ -1223,8 +1223,33 @@ export type Database = {
         }[]
       }
       is_moderator: { Args: never; Returns: boolean }
+      list_films: {
+        Args: { list: string }
+        Returns: {
+          film_id: string
+          note: string
+          ord: number
+          poster_source: string
+          poster_url: string
+          release_year: number
+          title_de: string
+          title_original: string
+        }[]
+      }
       list_is_mine: { Args: { list: string }; Returns: boolean }
       list_is_readable: { Args: { list: string }; Returns: boolean }
+      lists_of: {
+        Args: { profile: string }
+        Returns: {
+          description: string
+          films: number
+          id: string
+          is_public: boolean
+          posters: string[]
+          title: string
+          updated_at: string
+        }[]
+      }
       my_facet_ratings: {
         Args: { film: string }
         Returns: {

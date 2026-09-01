@@ -10,7 +10,7 @@ final class ProfileModel {
     private(set) var overview: ProfileOverview?
     private(set) var stats = ProfileStats.none
     private(set) var favourites: [FavouriteSlot] = []
-    private(set) var lists: [BingeList] = []
+    private(set) var lists: [ListSummary] = []
     private(set) var genres: [ProfileGenre] = []
     private(set) var recent: [FeedEntry] = []
 

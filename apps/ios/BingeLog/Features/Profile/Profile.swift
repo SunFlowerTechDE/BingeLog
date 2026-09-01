@@ -118,19 +118,6 @@ nonisolated struct FavouriteSlot: Decodable, Identifiable, Sendable {
     }
 }
 
-/// Eine Binge-Liste.
-nonisolated struct BingeList: Decodable, Identifiable, Sendable {
-    let id: UUID
-    let title: String
-    let description: String?
-    let isPublic: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case id, title, description
-        case isPublic = "is_public"
-    }
-}
-
 /// Ein Genre, das jemand oft sieht.
 nonisolated struct ProfileGenre: Decodable, Identifiable, Sendable {
     let genreID: String
@@ -151,7 +138,7 @@ protocol ProfilePageRepository: Sendable {
     func overview(username: String) async -> ProfileOverview?
     func stats(for id: UUID) async -> ProfileStats
     func favourites(for id: UUID) async -> [FavouriteSlot]
-    func lists(for id: UUID) async -> [BingeList]
+    func lists(for id: UUID) async -> [ListSummary]
     func topGenres(for id: UUID) async -> [ProfileGenre]
     func recentEntries(for id: UUID, limit: Int) async -> [FeedEntry]
     /// Gibt zurück, wie der Zustand danach ist — auch im Fehlerfall.

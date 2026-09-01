@@ -536,6 +536,62 @@ struct ProfileTests {
     }
 }
 
+/// Binge-Listen.
+@Suite("Binge-Listen")
+struct ListTests {
+    /// Die Vorschau bringt höchstens drei Plakate mit.
+    ///
+    /// Nur die Ids — die Adresse baut der Client daraus selbst, und
+    /// Titel stünden in einer Vorschau ohnehin nicht.
+    @Test("Die Übersicht trägt Zahl und Vorschau")
+    func summaryCarriesCountAndPreview() throws {
+        let json = """
+            {"id":"11111111-1111-1111-1111-111111111111","title":"Halloween",
+             "description":null,"is_public":false,"films":7,
+             "posters":["Q1","Q2","Q3"]}
+            """
+        let list = try JSONDecoder().decode(ListSummary.self, from: Data(json.utf8))
+
+        #expect(list.films == 7)
+        #expect(list.posters.count == 3)
+        #expect(!list.isPublic)
+        #expect(list.description == nil, "keine Beschreibung ist nicht die leere")
+    }
+
+    /// Eine leere Liste ist keine kaputte.
+    @Test("Ohne Filme bleiben Zahl und Vorschau leer")
+    func emptyListDecodes() throws {
+        let json = """
+            {"id":"22222222-2222-2222-2222-222222222222","title":"Neu",
+             "description":"","is_public":true,"films":0,"posters":[]}
+            """
+        let list = try JSONDecoder().decode(ListSummary.self, from: Data(json.utf8))
+        #expect(list.films == 0)
+        #expect(list.posters.isEmpty)
+        #expect(list.isPublic)
+    }
+
+    /// Die Reihenfolge kommt aus `ord`, nicht aus der Antwortreihenfolge.
+    ///
+    /// Platz eins heißt „damit fängst du an" — die Nummer davor zählt
+    /// die Zeilen, nachdem die Datenbank sortiert hat.
+    @Test("Der Inhalt trägt seine Ordnung mit")
+    func filmsCarryTheirOrder() throws {
+        let json = """
+            [{"film_id":"Q2","title_de":"Zwei","title_original":"Zwei","release_year":2000,
+              "poster_source":null,"poster_url":null,"ord":1,"note":null},
+             {"film_id":"Q1","title_de":"Eins","title_original":"Eins","release_year":1999,
+              "poster_source":null,"poster_url":null,"ord":0,"note":"Fang hier an"}]
+            """
+        let films = try JSONDecoder().decode([ListFilm].self, from: Data(json.utf8))
+
+        // So wie sie kommen — sortiert hat die Datenbank, hier wird
+        // nicht nachsortiert.
+        #expect(films.map(\.filmID) == ["Q2", "Q1"])
+        #expect(films.first { $0.ord == 0 }?.note == "Fang hier an")
+    }
+}
+
 /// Die Favoritenplätze.
 @Suite("Favoriten")
 struct FavouriteTests {

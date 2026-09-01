@@ -49,12 +49,12 @@ struct LiveProfilePageRepository: ProfilePageRepository {
     /// Fremde sehen nur öffentliche Listen; auf dem eigenen Profil
     /// stehen auch die privaten. Gefiltert wird das in der Datenbank,
     /// nicht hier.
-    func lists(for id: UUID) async -> [BingeList] {
-        let rows: [BingeList]? = try? await backend.client
-            .from("lists")
-            .select("id, title, description, is_public")
-            .eq("user_id", value: id)
-            .order("updated_at", ascending: false)
+    func lists(for id: UUID) async -> [ListSummary] {
+        // Über dieselbe Funktion wie die Listenseite: die Vorschau
+        // braucht die Zahl und die drei Plakate, und zwei Wege zu
+        // denselben Zeilen ergäben zwei Wahrheiten.
+        let rows: [ListSummary]? = try? await backend.client
+            .rpc("lists_of", params: ProfileArgument(profile: id.uuidString))
             .execute()
             .value
         return rows ?? []

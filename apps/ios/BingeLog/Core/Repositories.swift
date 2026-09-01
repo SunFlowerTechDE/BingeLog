@@ -24,12 +24,13 @@ final class Repositories {
     let profilePages: ProfilePageRepository
     let profileEdits: ProfileEditRepository
     let reports: ReportRepository
+    let lists: ListRepository
 
     init(
         films: FilmRepository, discover: DiscoverRepository, lazyFilms: LazyFilmRepository,
         details: FilmDetailRepository, entries: FilmEntryRepository,
         profilePages: ProfilePageRepository, profileEdits: ProfileEditRepository,
-        reports: ReportRepository
+        reports: ReportRepository, lists: ListRepository
     ) {
         self.films = films
         self.discover = discover
@@ -39,6 +40,7 @@ final class Repositories {
         self.profilePages = profilePages
         self.profileEdits = profileEdits
         self.reports = reports
+        self.lists = lists
     }
 
     static func live(backend: Backend) -> Repositories {
@@ -50,7 +52,8 @@ final class Repositories {
             entries: LiveFilmEntryRepository(backend: backend),
             profilePages: LiveProfilePageRepository(backend: backend),
             profileEdits: LiveProfileEditRepository(backend: backend),
-            reports: LiveReportRepository(backend: backend)
+            reports: LiveReportRepository(backend: backend),
+            lists: LiveListRepository(backend: backend)
         )
     }
 }

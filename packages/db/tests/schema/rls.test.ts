@@ -1616,6 +1616,73 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.follows where follower_id = $1`, [ich]);
   });
 
+  it('shows a public list to anyone and a private one only to its owner', async () => {
+    const eigner = await seedUser(h, 'listeneigner');
+    const fremd = await seedUser(h, 'listenfremd');
+
+    const filmA = 'Q900900';
+    const filmB = 'Q900901';
+    for (const id of [filmA, filmB]) await seedFilm(h, id);
+
+    const alsEigner = h.as('authenticated', eigner);
+    const [offen] = await alsEigner.query<{ id: string }>(
+      `insert into public.lists (user_id, title, is_public) values ($1, 'Offen', true)
+       returning id`,
+      [eigner],
+    );
+    const [geheim] = await alsEigner.query<{ id: string }>(
+      `insert into public.lists (user_id, title, is_public) values ($1, 'Geheim', false)
+       returning id`,
+      [eigner],
+    );
+
+    // Verkehrt herum eingefuegt: die Reihenfolge kommt aus `ord`.
+    await alsEigner.query(
+      `insert into public.list_items (list_id, film_id, ord) values ($1, $2, 2), ($1, $3, 1)`,
+      [offen?.id, filmA, filmB],
+    );
+
+    interface Uebersicht { title: string; films: number; posters: string[] }
+    const beimEigner = await alsEigner.query<Uebersicht>(
+      `select title, films, posters from public.lists_of($1)`,
+      [eigner],
+    );
+    assert.equal(beimEigner.length, 2, 'der Eigner sieht beide');
+    const offeneZeile = beimEigner.find((r) => r.title === 'Offen');
+    assert.equal(offeneZeile?.films, 2, 'die Zahl steht dabei');
+    assert.deepEqual(
+      offeneZeile?.posters,
+      [filmB, filmA],
+      'die Vorschau folgt der Reihenfolge, nicht der Einfuegereihenfolge',
+    );
+
+    const beimFremden = await h
+      .as('authenticated', fremd)
+      .query<Uebersicht>(`select title from public.lists_of($1)`, [eigner]);
+    assert.deepEqual(
+      beimFremden.map((r) => r.title),
+      ['Offen'],
+      'die private Liste bleibt privat',
+    );
+
+    // Und ihr Inhalt ebenso.
+    const inhaltFremd = await h
+      .as('authenticated', fremd)
+      .query(`select film_id from public.list_films($1)`, [geheim?.id]);
+    assert.deepEqual(inhaltFremd, [], 'in eine private Liste sieht niemand hinein');
+
+    const inhaltOffen = await h
+      .as('anon', null)
+      .query<{ film_id: string }>(`select film_id from public.list_films($1)`, [offen?.id]);
+    assert.deepEqual(
+      inhaltOffen.map((r) => r.film_id),
+      [filmB, filmA],
+      'in der Reihenfolge der Liste',
+    );
+
+    await h.sql.query(`delete from public.lists where user_id = $1`, [eigner]);
+  });
+
   it('keeps the four favourite slots in their order', async () => {
     const wer = await seedUser(h, 'favprofil');
     const eins = 'Q900800';

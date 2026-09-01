@@ -121,6 +121,10 @@ in App, Web und `favourites.position` gleichzeitig. Dazu die vier Auswertungen (
 Jahr, Jahrzehnte, häufigste Regie), die Watchlist-Vorschau, Blockieren
 und Melden.
 
+Binge-Listen gibt es auf dem iPhone vollständig: Übersicht je Profil,
+Inhalt in seiner Reihenfolge, anlegen, ändern, löschen, Filme
+hinzufügen und entfernen.
+
 **Melden geht jetzt überall** (`ReportSheet`) — auf der Filmseite und
 auf fremden Profilen. Ein ausgegrauter Menüpunkt war die vorherige
 Fassung und keine gute.

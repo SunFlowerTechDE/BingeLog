@@ -307,10 +307,13 @@ Watchlist-Vorschau samt Kennzahl, Blockieren und Melden.
 `i_blocked` zurueck — der bisherige Aufruf muss die neuen Spalten nur
 ignorieren.
 
-Beides ist inzwischen da: die „mehr"-Wege zu Tagebuch und Watchlist und
-die antippbaren Follower-Zahlen. **Der Weg zu allen Binge-Listen fehlt
-noch in der App** — im Web ist das `/@name/listen`, und eine Listenseite
-gibt es auf dem iPhone noch gar nicht.
+Alles davon ist inzwischen da: die „mehr"-Wege zu Tagebuch, Watchlist
+und Listen, und die antippbaren Follower-Zahlen.
+
+Die Listenseiten gibt es jetzt auch auf dem iPhone. `lists_of(profile)`
+und `list_films(list)` sind neu und stehen dem Web offen — `lists_of`
+liefert Zahl und drei Plakate je Liste, was das Web heute mit einer
+zweiten Abfrage je Liste holt.
 
 ## 13. Das Logo
 
