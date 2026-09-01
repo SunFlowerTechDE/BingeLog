@@ -34,8 +34,15 @@ import {
   toRow,
 } from './csv.ts';
 
-/** Wie viele Zeilen ein `run`-Aufruf abarbeitet. */
-const SLICE = 40;
+/**
+ * Wie viele Zeilen ein `run`-Aufruf abarbeitet.
+ *
+ * Klein genug, dass ein Aufruf nicht in die Zeitgrenze laeuft, und
+ * gross genug, dass nicht jede Zeile eine eigene Runde kostet. Der
+ * Fortschritt haengt nicht daran: der wird nach **jedem** Film
+ * geschrieben, damit der Balken sich bewegt und nicht springt.
+ */
+const SLICE = 25;
 
 /** Wie viele Titel auf einmal abgeglichen werden. */
 const MATCH_CHUNK = 500;
@@ -312,9 +319,17 @@ async function run(admin: Admin, batch: { id: string; user_id: string }): Promis
     .in('status', ['pending', 'matched', 'created'])
     .limit(SLICE);
 
+  // Der Stand vor dieser Scheibe. Darauf wird nach jedem Film
+  // aufgeschlagen, damit die Anzeige mitlaeuft statt zu springen.
+  const before = await countByStatus(admin, batch.id);
+  let processed = (before.imported ?? 0) + (before.failed ?? 0) + (before.needs_review ?? 0);
+  let succeeded = before.imported ?? 0;
+  let stumbled = before.failed ?? 0;
+
   for (const item of (open ?? []) as ImportItem[]) {
+    let ok = true;
     try {
-      await handle(admin, batch, item);
+      ok = await handle(admin, batch, item);
     } catch (error) {
       // Ein einzelner Fehler haelt den Import nicht auf. Die Zeile
       // bleibt als fehlgeschlagen stehen, alles andere laeuft weiter.
@@ -323,7 +338,24 @@ async function run(admin: Admin, batch: { id: string; user_id: string }): Promis
         .from('import_items')
         .update({ status: 'failed', error_code: 'unexpected' })
         .eq('id', item.id);
+      ok = false;
     }
+
+    processed += 1;
+    if (ok) succeeded += 1;
+    else stumbled += 1;
+
+    // Ein kleiner Schreibvorgang je Film. Er kostet wenig und ist der
+    // Unterschied zwischen "es tut sich was" und einem Balken, der
+    // minutenlang stillsteht und dann springt.
+    await admin
+      .from('import_batches')
+      .update({
+        processed_items: processed,
+        successful_items: succeeded,
+        failed_items: stumbled,
+      })
+      .eq('id', batch.id);
   }
 
   const counts = await countByStatus(admin, batch.id);
@@ -363,7 +395,7 @@ async function handle(
   admin: Admin,
   batch: { id: string; user_id: string },
   item: ImportItem,
-): Promise<void> {
+): Promise<boolean> {
   let filmId = item.film_id;
 
   // Beim Import ist das Aufnehmen kein einzelner Vorgang mit
@@ -380,7 +412,7 @@ async function handle(
           processed_at: new Date().toISOString(),
         })
         .eq('id', item.id);
-      return;
+      return false;
     }
     filmId = created;
     await admin
@@ -421,6 +453,8 @@ async function handle(
     .from('import_items')
     .update({ status: 'imported', processed_at: new Date().toISOString() })
     .eq('id', item.id);
+
+  return true;
 }
 
 /**

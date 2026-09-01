@@ -17,7 +17,7 @@ struct ImportView: View {
         case start
         case reading
         case preview(UUID, ImportPreview)
-        case running(UUID, ImportStep)
+        case running(UUID, Int, Int)  // erledigt, gesamt
         case done(ImportStep)
     }
 
@@ -28,7 +28,7 @@ struct ImportView: View {
                 case .start: intro
                 case .reading: reading
                 case .preview(let id, let preview): previewCard(id, preview)
-                case .running(_, let step): progress(step)
+                case .running(_, let done, let total): progress(done, total)
                 case .done(let step): result(step)
                 }
 
@@ -147,7 +147,7 @@ struct ImportView: View {
                 .foregroundStyle(Theme.quiet)
 
             Button {
-                Task { await start(id) }
+                Task { await start(id, total: preview.total) }
             } label: {
                 Text("Import starten")
                     .font(.headline)
@@ -169,19 +169,16 @@ struct ImportView: View {
         }
     }
 
-    private func progress(_ step: ImportStep) -> some View {
+    private func progress(_ done: Int, _ total: Int) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Import läuft")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Theme.foreground)
 
-            ProgressView(
-                value: Double(step.imported),
-                total: Double(max(1, step.imported + step.remaining))
-            )
-            .tint(Theme.primary)
+            ProgressView(value: Double(done), total: Double(max(1, total)))
+                .tint(Theme.primary)
 
-            Text("\(step.imported) von \(step.imported + step.remaining)")
+            Text("\(done) von \(total) übernommen")
                 .font(.callout)
                 .foregroundStyle(Theme.foreground)
                 .monospacedDigit()
@@ -274,9 +271,29 @@ struct ImportView: View {
     ///
     /// Der Server merkt sich den Stand; bricht die Verbindung ab, geht
     /// es beim nächsten Aufruf weiter statt von vorn.
-    private func start(_ id: UUID) async {
+    /// Scheibe für Scheibe, und daneben wird gefragt, wie weit sie sind.
+    ///
+    /// Die Function schreibt den Stand nach **jedem** Film. Ohne das
+    /// Nachfragen sähe man ihn erst, wenn eine ganze Scheibe durch ist,
+    /// und der Balken spränge.
+    ///
+    /// Der Server merkt sich den Stand; bricht die Verbindung ab, geht
+    /// es beim nächsten Aufruf weiter statt von vorn.
+    private func start(_ id: UUID, total: Int) async {
         note = nil
-        phase = .running(id, ImportStep(done: false, remaining: 0, imported: 0, failed: 0, needsReview: 0))
+        phase = .running(id, 0, total)
+
+        let watching = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(700))
+                guard !Task.isCancelled else { return }
+                guard let batch = await repos.imports.batch(id) else { continue }
+                guard case .running = phase else { return }
+                phase = .running(
+                    id, batch.processedItems, max(total, batch.totalItems))
+            }
+        }
+        defer { watching.cancel() }
 
         while true {
             switch await repos.imports.step(batch: id) {
@@ -288,7 +305,6 @@ struct ImportView: View {
                     phase = .done(step)
                     return
                 }
-                phase = .running(id, step)
             }
         }
     }

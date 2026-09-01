@@ -38,11 +38,17 @@ interface Step {
   needs_review: number;
 }
 
+/** Wie weit der Import ist, so wie ihn der Server fuehrt. */
+interface Stand {
+  fertig: number;
+  gesamt: number;
+}
+
 type Phase =
   | { art: 'start' }
   | { art: 'liest' }
   | { art: 'vorschau'; batch: string; zahlen: Preview }
-  | { art: 'laeuft'; batch: string; stand: Step }
+  | { art: 'laeuft'; batch: string; stand: Stand }
   | { art: 'fertig'; stand: Step };
 
 /** Dieselbe Grenze wie am Eimer, damit sie vor dem Hochladen greift. */
@@ -122,35 +128,72 @@ export function LetterboxdImport() {
    * Der Server merkt sich den Stand; bricht die Verbindung ab, geht es
    * beim naechsten Aufruf weiter statt von vorn.
    */
-  async function starte(batch: string) {
+  async function starte(batch: string, gesamt: number) {
     setProblem(undefined);
-    setPhase({
-      art: 'laeuft',
-      batch,
-      stand: { done: false, remaining: 0, imported: 0, failed: 0, needs_review: 0 },
-    });
+    setPhase({ art: 'laeuft', batch, stand: { fertig: 0, gesamt } });
 
     const supabase = createClient();
 
-    for (;;) {
-      const antwort = await supabase.functions.invoke<Step>('letterboxd-import', {
-        body: { batchId: batch, mode: 'run' },
-      });
-      const stand = antwort.data;
+    // Zwei Dinge gleichzeitig: die Scheiben laufen, und daneben wird
+    // gefragt, wie weit sie sind. Die Function schreibt den Stand nach
+    // **jedem** Film — ohne dieses Nachfragen saehe man ihn erst, wenn
+    // eine ganze Scheibe durch ist, und der Balken spraenge.
+    // Als Objekt und nicht als `let`: TypeScript engt eine lokale
+    // Variable auf `true` ein, weil es die Aenderung aus der anderen
+    // Schleife nicht sieht.
+    const lauf = { an: true };
+    // Ueber eine Funktion gelesen: sonst engt TypeScript den Wert
+    // innerhalb der Schleife auf `true` ein und haelt die zweite
+    // Pruefung fuer ueberfluessig. Sie ist es nicht — ohne sie
+    // ueberschriebe der letzte Durchlauf das fertige Ergebnis.
+    const laeuftNoch = () => lauf.an;
 
-      if (antwort.error !== null || !stand) {
-        setProblem(
-          'Der Import wurde unterbrochen. Starte ihn noch einmal — es geht weiter, wo er stehengeblieben ist.',
-        );
-        return;
+    const beobachten = (async () => {
+      while (laeuftNoch()) {
+        await new Promise((r) => setTimeout(r, 700));
+        if (!laeuftNoch()) return;
+
+        const { data } = await supabase
+          .from('import_batches')
+          .select('processed_items, total_items')
+          .eq('id', batch)
+          .maybeSingle();
+
+        if (data) {
+          setPhase({
+            art: 'laeuft',
+            batch,
+            stand: {
+              fertig: data.processed_items,
+              gesamt: data.total_items > 0 ? data.total_items : gesamt,
+            },
+          });
+        }
       }
+    })();
 
-      if (stand.done) {
-        setPhase({ art: 'fertig', stand });
-        return;
+    try {
+      for (;;) {
+        const antwort = await supabase.functions.invoke<Step>('letterboxd-import', {
+          body: { batchId: batch, mode: 'run' },
+        });
+        const stand = antwort.data;
+
+        if (antwort.error !== null || !stand) {
+          setProblem(
+            'Der Import wurde unterbrochen. Starte ihn noch einmal — es geht weiter, wo er stehengeblieben ist.',
+          );
+          return;
+        }
+
+        if (stand.done) {
+          setPhase({ art: 'fertig', stand });
+          return;
+        }
       }
-
-      setPhase({ art: 'laeuft', batch, stand });
+    } finally {
+      lauf.an = false;
+      await beobachten;
     }
   }
 
@@ -237,7 +280,7 @@ export function LetterboxdImport() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => void starte(phase.batch)}
+              onClick={() => void starte(phase.batch, phase.zahlen.total)}
               className="bg-primary text-primary-foreground rounded-md px-3 py-2 text-sm font-medium"
             >
               Import starten
@@ -255,19 +298,15 @@ export function LetterboxdImport() {
 
       {phase.art === 'laeuft' ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm">
-            {phase.stand.imported} von {phase.stand.imported + phase.stand.remaining} übernommen
+          <p className="text-sm tabular-nums">
+            {phase.stand.fertig} von {phase.stand.gesamt} übernommen
           </p>
           <div className="bg-card h-2 w-full overflow-hidden rounded-full">
             <div
-              className="bg-primary h-full transition-[width] duration-300"
+              className="bg-primary h-full transition-[width] duration-500 ease-linear"
               style={{
                 width: `${String(
-                  Math.round(
-                    (phase.stand.imported /
-                      Math.max(1, phase.stand.imported + phase.stand.remaining)) *
-                      100,
-                  ),
+                  Math.round((phase.stand.fertig / Math.max(1, phase.stand.gesamt)) * 100),
                 )}%`,
               }}
             />
