@@ -61,14 +61,31 @@ interface ImportItem {
 
 type Admin = ReturnType<typeof createClient>;
 
+/**
+ * Der Browser fragt vor einem Aufruf von einer anderen Adresse nach,
+ * ob er darf.
+ *
+ * `lazy-film` braucht das nicht: die wird aus einer Server Action
+ * gerufen, also vom Server aus, und da gibt es keinen Vorabflug. Diese
+ * hier ruft die Seite direkt — der Fortschritt soll sich waehrend des
+ * Imports bewegen, und dafuer muss der Browser selbst nachfragen
+ * koennen.
+ */
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 }
 
 Deno.serve(async (request: Request) => {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   let body: Body;
