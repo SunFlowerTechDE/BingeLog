@@ -7,6 +7,7 @@ import SwiftUI
 /// beim Umbauen nicht verschwinden.
 struct SettingsView: View {
     @Environment(SessionStore.self) private var session
+    @Environment(ImportRunner.self) private var runner
 
     var body: some View {
         List {
@@ -21,8 +22,24 @@ struct SettingsView: View {
             }
 
             Section("Daten und Import") {
-                NavigationLink("Von Letterboxd importieren") { ImportView() }
-                    .listRowBackground(Theme.card)
+                NavigationLink {
+                    ImportView()
+                } label: {
+                    HStack {
+                        Text("Von Letterboxd importieren")
+                        Spacer()
+                        // Läuft gerade einer, steht der Stand hier —
+                        // sonst müsste man die Seite öffnen, um zu
+                        // sehen, ob überhaupt noch etwas passiert.
+                        if runner.isRunning {
+                            Text("\(runner.processed) von \(runner.total)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.primary)
+                                .monospacedDigit()
+                        }
+                    }
+                }
+                .listRowBackground(Theme.card)
             }
 
             Section("Kommt noch") {

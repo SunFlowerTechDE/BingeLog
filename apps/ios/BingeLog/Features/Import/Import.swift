@@ -57,6 +57,14 @@ nonisolated struct ImportPreview: Decodable, Equatable, Sendable {
 
 /// Wie weit ein Durchlauf gekommen ist.
 nonisolated struct ImportStep: Decodable, Equatable, Sendable {
+    init(done: Bool, remaining: Int, imported: Int, failed: Int, needsReview: Int) {
+        self.done = done
+        self.remaining = remaining
+        self.imported = imported
+        self.failed = failed
+        self.needsReview = needsReview
+    }
+
     let done: Bool
     let remaining: Int
     let imported: Int

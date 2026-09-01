@@ -134,66 +134,74 @@ export function LetterboxdImport() {
 
     const supabase = createClient();
 
-    // Zwei Dinge gleichzeitig: die Scheiben laufen, und daneben wird
-    // gefragt, wie weit sie sind. Die Function schreibt den Stand nach
-    // **jedem** Film — ohne dieses Nachfragen saehe man ihn erst, wenn
-    // eine ganze Scheibe durch ist, und der Balken spraenge.
-    // Als Objekt und nicht als `let`: TypeScript engt eine lokale
-    // Variable auf `true` ein, weil es die Aenderung aus der anderen
-    // Schleife nicht sieht.
-    const lauf = { an: true };
-    // Ueber eine Funktion gelesen: sonst engt TypeScript den Wert
-    // innerhalb der Schleife auf `true` ein und haelt die zweite
-    // Pruefung fuer ueberfluessig. Sie ist es nicht — ohne sie
-    // ueberschriebe der letzte Durchlauf das fertige Ergebnis.
-    const laeuftNoch = () => lauf.an;
+    // Einmal anstossen — danach ruft sich die Function fuer jede
+    // weitere Scheibe selbst. Die Seite muss nicht offen bleiben.
+    const antwort = await supabase.functions.invoke<Step>('letterboxd-import', {
+      body: { batchId: batch, mode: 'run' },
+    });
 
-    const beobachten = (async () => {
-      while (laeuftNoch()) {
-        await new Promise((r) => setTimeout(r, 700));
-        if (!laeuftNoch()) return;
+    if (antwort.error !== null) {
+      setProblem('Der Import ließ sich nicht starten. Versuch es noch einmal.');
+      return;
+    }
 
-        const { data } = await supabase
-          .from('import_batches')
-          .select('processed_items, total_items')
-          .eq('id', batch)
-          .maybeSingle();
+    // Ab hier wird nur noch zugesehen. Steht der Stand zehn Runden
+    // still, ist die Kette auf dem Server gerissen — dann wird sie neu
+    // angestossen, statt stumm liegenzubleiben.
+    let zuletzt = -1;
+    let still = 0;
 
-        if (data) {
-          setPhase({
-            art: 'laeuft',
-            batch,
-            stand: {
-              fertig: data.processed_items,
-              gesamt: data.total_items > 0 ? data.total_items : gesamt,
-            },
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 800));
+
+      const { data: stand } = await supabase
+        .from('import_batches')
+        .select('status, processed_items, total_items, successful_items, failed_items')
+        .eq('id', batch)
+        .maybeSingle();
+
+      if (!stand) continue;
+
+      setPhase({
+        art: 'laeuft',
+        batch,
+        stand: {
+          fertig: stand.processed_items,
+          gesamt: stand.total_items > 0 ? stand.total_items : gesamt,
+        },
+      });
+
+      if (stand.status === 'completed' || stand.status === 'completed_with_errors') {
+        setPhase({
+          art: 'fertig',
+          stand: {
+            done: true,
+            remaining: 0,
+            imported: stand.successful_items,
+            failed: stand.failed_items,
+            needs_review: 0,
+          },
+        });
+        return;
+      }
+
+      if (stand.status === 'failed') {
+        setProblem('Der Import ist steckengeblieben. Starte ihn noch einmal.');
+        return;
+      }
+
+      if (stand.processed_items === zuletzt) {
+        still += 1;
+        if (still >= 10) {
+          still = 0;
+          await supabase.functions.invoke('letterboxd-import', {
+            body: { batchId: batch, mode: 'run' },
           });
         }
+      } else {
+        still = 0;
+        zuletzt = stand.processed_items;
       }
-    })();
-
-    try {
-      for (;;) {
-        const antwort = await supabase.functions.invoke<Step>('letterboxd-import', {
-          body: { batchId: batch, mode: 'run' },
-        });
-        const stand = antwort.data;
-
-        if (antwort.error !== null || !stand) {
-          setProblem(
-            'Der Import wurde unterbrochen. Starte ihn noch einmal — es geht weiter, wo er stehengeblieben ist.',
-          );
-          return;
-        }
-
-        if (stand.done) {
-          setPhase({ art: 'fertig', stand });
-          return;
-        }
-      }
-    } finally {
-      lauf.an = false;
-      await beobachten;
     }
   }
 

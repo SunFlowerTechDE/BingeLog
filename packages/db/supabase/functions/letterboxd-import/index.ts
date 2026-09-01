@@ -111,12 +111,7 @@ Deno.serve(async (request: Request) => {
     { auth: { persistSession: false } },
   );
 
-  // Der Stapel muss dem Aufrufer gehoeren. Der Service-Role-Key umgeht
-  // RLS, also wird die Zugehoerigkeit **hier** geprueft und nicht der
-  // Policy ueberlassen — sonst koennte jeder jeden Import antreiben.
   const token = request.headers.get('Authorization')?.replace(/^Bearer /i, '') ?? '';
-  const { data: caller } = await admin.auth.getUser(token);
-  if (!caller.user) return json({ error: 'unauthorized' }, 401);
 
   const { data: batch } = await admin
     .from('import_batches')
@@ -124,7 +119,23 @@ Deno.serve(async (request: Request) => {
     .eq('id', batchId)
     .maybeSingle();
 
-  if (!batch || batch.user_id !== caller.user.id) return json({ error: 'not_found' }, 404);
+  if (!batch) return json({ error: 'not_found' }, 404);
+
+  // Der Stapel muss dem Aufrufer gehoeren. Der Service-Role-Key umgeht
+  // RLS, also wird die Zugehoerigkeit **hier** geprueft und nicht der
+  // Policy ueberlassen — sonst koennte jeder jeden Import antreiben.
+  //
+  // Die eine Ausnahme ist die Funktion selbst: sie ruft sich fuer die
+  // naechste Scheibe wieder auf und weist sich dabei mit dem
+  // Service-Role-Key aus. Den hat sonst niemand — er steht in keiner
+  // App und in keinem Repository (M0 0.2).
+  const isSelf = token !== '' && token === (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '\u0000');
+
+  if (!isSelf) {
+    const { data: caller } = await admin.auth.getUser(token);
+    if (!caller.user) return json({ error: 'unauthorized' }, 401);
+    if (batch.user_id !== caller.user.id) return json({ error: 'not_found' }, 404);
+  }
 
   const scope = { id: batch.id as string, user_id: batch.user_id as string };
   return body.mode === 'run' ? await run(admin, scope) : await analyse(admin, scope);
@@ -380,6 +391,35 @@ async function run(admin: Admin, batch: { id: string; user_id: string }): Promis
   // Die Datei wird nicht laenger aufbewahrt als noetig.
   if (done) {
     await admin.storage.from('imports').remove([`${batch.user_id}/${batch.id}.zip`]);
+  }
+
+  // **Der Import treibt sich selbst weiter.**
+  //
+  // Sonst muesste die App die Scheiben antreiben, und dann haengt ein
+  // Import ueber tausend Filme daran, dass jemand eine halbe Stunde auf
+  // einen Bildschirm schaut. Er ruft sich also fuer die naechste
+  // Scheibe selbst — die Antwort geht sofort zurueck, der Aufruf laeuft
+  // danach weiter.
+  if (!done) {
+    const next = fetch(`${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1/letterboxd-import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ batchId: batch.id, mode: 'run' }),
+    }).catch((error: unknown) => {
+      // Bricht die Kette, laeuft der Import nicht weiter — verloren ist
+      // aber nichts: der Stand steht in `import_items`, und ein
+      // erneutes "Import starten" macht dort weiter.
+      console.error('chain failed:', String(error));
+    });
+
+    // Das Laufzeitobjekt haelt den Aufruf am Leben, nachdem die Antwort
+    // raus ist. Ohne das bricht Deno ihn mit der Antwort ab.
+    const runtime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } })
+      .EdgeRuntime;
+    runtime?.waitUntil(next);
   }
 
   return json({

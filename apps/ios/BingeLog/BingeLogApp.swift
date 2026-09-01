@@ -12,6 +12,10 @@ struct BingeLogApp: App {
     /// Einmal gebaut, in der Umgebung. Die Blätter — Filmseite und
     /// Profil — holen sich daraus, was sie brauchen.
     private let repositories = Repositories.live(backend: Backend.live)
+
+    /// Der laufende Import. Über der Ansicht, damit er sie überlebt.
+    @State private var importRunner = ImportRunner(
+        repository: LiveImportRepository(backend: Backend.live))
     @State private var session: SessionStore
 
     /// Der Startbildschirm, und zwar **nur beim Kaltstart**.
@@ -56,6 +60,7 @@ struct BingeLogApp: App {
                 )
                 .environment(session)
                 .environment(repositories)
+                .environment(importRunner)
 
                 if isStarting {
                     SplashView(posters: splashPosters, isLeaving: splashIsLeaving)

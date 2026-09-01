@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 /// Datenbank-Bezeichner oder woher fehlende Filme kommen.
 struct ImportView: View {
     @Environment(Repositories.self) private var repos
+    @Environment(ImportRunner.self) private var runner
 
     @State private var phase: Phase = .start
     @State private var isPicking = false
@@ -17,19 +18,30 @@ struct ImportView: View {
         case start
         case reading
         case preview(UUID, ImportPreview)
-        case running(UUID, Int, Int)  // erledigt, gesamt
-        case done(ImportStep)
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                switch phase {
-                case .start: intro
-                case .reading: reading
-                case .preview(let id, let preview): previewCard(id, preview)
-                case .running(_, let done, let total): progress(done, total)
-                case .done(let step): result(step)
+                // Was der Import gerade tut, steht über allem anderen —
+                // auch wenn man diesen Bildschirm zwischendurch
+                // verlassen hat.
+                if runner.isRunning {
+                    progress(runner.processed, runner.total)
+                } else if let step = runner.finished {
+                    result(step)
+                } else {
+                    switch phase {
+                    case .start: intro
+                    case .reading: reading
+                    case .preview(let id, let preview): previewCard(id, preview)
+                    }
+                }
+
+                if let laufNote = runner.note {
+                    Text(laufNote)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
                 }
 
                 if let note {
@@ -147,7 +159,7 @@ struct ImportView: View {
                 .foregroundStyle(Theme.quiet)
 
             Button {
-                Task { await start(id, total: preview.total) }
+                start(id, total: preview.total)
             } label: {
                 Text("Import starten")
                     .font(.headline)
@@ -183,9 +195,11 @@ struct ImportView: View {
                 .foregroundStyle(Theme.foreground)
                 .monospacedDigit()
 
+            // Und das stimmt jetzt auch: der Server treibt den Import
+            // selbst weiter, die App muss nicht dabeibleiben.
             Text(
-                "Das kann bei vielen Filmen ein paar Minuten dauern. "
-                    + "Du kannst die App dabei liegen lassen."
+                "Das läuft im Hintergrund weiter. Du kannst hier weg oder die App "
+                    + "schließen — wenn du zurückkommst, siehst du, wie weit er ist."
             )
             .font(.caption)
             .foregroundStyle(Theme.quiet)
@@ -216,7 +230,10 @@ struct ImportView: View {
                 .foregroundStyle(Theme.muted)
             }
 
-            Button("Fertig") { phase = .start }
+            Button("Fertig") {
+                runner.acknowledge()
+                phase = .start
+            }
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.primary)
         }
@@ -271,41 +288,9 @@ struct ImportView: View {
     ///
     /// Der Server merkt sich den Stand; bricht die Verbindung ab, geht
     /// es beim nächsten Aufruf weiter statt von vorn.
-    /// Scheibe für Scheibe, und daneben wird gefragt, wie weit sie sind.
-    ///
-    /// Die Function schreibt den Stand nach **jedem** Film. Ohne das
-    /// Nachfragen sähe man ihn erst, wenn eine ganze Scheibe durch ist,
-    /// und der Balken spränge.
-    ///
-    /// Der Server merkt sich den Stand; bricht die Verbindung ab, geht
-    /// es beim nächsten Aufruf weiter statt von vorn.
-    private func start(_ id: UUID, total: Int) async {
+    private func start(_ id: UUID, total: Int) {
         note = nil
-        phase = .running(id, 0, total)
-
-        let watching = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(700))
-                guard !Task.isCancelled else { return }
-                guard let batch = await repos.imports.batch(id) else { continue }
-                guard case .running = phase else { return }
-                phase = .running(
-                    id, batch.processedItems, max(total, batch.totalItems))
-            }
-        }
-        defer { watching.cancel() }
-
-        while true {
-            switch await repos.imports.step(batch: id) {
-            case .failure(let problem):
-                note = problem.message
-                return
-            case .success(let step):
-                if step.done {
-                    phase = .done(step)
-                    return
-                }
-            }
-        }
+        phase = .start
+        runner.start(id, total: total)
     }
 }
