@@ -128,6 +128,7 @@ export type Database = {
           film_id: string
           has_spoilers: boolean
           id: string
+          import_batch_id: string | null
           is_rewatch: boolean
           rating: number | null
           review: string | null
@@ -141,6 +142,7 @@ export type Database = {
           film_id: string
           has_spoilers?: boolean
           id?: string
+          import_batch_id?: string | null
           is_rewatch?: boolean
           rating?: number | null
           review?: string | null
@@ -154,6 +156,7 @@ export type Database = {
           film_id?: string
           has_spoilers?: boolean
           id?: string
+          import_batch_id?: string | null
           is_rewatch?: boolean
           rating?: number | null
           review?: string | null
@@ -169,6 +172,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "films"
             referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "diary_entries_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "diary_entries_user_id_fkey"
@@ -490,6 +500,134 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "genres"
+            referencedColumns: ["wikidata_id"]
+          },
+        ]
+      }
+      import_batches: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          failed_items: number
+          films_known: number
+          films_new: number
+          id: string
+          processed_items: number
+          source: Database["public"]["Enums"]["import_source"]
+          started_at: string | null
+          status: Database["public"]["Enums"]["import_status"]
+          successful_items: number
+          total_items: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          failed_items?: number
+          films_known?: number
+          films_new?: number
+          id?: string
+          processed_items?: number
+          source?: Database["public"]["Enums"]["import_source"]
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["import_status"]
+          successful_items?: number
+          total_items?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          failed_items?: number
+          films_known?: number
+          films_new?: number
+          id?: string
+          processed_items?: number
+          source?: Database["public"]["Enums"]["import_source"]
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["import_status"]
+          successful_items?: number
+          total_items?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_batches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      import_items: {
+        Row: {
+          batch_id: string
+          error_code: string | null
+          film_id: string | null
+          has_spoilers: boolean
+          id: string
+          kind: Database["public"]["Enums"]["import_item_kind"]
+          ord: number | null
+          processed_at: string | null
+          rating: number | null
+          raw_title: string
+          raw_year: number | null
+          review: string | null
+          source_uri: string | null
+          status: Database["public"]["Enums"]["import_item_status"]
+          watched_on: string | null
+        }
+        Insert: {
+          batch_id: string
+          error_code?: string | null
+          film_id?: string | null
+          has_spoilers?: boolean
+          id?: string
+          kind: Database["public"]["Enums"]["import_item_kind"]
+          ord?: number | null
+          processed_at?: string | null
+          rating?: number | null
+          raw_title: string
+          raw_year?: number | null
+          review?: string | null
+          source_uri?: string | null
+          status?: Database["public"]["Enums"]["import_item_status"]
+          watched_on?: string | null
+        }
+        Update: {
+          batch_id?: string
+          error_code?: string | null
+          film_id?: string | null
+          has_spoilers?: boolean
+          id?: string
+          kind?: Database["public"]["Enums"]["import_item_kind"]
+          ord?: number | null
+          processed_at?: string | null
+          rating?: number | null
+          raw_title?: string
+          raw_year?: number | null
+          review?: string | null
+          source_uri?: string | null
+          status?: Database["public"]["Enums"]["import_item_status"]
+          watched_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_items_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
             referencedColumns: ["wikidata_id"]
           },
         ]
@@ -1250,6 +1388,14 @@ export type Database = {
           updated_at: string
         }[]
       }
+      match_import_titles: {
+        Args: { rows: Json }
+        Returns: {
+          certainty: string
+          film_id: string
+          idx: number
+        }[]
+      }
       my_facet_ratings: {
         Args: { film: string }
         Returns: {
@@ -1258,6 +1404,7 @@ export type Database = {
         }[]
       }
       my_friends: { Args: never; Returns: string[] }
+      normalise_title: { Args: { "": string }; Returns: string }
       profile_decades: {
         Args: { profile: string }
         Returns: {
@@ -1429,6 +1576,25 @@ export type Database = {
         | "sound"
         | "production_design"
         | "pacing"
+      import_item_kind: "watched" | "diary" | "watchlist" | "like"
+      import_item_status:
+        | "pending"
+        | "matched"
+        | "created"
+        | "imported"
+        | "needs_review"
+        | "skipped"
+        | "failed"
+      import_source: "letterboxd"
+      import_status:
+        | "uploaded"
+        | "analyzing"
+        | "ready"
+        | "importing"
+        | "completed"
+        | "completed_with_errors"
+        | "failed"
+        | "cancelled"
       report_reason:
         | "spoiler"
         | "harassment"
@@ -1585,6 +1751,27 @@ export const Constants = {
         "sound",
         "production_design",
         "pacing",
+      ],
+      import_item_kind: ["watched", "diary", "watchlist", "like"],
+      import_item_status: [
+        "pending",
+        "matched",
+        "created",
+        "imported",
+        "needs_review",
+        "skipped",
+        "failed",
+      ],
+      import_source: ["letterboxd"],
+      import_status: [
+        "uploaded",
+        "analyzing",
+        "ready",
+        "importing",
+        "completed",
+        "completed_with_errors",
+        "failed",
+        "cancelled",
       ],
       report_reason: [
         "spoiler",

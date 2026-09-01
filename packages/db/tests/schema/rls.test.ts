@@ -1616,6 +1616,158 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.follows where follower_id = $1`, [ich]);
   });
 
+  it("keeps an import to its owner and out of everyone's feed", async () => {
+    const ich = await seedUser(h, 'importich');
+    const leser = await seedUser(h, 'importleser');
+    const fremd = await seedUser(h, 'importfremd');
+
+    // Der Leser folgt mir. Was ich eintrage, steht in seinem Feed —
+    // ausser es kommt aus einem Import.
+    await h.sql.query(`insert into public.follows (follower_id, followee_id) values ($1, $2)`, [
+      leser,
+      ich,
+    ]);
+
+    const { rows: staepel } = await h.sql.query<{ id: string }>(
+      `insert into public.import_batches (user_id, status) values ($1, 'ready') returning id`,
+      [ich],
+    );
+    const stapel = staepel[0];
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, visibility, import_batch_id)
+       values ($1, $2, 8, 'public', $3), ($1, $4, 9, 'public', null)`,
+      [ich, FILM, stapel?.id, QUIET_FILM],
+    );
+
+    const feed = await h
+      .as('authenticated', leser)
+      .query<{ film_id: string }>(`select film_id from public.following_feed()`);
+    assert.deepEqual(
+      feed.map((r) => r.film_id),
+      [QUIET_FILM],
+      'der importierte Eintrag steht nicht im Feed',
+    );
+
+    // Im Tagebuch steht er trotzdem — er ist ja passiert.
+    const tagebuch = await h
+      .as('authenticated', ich)
+      .query(`select film_id from public.diary_for_me()`);
+    assert.equal(tagebuch.length, 2, 'im eigenen Tagebuch stehen beide');
+
+    // Und der Stapel selbst gehoert nur mir.
+    const meine = await h.as('authenticated', ich).query(`select id from public.import_batches`);
+    assert.equal(meine.length, 1);
+
+    const fremde = await h.as('authenticated', fremd).query(`select id from public.import_batches`);
+    assert.deepEqual(fremde, [], 'ein Import ist die halbe Filmgeschichte eines Menschen');
+
+    await h.sql.query(`delete from public.diary_entries where user_id = $1`, [ich]);
+    await h.sql.query(`delete from public.import_batches where user_id = $1`, [ich]);
+    await h.sql.query(`delete from public.follows where follower_id = $1`, [leser]);
+  });
+
+  it('matches import rows by title and year, and asks when it cannot tell', async () => {
+    // Der Export fuehrt keine externe Film-Id — deshalb Titel und Jahr,
+    // und deshalb muss dieser Test die Faelle abdecken, in denen das
+    // schiefgehen kann.
+    const genau = 'Q901000';
+    const knapp = 'Q901001';
+    const zwilling1 = 'Q901002';
+    const zwilling2 = 'Q901003';
+
+    await h.sql.query(
+      `insert into public.films (wikidata_id, imdb_id, title_original, title_de, release_year)
+       values ($1, 'tt9010001', 'The Godfather', 'Der Pate', 1972),
+              ($2, 'tt9010002', 'Solaris', null, 1972),
+              ($3, 'tt9010003', 'Halloween', null, 1978),
+              ($4, 'tt9010004', 'Halloween', null, 2018)`,
+      [genau, knapp, zwilling1, zwilling2],
+    );
+
+    const abgleich = async (eingaben: unknown[]) =>
+      h
+        .as('authenticated', null)
+        .query<{ idx: number; film_id: string; certainty: string }>(
+          `select idx, film_id, certainty from public.match_import_titles($1::jsonb)`,
+          [JSON.stringify(eingaben)],
+        );
+
+    const treffer = await abgleich([
+      // Der Originaltitel, exakt.
+      { title: 'The Godfather', year: 1972 },
+      // Der deutsche Titel, und mit vorangestelltem Artikel — die
+      // Normalisierung wirft ihn weg.
+      { title: 'Pate, Der', year: 1972 },
+      // Ein Jahr daneben: Festival- gegen Kinostart.
+      { title: 'Solaris', year: 1971 },
+      // Zwei Filme desselben Titels und Jahres — Rueckfrage.
+      { title: 'Halloween', year: null },
+      // Gibt es nicht.
+      { title: 'Ein Film den niemand kennt', year: 1999 },
+    ]);
+
+    const nach = new Map(treffer.map((r) => [r.idx, r]));
+
+    assert.equal(nach.get(0)?.film_id, genau, 'der Originaltitel trifft');
+    assert.equal(nach.get(0)?.certainty, 'exact');
+
+    assert.equal(nach.get(1)?.film_id, genau, 'auch "Pate, Der" trifft "Der Pate"');
+
+    assert.equal(nach.get(2)?.film_id, knapp, 'ein Jahr daneben zaehlt noch');
+    assert.equal(nach.get(2)?.certainty, 'near');
+
+    assert.equal(nach.get(3)?.certainty, 'ambiguous', 'zwei Halloween ergeben eine Rueckfrage');
+
+    assert.equal(nach.get(4), undefined, 'was es nicht gibt, kommt nicht zurueck');
+
+    // Und ein Jahr, das zu weit daneben liegt, trifft nicht: 1978 und
+    // 2018 sind verschiedene Filme, nicht derselbe mit Tippfehler.
+    const weit = await abgleich([{ title: 'Halloween', year: 1995 }]);
+    assert.deepEqual(weit, [], 'siebzehn Jahre daneben ist kein Treffer');
+
+    await h.sql.query(`delete from public.films where wikidata_id = any($1)`, [
+      [genau, knapp, zwilling1, zwilling2],
+    ]);
+  });
+
+  it('refuses a second identical row in the same import', async () => {
+    // Die Zusicherung, an der die Idempotenz haengt: derselbe Eintrag
+    // aus derselben Datei nur einmal.
+    const wer = await seedUser(h, 'importzweimal');
+    const { rows: staepel } = await h.sql.query<{ id: string }>(
+      `insert into public.import_batches (user_id) values ($1) returning id`,
+      [wer],
+    );
+    const stapel = staepel[0];
+
+    await h.sql.query(
+      `insert into public.import_items (batch_id, kind, raw_title, raw_year, watched_on)
+       values ($1, 'diary', 'Dune', 2021, date '2024-05-01')`,
+      [stapel?.id],
+    );
+
+    await assert.rejects(
+      () =>
+        h.sql.query(
+          `insert into public.import_items (batch_id, kind, raw_title, raw_year, watched_on)
+           values ($1, 'diary', 'Dune', 2021, date '2024-05-01')`,
+          [stapel?.id],
+        ),
+      /duplicate key|unique/i,
+      'dieselbe Zeile kommt kein zweites Mal hinein',
+    );
+
+    // Ein anderes Sehdatum ist eine andere Sichtung und darf.
+    await h.sql.query(
+      `insert into public.import_items (batch_id, kind, raw_title, raw_year, watched_on)
+       values ($1, 'diary', 'Dune', 2021, date '2026-01-01')`,
+      [stapel?.id],
+    );
+
+    await h.sql.query(`delete from public.import_batches where user_id = $1`, [wer]);
+  });
+
   it('shows a public list to anyone and a private one only to its owner', async () => {
     const eigner = await seedUser(h, 'listeneigner');
     const fremd = await seedUser(h, 'listenfremd');
@@ -1642,7 +1794,11 @@ describe('diary and facet visibility', () => {
       [offen?.id, filmA, filmB],
     );
 
-    interface Uebersicht { title: string; films: number; posters: string[] }
+    interface Uebersicht {
+      title: string;
+      films: number;
+      posters: string[];
+    }
     const beimEigner = await alsEigner.query<Uebersicht>(
       `select title, films, posters from public.lists_of($1)`,
       [eigner],

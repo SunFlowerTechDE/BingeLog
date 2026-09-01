@@ -20,6 +20,11 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Daten und Import") {
+                NavigationLink("Von Letterboxd importieren") { ImportView() }
+                    .listRowBackground(Theme.card)
+            }
+
             Section("Kommt noch") {
                 // Ausgegraut und benannt statt weggelassen: so ist
                 // sichtbar, was hier hingehört, ohne dass etwas
