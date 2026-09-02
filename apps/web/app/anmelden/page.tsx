@@ -27,12 +27,23 @@ export default async function SignInPage({
 
       <SignInForm weiter={weiter ?? ''} />
 
-      <p className="text-muted-foreground text-sm">
-        Noch kein Konto?{' '}
-        <Link href="/registrieren" className="text-foreground underline underline-offset-4">
-          Registrieren
-        </Link>
-      </p>
+      <div className="flex flex-col gap-2">
+        {/* Der Weg heraus, wenn das Passwort weg ist. Er fehlte im Web
+            ganz — es gab ihn nur in der App, und der Link dort fuehrte
+            auf eine Seite, die es nicht gab. */}
+        <p className="text-muted-foreground text-sm">
+          <Link href="/passwort-vergessen" className="text-foreground underline underline-offset-4">
+            Passwort vergessen?
+          </Link>
+        </p>
+
+        <p className="text-muted-foreground text-sm">
+          Noch kein Konto?{' '}
+          <Link href="/registrieren" className="text-foreground underline underline-offset-4">
+            Registrieren
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

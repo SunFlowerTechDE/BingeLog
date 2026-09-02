@@ -140,6 +140,76 @@ export async function signOut(): Promise<never> {
   redirect('/willkommen/import');
 }
 
+/**
+ * Ein neues Passwort setzen.
+ *
+ * Nur mit Sitzung, und die entsteht ueber den Link aus der Mail. Wer
+ * hier ankommt, hat den Besitz des Postfachs nachgewiesen.
+ */
+export async function setNewPassword(_previous: FormState, formData: FormData): Promise<FormState> {
+  const password = readField(formData, 'password');
+  const repeat = readField(formData, 'repeat');
+
+  // Dieselbe Untergrenze wie bei der Registrierung. Sie steht hier noch
+  // einmal, weil ein `minLength` im Formular eine Bequemlichkeit ist
+  // und keine Regel.
+  if (password.length < 8) {
+    return { error: 'Das Passwort braucht mindestens acht Zeichen.' };
+  }
+  if (password !== repeat) {
+    return { error: 'Die beiden Passwörter sind nicht gleich.' };
+  }
+
+  const supabase = await createClient();
+  const { data: session } = await supabase.auth.getUser();
+  if (!session.user) {
+    return { error: 'Der Link ist abgelaufen. Fordere einen neuen an.' };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    console.error('updateUser failed:', error.message);
+    return { error: 'Das hat nicht geklappt. Versuch es noch einmal.' };
+  }
+
+  revalidatePath('/', 'layout');
+  redirect('/');
+}
+
+/**
+ * Einen Link zum Zuruecksetzen anfordern.
+ *
+ * **Die Antwort ist immer dieselbe**, ob es die Adresse gibt oder
+ * nicht. Sonst waere das Formular eine Auskunft darueber, wer hier ein
+ * Konto hat.
+ */
+export async function requestPasswordReset(
+  _previous: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const email = readField(formData, 'email').trim();
+
+  if (!email.includes('@')) {
+    return { error: 'Gib deine Mailadresse ein.' };
+  }
+
+  // Die eigene Adresse aus dem Kopf der Anfrage, nicht fest verdrahtet:
+  // sonst zeigte der Link von der Testumgebung auf die Produktivseite,
+  // und man setzte das Passwort woanders.
+  const headerList = await headers();
+  const origin = headerList.get('origin') ?? `https://${headerList.get('host') ?? 'bingelog.eu'}`;
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/neues-passwort`,
+  });
+
+  if (error) console.error('resetPasswordForEmail failed:', error.message);
+
+  return { message: 'Wenn es die Adresse gibt, ist die Mail unterwegs.' };
+}
+
 export async function chooseUsername(_previous: FormState, formData: FormData): Promise<FormState> {
   const username = readField(formData, 'username').trim().toLowerCase();
 

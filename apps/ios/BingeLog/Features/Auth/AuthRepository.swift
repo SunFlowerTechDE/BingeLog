@@ -72,12 +72,15 @@ struct LiveAuthRepository: AuthRepository {
     /// Der Link führt auf die Webseite, nicht in die App — dort steht
     /// das Formular für ein neues Passwort. Ein Deep-Link zurück ist
     /// derselbe eigene Schritt wie bei der Bestätigung (5.7).
+    ///
+    /// **Ohne eigenes `redirectTo`.** Dann hängt Supabase die `SITE_URL`
+    /// des Projekts an, und die zeigt immer auf die Seite, die auch
+    /// wirklich steht. Vorher war hier `https://bingelog.eu/...`
+    /// fest verdrahtet — auf eine Seite, die es dort nicht gab, weshalb
+    /// der Link am 31.08.2026 in einen 404 lief.
     func sendPasswordReset(to email: String) async throws(BackendError) {
         do {
-            try await backend.client.auth.resetPasswordForEmail(
-                email,
-                redirectTo: URL(string: "https://bingelog.eu/auth/neues-passwort")
-            )
+            try await backend.client.auth.resetPasswordForEmail(email)
         } catch {
             throw BackendError.from(error)
         }
