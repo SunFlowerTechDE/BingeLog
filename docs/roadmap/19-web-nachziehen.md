@@ -223,11 +223,14 @@ Stufe umgesetzt. Das Web hat davon noch nichts:
   gefuellt. Der Hinweis „folge jemandem" stand dauerhaft auf der
   Startseite.
 
-Zwei Punkte des Konzepts sind **bewusst offen**, weil die Daten fehlen:
-„Neu in Deutschland" und der Countdown „noch 12 Tage" brauchen ein
-deutsches Erscheinungsdatum. Der Katalog fuehrt nur `release_year`.
-Wikidata hat P577 mit Landesqualifikator — das waere eine Erweiterung der
-Pipeline, keine der Oberflaeche.
+**„Neu in Deutschland" faellt weg.** Verworfen am 03.09.2026 — der
+Bereich wird nicht gebraucht. Das spart nicht nur die Sektion, sondern
+auch die Begruendung, die er dem deutschen Erscheinungsdatum gab.
+
+Der Countdown „noch 12 Tage" bleibt offen und braucht es weiterhin: der
+Katalog fuehrt nur `release_year`, und daraus laesst sich „bald" grob
+sagen, aber nicht „am 14.". Wikidata hat P577 mit Landesqualifikator —
+das waere eine Erweiterung der Pipeline, keine der Oberflaeche.
 
 - **„Von Freunden empfohlen"** samt Knopf auf der Filmseite. Die
   Tabelle `recommendations` und die drei Funktionen stehen und sind
@@ -399,10 +402,13 @@ gilt das fuer beide Plattformen.
   eine zweispaltige Seite nicht dasselbe wie auf einem Telefon. Popcorn,
   FSK-Farben und die drei Sichtbarkeiten sind auf beiden gleich, und das
   war der Teil, der gleich bleiben musste.
-- **"Neu in Deutschland" und der Countdown.** Beide brauchen ein
-  deutsches Erscheinungsdatum; der Katalog fuehrt nur `release_year`.
-  Wikidata hat P577 mit Landesqualifikator — eine Erweiterung der
-  Pipeline, keine der Oberflaeche.
+- **Der Countdown „noch 12 Tage"** und die Erinnerung fuer kommende
+  Filme in der Watchlist. Beide brauchen ein deutsches
+  Erscheinungsdatum; der Katalog fuehrt nur `release_year`. "Bald
+  verfuegbar" steht schon und kommt mit dem Jahr aus — auf den Tag
+  genau wird es erst mit P577 samt Landesqualifikator, und das ist eine
+  Erweiterung der Pipeline, keine der Oberflaeche.
+  („Neu in Deutschland" ist am 03.09.2026 verworfen worden.)
 - **Aus den Konzepten der Block "Danach"**: "Weil dir dieser Film
   gefallen hat", "Heute passend", Monatsstatistik, Bewertungsverlauf,
   Share Cards, Kalenderansicht.
