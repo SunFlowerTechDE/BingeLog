@@ -929,7 +929,8 @@ struct WatchlistTests {
         id: String, title: String, year: Int?, runtime: Int?, average: Double?,
         genres: [String] = [], recommenders: Int = 0,
         priority: WatchlistPriority = .normal, groups: [UUID] = [],
-        addedAt: String = "2026-08-01T10:00:00+00:00"
+        addedAt: String = "2026-08-01T10:00:00+00:00",
+        friendsSeen: Int = 0, friendName: String? = nil, friendRating: Int? = nil
     ) -> WatchlistEntry {
         let ids = genres.map { "\"\($0)\"" }.joined(separator: ",")
         let gruppen = groups.map { "\"\($0.uuidString)\"" }.joined(separator: ",")
@@ -942,10 +943,73 @@ struct WatchlistTests {
              "average":\(average.map { "\"\($0)\"" } ?? "null"),"votes":1,
              "genre_ids":[\(ids)],"genre_labels":[\(ids)],
              "recommenders":\(recommenders),"first_friend":null,
-             "priority":"\(priority.rawValue)","group_ids":[\(gruppen)]}
+             "priority":"\(priority.rawValue)","group_ids":[\(gruppen)],
+             "friends_seen":\(friendsSeen),
+             "friend_name":\(friendName.map { "\"\($0)\"" } ?? "null"),
+             "friend_rating":\(friendRating.map(String.init) ?? "null")}
             """
         // swiftlint:disable:next force_try
         return try! JSONDecoder().decode(WatchlistEntry.self, from: Data(json.utf8))
+    }
+
+    /// Die Karte trägt genau einen sozialen Hinweis.
+    ///
+    /// Eine Empfehlung ist an mich gerichtet, „hat ihn gesehen" nicht.
+    /// Also gewinnt die Empfehlung, und die Karte bleibt lesbar.
+    @Test("Nur ein sozialer Hinweis, und die Empfehlung gewinnt")
+    func onlyOneSocialNote() {
+        let beides = entry(
+            id: "Q1", title: "Beides", year: 2000, runtime: 90, average: nil,
+            recommenders: 1, friendsSeen: 2)
+        #expect(beides.socialNote == beides.recommendationNote)
+
+        let einer = entry(
+            id: "Q2", title: "Einer", year: 2000, runtime: 90, average: nil,
+            friendsSeen: 1, friendName: "Sarah", friendRating: 9)
+        #expect(einer.socialNote == "Sarah gab 4,5 Popcorn")
+
+        let ohneNote = entry(
+            id: "Q3", title: "Ohne Note", year: 2000, runtime: 90, average: nil,
+            friendsSeen: 1, friendName: "Pascal")
+        #expect(ohneNote.socialNote == "Pascal hat ihn gesehen")
+
+        let mehrere = entry(
+            id: "Q4", title: "Mehrere", year: 2000, runtime: 90, average: nil,
+            friendsSeen: 3, friendName: "Sarah", friendRating: 8)
+        #expect(mehrere.socialNote == "3 Freunde gesehen", "ab zwei die Zahl, nicht die Liste")
+
+        let nichts = entry(id: "Q5", title: "Nichts", year: 2000, runtime: 90, average: nil)
+        #expect(nichts.socialNote == nil)
+    }
+
+    /// „Was heute?" wählt, es würfelt nicht.
+    @Test("Der Vorschlag nimmt das stärkste Argument, nicht das beste Mittel")
+    func tonightPicksTheStrongestCase() {
+        let empfohlen = entry(
+            id: "Q1", title: "Empfohlen", year: 2000, runtime: 90, average: 6, recommenders: 1)
+        let gesehen = entry(
+            id: "Q2", title: "Gesehen", year: 2000, runtime: 90, average: 8, friendsSeen: 2)
+        let fremd = entry(id: "Q3", title: "Fremd", year: 2000, runtime: 90, average: 10)
+        let alle = [fremd, gesehen, empfohlen]
+
+        #expect(
+            WatchlistModel.suggestion(
+                from: alle, maximumRuntime: nil, genre: nil, socialOnly: false
+            )?.filmID == "Q1", "die Empfehlung schlägt den besseren Schnitt")
+
+        // Die Zeit ist eine harte Grenze, kein Wunsch.
+        let lang = entry(
+            id: "Q4", title: "Lang", year: 2000, runtime: 200, average: 10, recommenders: 5)
+        #expect(
+            WatchlistModel.suggestion(
+                from: [lang, fremd], maximumRuntime: 120, genre: nil, socialOnly: false
+            )?.filmID == "Q3")
+
+        // Ohne sozialen Bezug bleibt bei „nur was Freunde kennen"
+        // nichts übrig — und nichts ist eine Antwort, kein Zufallsgriff.
+        #expect(
+            WatchlistModel.suggestion(
+                from: [fremd], maximumRuntime: nil, genre: nil, socialOnly: true) == nil)
     }
 
     /// Prioritaet und Gruppe filtern wie jeder andere Filter auch.

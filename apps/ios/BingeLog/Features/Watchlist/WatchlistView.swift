@@ -23,6 +23,7 @@ struct WatchlistView: View {
 
     @State private var seenEntry: WatchlistEntry?
     @State private var showsGroups = false
+    @State private var showsTonight = false
 
     var body: some View {
         @Bindable var model = model
@@ -66,6 +67,9 @@ struct WatchlistView: View {
         }
         .sheet(isPresented: $showsGroups) {
             GroupsSheet(model: model)
+        }
+        .sheet(isPresented: $showsTonight) {
+            TonightSheet(model: model)
         }
         .task { await model.load() }
         .refreshable { await model.load() }
@@ -160,16 +164,26 @@ struct WatchlistView: View {
                 Spacer()
 
                 Button {
-                    model.surpriseMe()
+                    showsTonight = true
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "dice")
-                        Text("Überrasch mich")
+                        Image(systemName: "sparkles")
+                        Text("Was heute?")
                     }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.primary)
                 }
+                .disabled(model.all.isEmpty)
+
+                Button {
+                    model.surpriseMe()
+                } label: {
+                    Image(systemName: "dice")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.primary)
+                }
                 .disabled(model.shown.isEmpty)
+                .accessibilityLabel("Überrasch mich")
             }
             .padding(.horizontal, 20)
 
@@ -342,7 +356,7 @@ private struct WatchlistCard: View {
 
                 // Der soziale Hinweis, aber nur einer. Die Karte darf
                 // nicht überladen werden (Konzept).
-                if let note = entry.recommendationNote {
+                if let note = entry.socialNote {
                     Text(note)
                         .font(.caption2)
                         .foregroundStyle(Theme.primary)
@@ -505,7 +519,7 @@ private struct SurpriseSheet: View {
             .padding(24)
             .frame(maxWidth: .infinity)
             .background(Theme.background)
-            .navigationTitle("Überrasch mich")
+            .navigationTitle("Vorschlag")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -593,5 +607,100 @@ private struct GroupsSheet: View {
         name = ""
         isTyping = false
         Task { await model.createGroup(named: wanted) }
+    }
+}
+
+/// „Was soll ich heute schauen" (Watchlist-Konzept).
+///
+/// Drei Fragen, dann ein Film. Der Unterschied zu „Überrasch mich" ist,
+/// dass hier nicht gewürfelt wird: aus dem, was passt, kommt der mit dem
+/// stärksten Argument heraus.
+private struct TonightSheet: View {
+    let model: WatchlistModel
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var maximumRuntime: Int?
+    @State private var genre: FilmGenre?
+    @State private var socialOnly = false
+    @State private var nothingFits = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Wie viel Zeit hast du?") {
+                    Picker("Zeit", selection: $maximumRuntime) {
+                        Text("Egal").tag(Int?.none)
+                        Text("Unter 90 Minuten").tag(Int?.some(90))
+                        Text("Unter 120 Minuten").tag(Int?.some(120))
+                        Text("Unter 150 Minuten").tag(Int?.some(150))
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                }
+
+                if !model.availableGenres.isEmpty {
+                    Section("Worauf hast du Lust?") {
+                        Picker("Genre", selection: $genre) {
+                            Text("Egal").tag(FilmGenre?.none)
+                            ForEach(model.availableGenres) { option in
+                                Text(option.shortLabel).tag(FilmGenre?.some(option))
+                            }
+                        }
+                    }
+                }
+
+                Section {
+                    Toggle("Nur was Freunde kennen", isOn: $socialOnly)
+                } footer: {
+                    Text("Filme, die dir jemand empfohlen hat oder die Freunde schon gesehen haben.")
+                }
+
+                if nothingFits {
+                    Section {
+                        Text("Dazu passt gerade nichts auf deiner Watchlist.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.muted)
+                    }
+                }
+            }
+            .navigationTitle("Was heute?")
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    suggest()
+                } label: {
+                    Text("Vorschlagen")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.onPrimary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Theme.primary, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+                .background(.bar)
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+            }
+        }
+    }
+
+    /// Passt nichts, bleibt das Blatt offen und sagt es. Es zu schliessen
+    /// und nichts zu zeigen sähe aus, als wäre der Knopf kaputt.
+    private func suggest() {
+        let vorschlag = WatchlistModel.suggestion(
+            from: model.all, maximumRuntime: maximumRuntime, genre: genre?.id,
+            socialOnly: socialOnly)
+
+        guard let vorschlag else {
+            nothingFits = true
+            return
+        }
+        nothingFits = false
+        dismiss()
+        model.surprise = vorschlag
     }
 }

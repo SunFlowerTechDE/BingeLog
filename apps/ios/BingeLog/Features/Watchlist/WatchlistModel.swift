@@ -112,6 +112,41 @@ final class WatchlistModel {
         }
     }
 
+    /// Der Vorschlag für heute Abend (Watchlist-Konzept).
+    ///
+    /// **Nicht zufällig.** „Überrasch mich" würfelt, das hier wählt: aus
+    /// dem, was zu Zeit und Genre passt, kommt der Film mit dem
+    /// stärksten Argument. Ein Vorschlag, der genauso gut ein Los sein
+    /// könnte, ist kein Vorschlag.
+    ///
+    /// Die Reihenfolge der Argumente: eine Empfehlung an mich wiegt
+    /// schwerer als „Freunde haben ihn gesehen", und beides schwerer als
+    /// ein guter Schnitt unter Fremden.
+    nonisolated static func suggestion(
+        from entries: [WatchlistEntry], maximumRuntime: Int?, genre: String?,
+        socialOnly: Bool
+    ) -> WatchlistEntry? {
+        let passend = select(
+            from: entries, term: "", genre: genre, maximumRuntime: maximumRuntime,
+            onlyRecommended: false
+        )
+        .filter { !socialOnly || $0.recommenders > 0 || $0.friendsSeen > 0 }
+
+        return passend.max { a, b in
+            if a.socialWeight != b.socialWeight { return a.socialWeight < b.socialWeight }
+            if a.average != b.average { return (a.average ?? 0) < (b.average ?? 0) }
+            // Zuletzt die Prioritaet, damit zwei gleich starke Filme
+            // nicht in beliebiger Reihenfolge herauskommen.
+            return a.priority.rank > b.priority.rank
+        }
+    }
+
+    /// Den Vorschlag ins selbe Blatt legen wie „Überrasch mich".
+    func suggest(maximumRuntime: Int?, genre: String?, socialOnly: Bool) {
+        surprise = WatchlistModel.suggestion(
+            from: all, maximumRuntime: maximumRuntime, genre: genre, socialOnly: socialOnly)
+    }
+
     /// Zieht einen Film aus dem, was gerade sichtbar ist.
     ///
     /// **Aus der gefilterten Auswahl**, nicht aus der ganzen Liste: wer

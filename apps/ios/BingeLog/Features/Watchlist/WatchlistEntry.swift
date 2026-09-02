@@ -24,6 +24,11 @@ nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
     var priority: WatchlistPriority
     /// In welchen eigenen Gruppen er steht.
     var groupIDs: [UUID]
+    /// Wie viele Freunde ihn schon gesehen haben.
+    let friendsSeen: Int
+    let friendName: String?
+    /// Die Note dieses Freundes, interne Skala 1 bis 10.
+    let friendRating: Int?
 
     var id: String { filmID }
     var title: String { titleDE ?? titleOriginal }
@@ -67,6 +72,36 @@ nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
         return copy
     }
 
+    /// „Sarah gab 4,5 Popcorn" oder „3 Freunde gesehen".
+    ///
+    /// Bei genau einem Freund der Name: der sagt mehr als eine Eins. Ab
+    /// zwei die Zahl, weil eine Aufzählung die Karte sprengt.
+    var seenNote: String? {
+        guard friendsSeen > 0 else { return nil }
+        if friendsSeen == 1, let friendName {
+            guard let friendRating else { return "\(friendName) hat ihn gesehen" }
+            return "\(friendName) gab \(Popcorn.format(friendRating)) Popcorn"
+        }
+        return "\(friendsSeen) Freunde gesehen"
+    }
+
+    /// Wie stark das soziale Argument für diesen Film ist.
+    ///
+    /// Drei Stufen, keine Rechnung: an mich gerichtet, im Umfeld
+    /// gesehen, nichts.
+    var socialWeight: Int {
+        if recommenders > 0 { return 2 }
+        if friendsSeen > 0 { return 1 }
+        return 0
+    }
+
+    /// Der eine soziale Hinweis, den die Karte trägt.
+    ///
+    /// **Nur einer.** Eine Empfehlung ist der stärkere: sie ist an mich
+    /// gerichtet, das Gesehenhaben ist es nicht (Konzept: die
+    /// Information darf die Karten nicht überladen).
+    var socialNote: String? { recommendationNote ?? seenNote }
+
     /// Genres als Paare, für den Filter.
     var genres: [FilmGenre] {
         zip(genreIDs, genreLabels).map { FilmGenre(id: $0, label: $1) }
@@ -87,6 +122,9 @@ nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
         case firstFriend = "first_friend"
         case priority
         case groupIDs = "group_ids"
+        case friendsSeen = "friends_seen"
+        case friendName = "friend_name"
+        case friendRating = "friend_rating"
     }
 
     init(from decoder: Decoder) throws {
@@ -115,6 +153,9 @@ nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
         priority =
             (try? c.decode(WatchlistPriority.self, forKey: .priority)) ?? .normal
         groupIDs = (try? c.decode([UUID].self, forKey: .groupIDs)) ?? []
+        friendsSeen = (try? c.decode(Int.self, forKey: .friendsSeen)) ?? 0
+        friendName = try c.decodeIfPresent(String.self, forKey: .friendName)
+        friendRating = try c.decodeIfPresent(Int.self, forKey: .friendRating)
     }
 }
 

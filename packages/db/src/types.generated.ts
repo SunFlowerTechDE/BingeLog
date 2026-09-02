@@ -1612,6 +1612,9 @@ export type Database = {
           average: number
           film_id: string
           first_friend: string
+          friend_name: string
+          friend_rating: number
+          friends_seen: number
           genre_ids: string[]
           genre_labels: string[]
           group_ids: string[]

@@ -1505,6 +1505,78 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.watchlist where user_id = $1`, [ich]);
   });
 
+  it('counts only the friend viewings it is allowed to see', async () => {
+    const ich = await seedUser(h, 'wlfreundeich');
+    const freund = await seedUser(h, 'wlfreundefreund');
+    const fremd = await seedUser(h, 'wlfreundefremd');
+    const meiner = h.as('authenticated', ich);
+
+    await h.sql.query(
+      `insert into public.follows (follower_id, followee_id) values ($1, $2), ($2, $1)`,
+      [ich, freund],
+    );
+    await meiner.query(`insert into public.watchlist (user_id, film_id) values ($1, $2)`, [
+      ich,
+      FILM,
+    ]);
+
+    interface Zeile {
+      friends_seen: number;
+      friend_name: string | null;
+      friend_rating: number | null;
+    }
+
+    // Ein Fremder hat ihn gesehen. Fremde zaehlen nicht mit.
+    await h
+      .as('authenticated', fremd)
+      .query(`insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 10)`, [
+        fremd,
+        FILM,
+      ]);
+    const ohne = await meiner.query<Zeile>(
+      `select friends_seen, friend_name, friend_rating from public.watchlist_for_me()`,
+    );
+    assert.equal(ohne[0]?.friends_seen, 0, 'nur der Freundeskreis zaehlt');
+
+    // Der Freund auch, und der zaehlt — mit Namen und Note.
+    await h
+      .as('authenticated', freund)
+      .query(`insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 9)`, [
+        freund,
+        FILM,
+      ]);
+    const mit = await meiner.query<Zeile>(
+      `select friends_seen, friend_name, friend_rating from public.watchlist_for_me()`,
+    );
+    assert.equal(mit[0]?.friends_seen, 1);
+    assert.equal(mit[0]?.friend_name, 'wlfreundefreund');
+    assert.equal(mit[0]?.friend_rating, 9);
+
+    // Zweimal derselbe Freund ist ein Freund, nicht zwei.
+    await h.as('authenticated', freund).query(
+      `insert into public.diary_entries (user_id, film_id, rating, is_rewatch)
+         values ($1, $2, 8, true)`,
+      [freund, FILM],
+    );
+    const wieder = await meiner.query<Zeile>(`select friends_seen from public.watchlist_for_me()`);
+    assert.equal(wieder[0]?.friends_seen, 1, 'gezaehlt werden Personen, nicht Eintraege');
+
+    // Stellt der Freund seine Eintraege auf privat, ist er weg. Eine
+    // Zahl, die es ohne den Eintrag nicht gaebe, verraet ihn genauso.
+    await h
+      .as('authenticated', freund)
+      .query(`update public.diary_entries set visibility = 'private' where user_id = $1`, [freund]);
+    const privat = await meiner.query<Zeile>(
+      `select friends_seen, friend_name from public.watchlist_for_me()`,
+    );
+    assert.equal(privat[0]?.friends_seen, 0);
+    assert.equal(privat[0]?.friend_name, null);
+
+    await h.sql.query(`delete from public.diary_entries where film_id = $1`, [FILM]);
+    await h.sql.query(`delete from public.watchlist where user_id = $1`, [ich]);
+    await h.sql.query(`delete from public.follows where follower_id = any($1)`, [[ich, freund]]);
+  });
+
   it('carries priority and group membership into the watchlist', async () => {
     const ich = await seedUser(h, 'wlprio');
     const fremd = await seedUser(h, 'wlpriofremd');
