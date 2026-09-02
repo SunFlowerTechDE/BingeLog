@@ -13,6 +13,7 @@ import { ReportButton } from '@/components/report-button';
 import { FskLabel, fskStufe } from '@/components/fsk';
 import { genreLabel } from '@/lib/genres';
 import { SpoilerText } from '@/components/spoiler-text';
+import { DeletedAccount } from '@/components/deleted-account';
 import { RewatchButton } from '@/components/rewatch-button';
 import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
@@ -404,7 +405,8 @@ async function Reviews({
   let query = supabase
     .from('diary_entries')
     .select(
-      'id, rating, review, has_spoilers, watched_on, is_rewatch, created_at, profiles(username)',
+      'id, rating, review, has_spoilers, watched_on, is_rewatch, created_at, ' +
+        'profiles(username, deleted_at)',
     )
     .eq('film_id', wikidataId)
     .not('review', 'is', null);
@@ -423,7 +425,7 @@ async function Reviews({
     watched_on: string | null;
     is_rewatch: boolean;
     created_at: string;
-    profiles: { username: string } | null;
+    profiles: { username: string; deleted_at: string | null } | null;
   }[];
 
   // Fruehes Aussteigen nur in der Gesamtansicht: in der Freundesansicht
@@ -491,15 +493,20 @@ async function Reviews({
           return (
             <li key={entry.id} className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                {entry.profiles?.username ? (
+                {/* Die Wertung und der Text bleiben, der Name geht.
+                    Ein Link führte auf ein Profil, das es nicht mehr
+                    gibt. */}
+                {entry.profiles === null ? (
+                  <span className="font-medium">jemand</span>
+                ) : entry.profiles.deleted_at !== null ? (
+                  <DeletedAccount />
+                ) : (
                   <Link
                     href={`/@${entry.profiles.username}` as Route}
                     className="font-medium hover:underline"
                   >
                     {entry.profiles.username}
                   </Link>
-                ) : (
-                  <span className="font-medium">jemand</span>
                 )}
                 {entry.rating === null ? null : <PopcornRating rating={entry.rating} size={16} />}
                 {entry.is_rewatch ? (
@@ -649,7 +656,10 @@ async function DiscussionSection({
 
   const { data: rows } = await supabase
     .from('thread_messages')
-    .select('id, parent_id, body, created_at, edited_at, user_id, profiles(username, avatar_path)')
+    .select(
+      'id, parent_id, body, created_at, edited_at, user_id, ' +
+        'profiles(username, avatar_path, deleted_at)',
+    )
     .eq('film_id', filmId)
     .order('created_at', { ascending: true });
 
@@ -661,7 +671,7 @@ async function DiscussionSection({
     created_at: string;
     edited_at: string | null;
     user_id: string;
-    profiles: { username: string; avatar_path: string | null };
+    profiles: { username: string; avatar_path: string | null; deleted_at: string | null };
   }[];
 
   const beitraege: Beitrag[] = roh.map((r) => ({
@@ -671,6 +681,7 @@ async function DiscussionSection({
     created_at: r.created_at,
     edited_at: r.edited_at,
     username: r.profiles.username,
+    geloescht: r.profiles.deleted_at !== null,
     avatar_url: r.profiles.avatar_path
       ? supabase.storage.from('avatars').getPublicUrl(r.profiles.avatar_path).data.publicUrl
       : null,

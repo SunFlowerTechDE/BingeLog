@@ -12,6 +12,13 @@ Rechtstext merkt man das erst, wenn jemand fragt.
   `[…]` und müssen vor der Veröffentlichung eingesetzt werden.
 - **Eine juristische Prüfung.** Der Text beschreibt genau, was der Code
   tut — das ist die Grundlage, aber keine Rechtsberatung.
+- **Ein Punkt gehört dabei ausdrücklich angesehen:** seit dem 03.09.2026
+  überleben Bewertungen, Rezensionen und Diskussionsbeiträge die
+  Kontolöschung, losgelöst vom Konto und mit „Konto gelöscht" statt
+  eines Namens. Das ist eine Abwägung — Art. 17 gegen die Integrität des
+  Katalogs und der Gespräche — und genau die Art Entscheidung, die eine
+  Aufsichtsbehörde prüfen würde. Der Weg heraus steht im Text: einzelne
+  Einträge vorher löschen oder auf Zuruf entfernen lassen.
   ~~Die Kontolöschung gibt es im Produkt noch nicht.~~ **Erledigt am
   03.09.2026.** Sie steht in Web und App unter Einstellungen → Konto und
   läuft über die Edge Function `delete-account`. Der Absatz im Text ist

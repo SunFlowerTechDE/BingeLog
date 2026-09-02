@@ -201,13 +201,29 @@ export default function DatenschutzPage() {
           <Link href="/einstellungen" className="text-foreground underline underline-offset-4">
             Einstellungen
           </Link>{' '}
-          unter „Konto", in der App ebenso. Damit verschwinden Tagebuch, Bewertungen, Rezensionen,
-          Listen, Watchlist, Favoriten, Empfehlungen, Diskussionsbeiträge, Profil- und Kopfbild und
-          hochgeladene Importdateien. Das lässt sich nicht rückgängig machen.
+          unter „Konto", in der App ebenso. Das lässt sich nicht rückgängig machen.
         </p>
         <p>
-          Bestehen bleiben <strong>Meldungen und Moderationsentscheidungen</strong>, beide ohne
-          deinen Namen daran. Der DSA verlangt, dass diese Spur nachvollziehbar bleibt — eine
+          <strong>Weg sind dann:</strong> dein Name, dein Anzeigename, deine Beschreibung, Profil-
+          und Kopfbild, Watchlist, Binge-Listen, Favoriten, wem du folgst und wer dir folgt,
+          Blockaden, Empfehlungen, deine Stimmen aus dem Geschmackscheck und hochgeladene
+          Importdateien. Anmelden kannst du dich danach nicht mehr.
+        </p>
+        <p>
+          <strong>Bestehen bleiben deine Bewertungen, Rezensionen und Diskussionsbeiträge</strong> —
+          aber ohne dich. Statt deines Namens steht dort „Konto gelöscht", und es führt kein Link
+          mehr auf ein Profil. Der Grund: eine Bewertung ist eine Aussage über einen Film, und der
+          Film steht weiter da. Ein Gespräch, aus dem eine Seite spurlos verschwindet, ist keins
+          mehr, und ein Filmdurchschnitt, der bei jeder Kontolöschung springt, sagt nichts mehr aus.
+        </p>
+        <p>
+          Willst du <strong>einzelne</strong> Einträge oder Beiträge nicht stehen lassen, lösch sie
+          vor dem Konto — dann sind sie weg. Oder schreib an [E-Mail-Adresse], und wir entfernen
+          sie.
+        </p>
+        <p>
+          Bestehen bleiben außerdem <strong>Meldungen und Moderationsentscheidungen</strong>, beide
+          ohne deinen Namen daran. Der DSA verlangt, dass diese Spur nachvollziehbar bleibt — eine
           Meldung, die mit dem gemeldeten Konto verschwindet, wäre keine.
         </p>
         <p>

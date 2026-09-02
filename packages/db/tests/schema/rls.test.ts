@@ -1680,6 +1680,110 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.account_actions where target_name = 'loeschbar'`);
   });
 
+  it('leaves ratings and reviews standing when an account goes', async () => {
+    // Der Kern des Entwurfs vom 03.09.2026: die Wertung gehoert zum
+    // Film, nicht zur Person. Sie bleibt, der Name geht.
+    const gehend = await seedUser(h, 'grabstein');
+    const bleibend = await seedUser(h, 'grabzeuge');
+
+    await h.sql.query(
+      `insert into public.diary_entries (user_id, film_id, rating, review)
+       values ($1, $2, 8, 'Der Schluss traegt den ganzen Film.')`,
+      [gehend, FILM],
+    );
+    await h.sql.query(`insert into public.watchlist (user_id, film_id) values ($1, $2)`, [
+      gehend,
+      QUIET_FILM,
+    ]);
+    await h.sql.query(
+      `insert into public.follows (follower_id, followee_id) values ($1, $2), ($2, $1)`,
+      [gehend, bleibend],
+    );
+
+    const vorher = await h.sql.query<{ votes: number }>(
+      `select votes from public.film_rating_summary($1)`,
+      [FILM],
+    );
+
+    await h.sql.query(`select public.anonymise_profile($1)`, [gehend]);
+
+    // Die Bewertung zaehlt weiter — der Durchschnitt des Films bewegt
+    // sich nicht.
+    const nachher = await h.sql.query<{ votes: number }>(
+      `select votes from public.film_rating_summary($1)`,
+      [FILM],
+    );
+    assert.equal(nachher.rows[0]?.votes, vorher.rows[0]?.votes, 'die Stimme bleibt');
+
+    // Der Text steht, der Name ist weg.
+    const eintrag = await h.sql.query<{
+      review: string;
+      deleted_at: string | null;
+      username: string;
+    }>(
+      `select d.review, p.deleted_at, p.username
+       from public.diary_entries d join public.profiles p on p.id = d.user_id
+       where d.user_id = $1`,
+      [gehend],
+    );
+    assert.equal(eintrag.rows[0]?.review, 'Der Schluss traegt den ganzen Film.');
+    assert.notEqual(eintrag.rows[0]?.deleted_at, null, 'als geloescht markiert');
+    assert.ok(
+      eintrag.rows[0]?.username.startsWith('geloescht_'),
+      'der Name bezeichnet niemanden mehr',
+    );
+
+    // Alles, was nur im Verhaeltnis zu anderen Sinn ergibt, ist weg.
+    for (const [tabelle, spalte] of [
+      ['watchlist', 'user_id'],
+      ['follows', 'follower_id'],
+      ['follows', 'followee_id'],
+    ] as const) {
+      const rest = await h.sql.query(`select 1 from public.${tabelle} where ${spalte} = $1`, [
+        gehend,
+      ]);
+      assert.equal(rest.rows.length, 0, `${tabelle}.${spalte} haengt noch`);
+    }
+
+    // Und niemand kann einem Grabstein folgen.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', bleibend)
+          .query(`insert into public.follows (follower_id, followee_id) values ($1, $2)`, [
+            bleibend,
+            gehend,
+          ]),
+      /violates row-level security/i,
+      'einem geloeschten Konto folgt niemand',
+    );
+
+    await h.sql.query(`delete from public.diary_entries where user_id = $1`, [gehend]);
+  });
+
+  it('refuses to let anyone but the service role empty a profile', async () => {
+    // `anonymise_profile` ist `security definer`. Ohne den Entzug waere
+    // sie ein Knopf, mit dem jeder jedes Profil leeren kann.
+    const opfer = await seedUser(h, 'nichtleeren');
+
+    for (const rolle of ['anon', 'authenticated'] as const) {
+      await assert.rejects(
+        () =>
+          h
+            .as(rolle, rolle === 'anon' ? null : opfer)
+            .query(`select public.anonymise_profile($1)`, [opfer]),
+        /permission denied/i,
+        `${rolle} darf das nicht`,
+      );
+    }
+
+    const heil = await h.sql.query<{ deleted_at: string | null }>(
+      `select deleted_at from public.profiles where id = $1`,
+      [opfer],
+    );
+    assert.equal(heil.rows[0]?.deleted_at, null, 'unversehrt');
+  });
+
   it('keeps taste votes out of every rating', async () => {
     const ich = await seedUser(h, 'geschmackich');
     const fremd = await seedUser(h, 'geschmackfremd');

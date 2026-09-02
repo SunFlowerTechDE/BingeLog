@@ -708,7 +708,11 @@ private struct ReviewList: View {
                 ForEach(reviews) { entry in
                     VStack(alignment: .leading, spacing: 5) {
                         HStack(spacing: 8) {
-                            if let name = entry.username {
+                            // Die Wertung und der Text bleiben, der
+                            // Name geht.
+                            if entry.accountDeleted {
+                                DeletedAccountLabel()
+                            } else if let name = entry.username {
                                 NavigationLink {
                                     ProfileView(username: name)
                                 } label: {
@@ -910,7 +914,11 @@ private struct MessageBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                if let name = message.username {
+                // Ein Gespräch, aus dem eine Seite spurlos verschwindet,
+                // ist keins mehr. Der Beitrag bleibt, der Name geht.
+                if message.accountDeleted {
+                    DeletedAccountLabel()
+                } else if let name = message.username {
                     NavigationLink {
                         ProfileView(username: name)
                     } label: {

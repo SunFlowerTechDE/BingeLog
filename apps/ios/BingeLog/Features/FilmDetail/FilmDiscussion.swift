@@ -49,10 +49,20 @@ struct ThreadMessage: Decodable, Identifiable, Sendable {
     let editedAt: String?
     let userID: UUID
     let username: String?
+    /// Das Konto ist gelöscht: der Beitrag bleibt, der Name geht.
+    let accountDeleted: Bool
 
     var created: Date? { FeedEntry.timestamp(from: createdAt) }
 
-    nonisolated private struct Profile: Decodable { let username: String }
+    nonisolated private struct Profile: Decodable {
+        let username: String
+        let deletedAt: String?
+
+        enum CodingKeys: String, CodingKey {
+            case username
+            case deletedAt = "deleted_at"
+        }
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, body, profiles
@@ -70,7 +80,9 @@ struct ThreadMessage: Decodable, Identifiable, Sendable {
         createdAt = try c.decode(String.self, forKey: .createdAt)
         editedAt = try c.decodeIfPresent(String.self, forKey: .editedAt)
         userID = try c.decode(UUID.self, forKey: .userID)
-        username = (try? c.decodeIfPresent(Profile.self, forKey: .profiles))??.username
+        let profile = (try? c.decodeIfPresent(Profile.self, forKey: .profiles)) ?? nil
+        username = profile?.username
+        accountDeleted = profile?.deletedAt != nil
     }
 }
 
@@ -119,7 +131,8 @@ extension LiveFilmEntryRepository {
         let rows: [ThreadMessage]? = try? await backend.client
             .from("thread_messages")
             .select(
-                "id, parent_id, body, created_at, edited_at, user_id, profiles(username)")
+                "id, parent_id, body, created_at, edited_at, user_id, "
+                    + "profiles(username, deleted_at)")
             .eq("film_id", value: filmID)
             .order("created_at", ascending: true)
             .execute()

@@ -11,19 +11,24 @@
  * es nicht — sonst waere diese Funktion ein Knopf, mit dem jeder jedes
  * Konto loeschen kann, und der Service-Role-Key umgeht jede Policy.
  *
- * Zwei Schritte, in dieser Reihenfolge:
+ * Drei Schritte, in dieser Reihenfolge:
  *
  *   1. Der Objektspeicher. **Er kaskadiert nicht.** Faellt das Konto
  *      zuerst, bleiben Profilbild, Kopfbild und Importdatei liegen, und
  *      niemand kann sie danach noch zuordnen.
- *   2. Das Konto. Die Fremdschluessel raeumen Tagebuch, Watchlist,
- *      Listen, Favoriten, Folgen, Blockaden, Empfehlungen, Beitraege,
- *      Geschmacksstimmen und Importe mit.
+ *   2. `anonymise_profile`. Es macht aus dem Profil einen Grabstein:
+ *      Name, Bild und Beschreibung weg, Watchlist, Listen, Favoriten,
+ *      Folgen, Blockaden, Empfehlungen, Geschmacksstimmen und Importe
+ *      weg — **Bewertungen und Rezensionen bleiben**. Sie sind eine
+ *      Aussage ueber einen Film, und der Film steht weiter da.
+ *   3. Das Konto in `auth.users`. Danach kann sich niemand mehr
+ *      anmelden; die Profilzeile bleibt als Grabstein stehen, weil sie
+ *      seit dem 03.09.2026 keinen Fremdschluessel mehr dorthin hat.
  *
- * Was bleibt: Meldungen und Moderationseintraege, beide ohne den Namen
- * daran. Der DSA verlangt die Spur, und eine Meldung, die mit dem
- * gemeldeten Konto verschwindet, waere keine. Bilder an Meldungen liegen
- * unter der Melde-ID und gehoeren dorthin, nicht zum Konto.
+ * Ebenfalls stehen bleiben Meldungen und Moderationseintraege, beide
+ * ohne den Namen daran. Der DSA verlangt die Spur, und eine Meldung,
+ * die mit dem gemeldeten Konto verschwindet, waere keine. Bilder an
+ * Meldungen liegen unter der Melde-ID und gehoeren dorthin.
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -107,6 +112,17 @@ Deno.serve(async (request: Request) => {
   let removedFiles = 0;
   for (const bucket of OWNED_FOLDERS) {
     removedFiles += await clearFolder(admin, bucket, userId);
+  }
+
+  // Erst den Grabstein setzen, dann das Konto entfernen. Andersherum
+  // liefe `anonymise_profile` gegen ein Profil, dessen Konto es nicht
+  // mehr gibt — das ginge zwar, aber die Reihenfolge soll die sein, in
+  // der man sie auch liest.
+  const { error: tombstoneError } = await admin.rpc('anonymise_profile', { target: userId });
+
+  if (tombstoneError) {
+    console.error('anonymise_profile failed:', tombstoneError.message);
+    return json({ error: 'delete_failed' }, 500);
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);

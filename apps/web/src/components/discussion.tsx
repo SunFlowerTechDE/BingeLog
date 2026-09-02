@@ -8,6 +8,7 @@ import { postMessage, editMessage, removeMessage } from '@/lib/discussion-action
 import { DiscussionText } from '@/components/discussion-text';
 import { ActionNote } from '@/components/action-note';
 import { Avatar } from '@/components/profile-parts';
+import { DeletedAccount } from '@/components/deleted-account';
 import { ReportButton } from '@/components/report-button';
 import { BlockButton } from '@/components/block-button';
 
@@ -18,6 +19,8 @@ export interface Beitrag {
   created_at: string;
   edited_at: string | null;
   username: string;
+  /** Das Konto ist gelöscht: der Beitrag bleibt, der Name geht. */
+  geloescht: boolean;
   avatar_url: string | null;
   eigener: boolean;
 }
@@ -146,6 +149,8 @@ export function Discussion({
           created_at: new Date().toISOString(),
           edited_at: null,
           username: ich.username,
+          // Wer gerade schreibt, hat ein Konto.
+          geloescht: false,
           avatar_url: ich.avatarUrl,
           eigener: true,
         },
@@ -186,14 +191,21 @@ export function Discussion({
 
   const Kopf = ({ b }: { b: Beitrag }) => (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-      <Link href={`/@${b.username}` as Route} className="flex items-center gap-2 hover:underline">
-        {b.avatar_url ? (
-          <img src={b.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" />
-        ) : (
-          <Avatar name={b.username} size={20} />
-        )}
-        <span className="font-medium">{b.username}</span>
-      </Link>
+      {b.geloescht ? (
+        // Der Beitrag bleibt stehen — ein Gespräch, aus dem eine Seite
+        // spurlos verschwindet, ist keins mehr. Der Name geht, und es
+        // führt kein Link mehr auf ein Profil, das es nicht gibt.
+        <DeletedAccount size={20} />
+      ) : (
+        <Link href={`/@${b.username}` as Route} className="flex items-center gap-2 hover:underline">
+          {b.avatar_url ? (
+            <img src={b.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" />
+          ) : (
+            <Avatar name={b.username} size={20} />
+          )}
+          <span className="font-medium">{b.username}</span>
+        </Link>
+      )}
       <span className="text-muted-foreground">{wann(b.created_at)}</span>
       {b.edited_at ? <span className="text-muted-foreground">bearbeitet</span> : null}
     </div>

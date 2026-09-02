@@ -11,10 +11,20 @@ struct FilmReview: Decodable, Identifiable, Sendable {
     let isRewatch: Bool
     let createdAt: String
     let username: String?
+    /// Das Konto ist gelöscht: Wertung und Text bleiben, der Name geht.
+    let accountDeleted: Bool
 
     var created: Date? { FeedEntry.timestamp(from: createdAt) }
 
-    private struct Profile: Decodable { let username: String }
+    private struct Profile: Decodable {
+        let username: String
+        let deletedAt: String?
+
+        enum CodingKeys: String, CodingKey {
+            case username
+            case deletedAt = "deleted_at"
+        }
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, rating, review, profiles
@@ -33,7 +43,9 @@ struct FilmReview: Decodable, Identifiable, Sendable {
         watchedOn = try c.decodeIfPresent(String.self, forKey: .watchedOn)
         isRewatch = (try? c.decode(Bool.self, forKey: .isRewatch)) ?? false
         createdAt = try c.decode(String.self, forKey: .createdAt)
-        username = (try? c.decodeIfPresent(Profile.self, forKey: .profiles))??.username
+        let profile = (try? c.decodeIfPresent(Profile.self, forKey: .profiles)) ?? nil
+        username = profile?.username
+        accountDeleted = profile?.deletedAt != nil
     }
 }
 
@@ -50,7 +62,7 @@ extension LiveFilmEntryRepository {
             .from("diary_entries")
             .select(
                 "id, rating, review, has_spoilers, watched_on, is_rewatch, "
-                    + "created_at, profiles(username)")
+                    + "created_at, profiles(username, deleted_at)")
             .eq("film_id", value: filmID)
             .not("review", operator: .is, value: "null")
             .order("created_at", ascending: false)
