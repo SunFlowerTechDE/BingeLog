@@ -7,9 +7,11 @@ import { getViewer } from '@/lib/session';
 import { LogPanel, type OwnEntry } from '@/components/log-panel';
 import { WatchlistButton } from '@/components/watchlist-button';
 import { AddToList } from '@/components/add-to-list';
+import { RecommendButton } from '@/components/recommend-button';
 import { Discussion, type Beitrag } from '@/components/discussion';
 import { ReportButton } from '@/components/report-button';
 import { FskLabel, fskStufe } from '@/components/fsk';
+import { genreLabel } from '@/lib/genres';
 import { RewatchButton } from '@/components/rewatch-button';
 import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
@@ -99,16 +101,33 @@ export default async function FilmPage({
   const directors = byRole('director');
   const cast = byRole('cast');
 
+  // **Ueber die Sicht, nicht ueber die Rohzuordnung** (Suchkonzept 26).
+  // `film_genres` fuehrte neben "Kriminalfilm" auch "Neo-Noir" und
+  // "Krimidrama" — drei Marken fuer dieselbe Sache. Gezeigt wird ueber
+  // die sechzehn Kategorien, so wie auf dem iPhone; die Rohzuordnung
+  // bleibt stehen, sie ist nur nicht das, was hier hingehoert.
   const { data: genreRows } = await supabase
-    .from('film_genres')
-    .select('genres(label_de, label_en)')
+    .from('film_categories')
+    .select('category_id, genres(label_de, label_en)')
     .eq('film_id', wikidataId);
 
   // Deutsch, wo Wikidata es fuehrt; sonst lieber das englische Wort als
-  // eine Luecke, denn ein Genre ohne Namen ist kein Genre.
-  const genres = (genreRows ?? [])
-    .map((row) => row.genres.label_de ?? row.genres.label_en)
-    .filter((name): name is string => Boolean(name));
+  // eine Luecke, denn ein Genre ohne Namen ist kein Genre. Der kurze
+  // Name kommt aus derselben Tabelle wie auf den Kacheln.
+  const genres = (
+    (genreRows ?? []) as unknown as {
+      category_id: string;
+      genres: { label_de: string | null; label_en: string | null } | null;
+    }[]
+  )
+    .map((row) => {
+      const voll = row.genres?.label_de ?? row.genres?.label_en;
+      return voll === null || voll === undefined
+        ? null
+        : { id: row.category_id, name: genreLabel(row.category_id, voll) };
+    })
+    .filter((eintrag): eintrag is { id: string; name: string } => eintrag !== null)
+    .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
   const viewer = await getViewer();
 
@@ -232,12 +251,13 @@ export default async function FilmPage({
               <dt className="text-muted-foreground text-xs">Genre</dt>
               <dd className="flex flex-wrap gap-1.5">
                 {genres.map((genre) => (
-                  <span
-                    key={genre}
-                    className="border-border rounded-full border px-2.5 py-0.5 text-xs"
+                  <Link
+                    key={genre.id}
+                    href={`/genre/${genre.id}` as Route}
+                    className="border-border hover:bg-card rounded-full border px-2.5 py-0.5 text-xs"
                   >
-                    {genre}
-                  </span>
+                    {genre.name}
+                  </Link>
                 ))}
               </dd>
             </div>
@@ -248,6 +268,7 @@ export default async function FilmPage({
           <div className="flex flex-col items-start gap-2">
             <WatchlistButton filmId={wikidataId} initiallyOn={onWatchlist} />
             <AddToList filmId={wikidataId} />
+            <RecommendButton filmId={wikidataId} />
           </div>
         ) : null}
       </aside>
