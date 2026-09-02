@@ -118,6 +118,8 @@ private struct PickForImportSheet: View {
     @State private var term: String
     @State private var films: [Film] = []
     @State private var task: Task<Void, Never>?
+    @State private var isFetching = false
+    @State private var outsideNote: String?
 
     init(item: UnmatchedItem, onPick: @escaping (Film) -> Void) {
         self.item = item
@@ -153,12 +155,46 @@ private struct PickForImportSheet: View {
             .searchable(text: $term, prompt: "Titel")
             .overlay {
                 if films.isEmpty {
-                    ContentUnavailableView(
-                        "Nichts im Katalog",
-                        systemImage: "magnifyingglass",
-                        description: Text(
-                            "Such den Film über die Suche — dort kannst du ihn hinzufügen.")
-                    )
+                        VStack(spacing: 12) {
+                        Text("Nichts im Katalog")
+                            .font(.headline)
+                            .foregroundStyle(Theme.foreground)
+
+                        Text(
+                            "Wir können außerhalb weitersuchen und ihn aufnehmen. "
+                                + "Falls nichts kommt: versuch den deutschen Titel — "
+                                + "etwa Findet Nemo statt Finding Nemo — oder prüf die "
+                                + "Schreibweise."
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(Theme.muted)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 320)
+
+                        Button {
+                            Task { await fetchOutside() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if isFetching { ProgressView().controlSize(.small) }
+                                Text(isFetching ? "Wir suchen den Film" : "Weiter suchen")
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.onPrimary)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 10)
+                            .background(Theme.primary, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isFetching)
+
+                        if let outsideNote {
+                            Text(outsideNote)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .padding(24)
                 }
             }
             .navigationTitle(item.label)
@@ -182,5 +218,32 @@ private struct PickForImportSheet: View {
 
     private func search(_ value: String) async {
         films = (try? await repos.films.search(term: value, limit: 20, year: nil)) ?? []
+    }
+
+    /// Außerhalb des Katalogs weitersuchen und aufnehmen.
+    ///
+    /// Ohne Prüfkarte: wer hier steht, hat den Film gesehen und will ihn
+    /// eintragen — achtzehn Rückfragen wären Arbeit statt Hilfe.
+    private func fetchOutside() async {
+        outsideNote = nil
+        isFetching = true
+        defer { isFetching = false }
+
+        switch await repos.lazyFilms.look(term: term, year: item.rawYear) {
+        case .failure(let problem):
+            outsideNote = problem.message
+        case .success(let candidates):
+            guard let first = candidates.first else {
+                outsideNote = "Nichts gefunden."
+                return
+            }
+            switch await repos.lazyFilms.adopt(first) {
+            case .failure(let problem):
+                outsideNote = problem.message
+            case .success(let film):
+                onPick(film.film)
+                dismiss()
+            }
+        }
     }
 }

@@ -126,6 +126,10 @@ Der Nutzer lädt seinen eigenen Export hoch — **kein Scraping, keine
 Abfrage über einen Benutzernamen**. Analysieren und Importieren sind
 zwei Schritte: vor der Bestätigung wird nichts am Konto geändert.
 
+Nach der Namenswahl wird **gefragt**, ob die bisherige Filmhistorie
+übernommen werden soll — in App und Web. Die Funktion unten in den
+Einstellungen zu verstecken bringt niemandem etwas.
+
 **Der Import treibt sich selbst weiter** — die Edge Function ruft sich
 für jede weitere Scheibe selbst auf und weist sich dabei mit dem
 Service-Role-Key aus. Client und App stoßen nur einmal an und sehen

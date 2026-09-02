@@ -212,7 +212,10 @@ export function LetterboxdImport() {
   }
 
   return (
-    <section className="border-border bg-card/40 flex flex-col gap-4 rounded-lg border p-5">
+    <section
+      id="import"
+      className="border-border bg-card/40 flex scroll-mt-6 flex-col gap-4 rounded-lg border p-5"
+    >
       <h2 className="text-base font-semibold tracking-tight">Von Letterboxd importieren</h2>
 
       {phase.art === 'start' ? (

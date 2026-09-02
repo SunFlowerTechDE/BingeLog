@@ -9,6 +9,10 @@ struct RootView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.horizontalSizeClass) private var sizeClass
 
+    /// Ob die Frage nach der bisherigen Filmhistorie schon beantwortet
+    /// ist. Lokal: sie gehört zur Einrichtung dieses Geräts.
+    @AppStorage("onboarding.importAsked") private var hasAnsweredImport = false
+
     let films: FilmRepository
     let profiles: ProfileRepository
     let discover: DiscoverRepository
@@ -25,6 +29,11 @@ struct RootView: View {
             // ergäbe eine App, die angemeldet ist und abgemeldet
             // aussieht.
             UsernameView(profiles: profiles)
+        } else if session.isSignedIn, !hasAnsweredImport {
+            // Einmal je Gerät, direkt nach der Einrichtung. Die Antwort
+            // wird gemerkt, damit die Frage nicht bei jedem Start
+            // wiederkommt.
+            ImportOfferView { hasAnsweredImport = true }
         } else if session.isSignedIn {
             if sizeClass == .compact {
                 CompactShell(

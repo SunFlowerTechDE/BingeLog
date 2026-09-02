@@ -296,10 +296,31 @@ describe('lazy creation lookups', () => {
     assert.ok(!call.includes('?f ?p ?o'), 'no raw triple pattern in the request');
   });
 
-  it('caps how many candidates it asks for', async () => {
+  it('asks for more candidates than it keeps, and stays capped', async () => {
+    // Gesucht wird ohne den Filter auf `P31=Q11424`, weil der
+    // Animationsfilme und Fernsehfilme ausschloss. Dafuer sind unter
+    // den rohen Treffern auch Nicht-Filme, die `extractFilm` erst
+    // aussortiert — also werden mehr geholt, als gebraucht werden.
     const s = stub(() => ({ query: { search: [] } }));
     await findFilmIdsByTitle('Solaris', { fetchImpl: s.fetchImpl, limit: 3, ...NO_WAIT });
-    assert.match(s.urls[0] ?? '', /srlimit=3/);
+    assert.match(s.urls[0] ?? '', /srlimit=6/);
+
+    // Und nie ohne Grenze: fuenfzig ist Schluss.
+    const gross = stub(() => ({ query: { search: [] } }));
+    await findFilmIdsByTitle('Solaris', { fetchImpl: gross.fetchImpl, limit: 400, ...NO_WAIT });
+    assert.match(gross.urls[0] ?? '', /srlimit=50/);
+  });
+
+  it('does not narrow the search to P31=Q11424', () => {
+    // Der Filter liess nur Entitaeten durch, deren `P31` genau "Film"
+    // ist. "Finding Nemo" ist Q202866, "High School Musical" ein
+    // Fernsehfilm — beide waren damit unauffindbar, obwohl sie seit
+    // Jahren bei Wikidata stehen. Was ein Film ist, entscheidet
+    // `extractFilm` ueber die ganze Unterklassenhuelle.
+    const s = stub(() => ({ query: { search: [] } }));
+    return findFilmIdsByTitle('Finding Nemo', { fetchImpl: s.fetchImpl, ...NO_WAIT }).then(() => {
+      assert.ok(!(s.urls[0] ?? '').includes('haswbstatement'), 'kein Filter auf eine Klasse');
+    });
   });
 
   it('returns nothing for an empty term, without a request', async () => {

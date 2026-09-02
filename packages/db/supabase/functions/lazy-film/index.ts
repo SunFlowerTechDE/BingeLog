@@ -58,14 +58,29 @@ interface Candidate {
   posterUrl: string | null;
 }
 
+/**
+ * Der Browser fragt vor einem Aufruf von einer anderen Adresse nach, ob
+ * er darf.
+ *
+ * Lange nicht noetig: das Web rief diese Funktion nur aus einer Server
+ * Action, und von Server zu Server gibt es keinen Vorabflug. Seit die
+ * Seite "Nicht erkannt" sie direkt ruft, schon.
+ */
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 }
 
 Deno.serve(async (request: Request) => {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   let body: RequestBody;

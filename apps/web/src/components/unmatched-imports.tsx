@@ -35,6 +35,7 @@ export function UnmatchedImports() {
   const [geladen, setGeladen] = useState(false);
   const [suche, setSuche] = useState<{ id: string; term: string; treffer: Treffer[] } | null>(null);
   const [problem, setProblem] = useState<string | undefined>(undefined);
+  const [holt, setHolt] = useState<string | null>(null);
 
   useEffect(() => {
     void laden();
@@ -84,6 +85,53 @@ export function UnmatchedImports() {
     await laden();
   }
 
+  /**
+   * Ausserhalb des Katalogs weitersuchen und aufnehmen.
+   *
+   * Derselbe Weg wie in der Suche, nur ohne Pruefkarte: wer hier steht,
+   * hat den Film schon gesehen und will ihn eintragen — achtzehn
+   * Rueckfragen waeren Arbeit statt Hilfe.
+   */
+  async function holen(eintrag: Offen) {
+    setProblem(undefined);
+    setHolt(eintrag.id);
+
+    const supabase = createClient();
+    const gesucht = await supabase.functions.invoke<{
+      candidates?: { wikidataId: string }[];
+    }>('lazy-film', {
+      body: {
+        term: suche?.term ?? eintrag.raw_title,
+        year: eintrag.raw_year ?? undefined,
+        mode: 'preview',
+      },
+    });
+
+    const gefunden = gesucht.data?.candidates ?? [];
+    const erster = gefunden[0]?.wikidataId;
+
+    if (gesucht.error !== null || erster === undefined) {
+      setProblem(
+        'Auch außerhalb nichts gefunden. Versuch den deutschen Titel oder prüf die Schreibweise.',
+      );
+      setHolt(null);
+      return;
+    }
+
+    const aufgenommen = await supabase.functions.invoke('lazy-film', {
+      body: { wikidataId: erster },
+    });
+
+    setHolt(null);
+
+    if (aufgenommen.error !== null) {
+      setProblem('Der Film ließ sich nicht aufnehmen.');
+      return;
+    }
+
+    await zuweisen(eintrag.id, erster);
+  }
+
   async function beiseite(id: string) {
     const supabase = createClient();
     await supabase.rpc('skip_import_item', { item: id });
@@ -100,7 +148,8 @@ export function UnmatchedImports() {
           {offen.length === 1
             ? 'Ein Eintrag aus deinem Import ließ sich nicht sicher zuordnen.'
             : `${String(offen.length)} Einträge aus deinem Import ließen sich nicht sicher zuordnen.`}{' '}
-          Such den richtigen Film oder leg den Eintrag beiseite.
+          Such den richtigen Film oder leg den Eintrag beiseite. Oft hilft der deutsche Titel:
+          „Findet Nemo" statt „Finding Nemo".
         </p>
       </div>
 
@@ -142,9 +191,23 @@ export function UnmatchedImports() {
                   className="border-border bg-card rounded-md border px-2 py-1.5 text-sm"
                 />
                 {suche.treffer.length === 0 ? (
-                  <p className="text-muted-foreground text-xs">
-                    Nichts im Katalog. Such den Film über die Suche — dort kannst du ihn hinzufügen.
-                  </p>
+                  <div className="flex flex-col gap-2">
+                    <p className="text-muted-foreground text-xs">
+                      Nichts im Katalog. Wir können außerhalb weitersuchen und ihn aufnehmen.
+                    </p>
+                    <p className="text-muted-foreground/70 text-xs">
+                      Falls nichts kommt: versuch den deutschen Titel — „Findet Nemo" statt „Finding
+                      Nemo" — oder prüf die Schreibweise.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={holt === eintrag.id}
+                      onClick={() => void holen(eintrag)}
+                      className="border-border hover:bg-card w-fit rounded-md border px-3 py-1.5 text-xs disabled:opacity-60"
+                    >
+                      {holt === eintrag.id ? 'Wir suchen den Film' : 'Weiter suchen'}
+                    </button>
+                  </div>
                 ) : (
                   <ul className="flex flex-col">
                     {suche.treffer.map((film) => (

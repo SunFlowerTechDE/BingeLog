@@ -133,7 +133,11 @@ export async function signOut(): Promise<never> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath('/', 'layout');
-  redirect('/');
+  // Nicht auf die Startseite, sondern auf die Frage nach der bisherigen
+  // Filmhistorie. Wer von woanders kommt, soll nicht bei null anfangen
+  // muessen — und die Funktion ganz unten in den Einstellungen zu
+  // verstecken hilft niemandem.
+  redirect('/willkommen/import');
 }
 
 export async function chooseUsername(_previous: FormState, formData: FormData): Promise<FormState> {
@@ -167,7 +171,11 @@ export async function chooseUsername(_previous: FormState, formData: FormData): 
   }
 
   revalidatePath('/', 'layout');
-  redirect('/');
+  // Nicht auf die Startseite, sondern auf die Frage nach der bisherigen
+  // Filmhistorie. Wer von woanders kommt, soll nicht bei null anfangen
+  // muessen — und die Funktion ganz unten in den Einstellungen zu
+  // verstecken hilft niemandem.
+  redirect('/willkommen/import');
 }
 
 /**

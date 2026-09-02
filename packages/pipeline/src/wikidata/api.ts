@@ -303,9 +303,22 @@ export async function findFilmIdsByTitle(
   const term = title.trim().slice(0, 120);
   if (term === '') return [];
 
+  // **Ohne `haswbstatement:P31=Q11424`.**
+  //
+  // Der Filter liess nur Entitaeten durch, deren `P31` genau "Film"
+  // ist. "Finding Nemo" ist aber `P31=Q202866` (Animationsfilm),
+  // "High School Musical" ein Fernsehfilm, und so fort: die Suche war
+  // damit enger als `extractFilm`, das die ganze Unterklassenhuelle von
+  // Q11424 kennt — 845 Klassen. Gefunden wurde nichts, obwohl der Film
+  // seit Jahren bei Wikidata steht.
+  //
+  // Also sucht sie breit und laesst `extractFilm` entscheiden, was ein
+  // Film ist. Das ist ohnehin die Stelle, die es weiss. Dafuer werden
+  // mehr Kandidaten geholt: von zehn rohen Treffern bleiben oft nur ein
+  // bis fuenf Filme uebrig.
   const url =
     `${API_ENDPOINT}?action=query&list=search&format=json&formatversion=2` +
-    `&srlimit=${String(limit)}&srprop=&srsearch=${encodeURIComponent(`${term} haswbstatement:P31=Q11424`)}`;
+    `&srlimit=${String(Math.min(50, limit * 2))}&srprop=&srsearch=${encodeURIComponent(term)}`;
 
   const response = await requestWithRetry(
     url,
