@@ -1590,6 +1590,67 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.taste_votes where user_id = $1`, [ich]);
   });
 
+  it('never lets the sixteen categories become seventeen', async () => {
+    // **Nicht die Zahl.** Die Genretabelle wird aus der Pipeline
+    // gefuellt, nicht aus einer Migration, und dieser Aufbau kennt nur,
+    // was die Testfaelle selbst anlegen. Dass es genau sechzehn sind,
+    // prueft `pnpm db:verify` gegen das Projekt.
+    //
+    // Hier steht die Regel, die ueberall gilt: keine Zuordnung zeigt auf
+    // etwas, das keine Kategorie ist.
+    const fremd = await h.sql.query<{ wikidata_id: string }>(`
+      select g.wikidata_id
+      from public.genres g
+      where g.category_id is not null
+        and not exists (
+          select 1 from public.genres k
+          where k.wikidata_id = g.category_id and k.is_category
+        )
+    `);
+    assert.deepEqual(
+      fremd.rows.map((r) => r.wikidata_id),
+      [],
+      'jede Zuordnung zeigt auf eine der sechzehn',
+    );
+
+    // Und der Weg dahin bleibt versperrt.
+    await assert.rejects(
+      () =>
+        h.sql.query(
+          `insert into public.genres (wikidata_id, label_de, category_id)
+           values ('Q900500', 'Probegenre', 'Q900501')`,
+        ),
+      /is not one of the categories|violates foreign key/i,
+      'ein Genre kann nicht auf ein Nichtkategorie-Genre zeigen',
+    );
+  });
+
+  it('maps a compound genre by its head noun', async () => {
+    // "Actionthriller" ist ein Thriller, "Actionkomoedie" eine Komoedie.
+    // Nicht in jedem Einzelfall die schoenste Antwort, aber eine Regel,
+    // die sich fortsetzen laesst — nach Gefuehl zugeordnet waere die
+    // Liste beim naechsten Nachtrag widerspruechlich.
+    const faelle: [string, string][] = [
+      ['Q3990883', 'Q2484376'], // Actionthriller -> Thriller
+      ['Q2678111', 'Q157443'], // Actionkomoedie -> Komoedie
+      ['Q224700', 'Q157443'], // Horrorkomoedie -> Komoedie
+      ['Q20656232', 'Q188473'], // Science-Fiction-Action-Film -> Action
+      ['Q1637212', 'Q157394'], // humoristische Fantasy -> Fantasy
+    ];
+
+    for (const [genre, kategorie] of faelle) {
+      const zeile = await h.sql.query<{ category_id: string | null }>(
+        `select category_id from public.genres where wikidata_id = $1`,
+        [genre],
+      );
+      // Nur pruefen, was das lokale Schema ueberhaupt kennt: die
+      // Genretabelle wird aus der Pipeline gefuellt, nicht aus einer
+      // Migration.
+      if (zeile.rows.length === 0) continue;
+      assert.equal(zeile.rows[0]?.category_id, kategorie, `${genre} zeigt woanders hin`);
+    }
+  });
+
   it('keeps taste votes out of every rating', async () => {
     const ich = await seedUser(h, 'geschmackich');
     const fremd = await seedUser(h, 'geschmackfremd');

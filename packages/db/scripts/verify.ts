@@ -169,6 +169,33 @@ const CHECKS: Check[] = [
         : `write policies without a folder check: ${offenders.join(', ')}`;
     },
   },
+  {
+    name: 'there are exactly sixteen categories, and every mapping points at one',
+    sql: `
+      select
+        (select count(*)::int from public.genres where is_category) as kategorien,
+        coalesce(
+          (select array_agg(g.wikidata_id::text order by g.wikidata_id)
+             from public.genres g
+            where g.category_id is not null
+              and not exists (
+                select 1 from public.genres k
+                where k.wikidata_id = g.category_id and k.is_category
+              )),
+          '{}'
+        ) as fremde`,
+    verdict: (row) => {
+      // Sechzehn ist keine Rundungszahl: es gibt sechzehn Bilder, und
+      // eine siebzehnte Kategorie haette keins. Sie entsteht nie von
+      // selbst — nur eine Migration kann sie anlegen, und dann faellt es
+      // hier auf.
+      const kategorien = Number(row?.kategorien);
+      if (kategorien !== 16) return `expected 16 categories, found ${String(kategorien)}`;
+
+      const fremde = list(row, 'fremde');
+      return fremde.length === 0 ? null : `mapped to a non-category: ${fremde.join(', ')}`;
+    },
+  },
 ];
 
 const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });

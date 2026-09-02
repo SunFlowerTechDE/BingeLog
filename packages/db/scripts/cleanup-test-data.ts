@@ -1,5 +1,5 @@
 /**
- * Removes accounts created by manual testing.
+ * Removes accounts and catalogue rows created by testing.
  *
  *   pnpm --filter @binge-log/db cleanup:test
  *
@@ -17,6 +17,17 @@ import type { Database } from '../src/types.generated.ts';
 
 const TEST_DOMAIN = '@bingelog.test';
 
+/**
+ * Die Unterschrift der Katalogzeilen aus `tests/helpers.ts`.
+ *
+ * `createTestFilm` schreibt genau diese beiden Titel. Geprueft werden
+ * **beide** und nicht einer: ein echter Film koennte "RLS Fixture"
+ * heissen, aber keiner heisst so und traegt zugleich "RLS-Vorrichtung"
+ * als deutschen Titel. Dieselbe Strenge wie bei der Adressregel oben.
+ */
+const FIXTURE_TITLE_ORIGINAL = 'RLS Fixture';
+const FIXTURE_TITLE_DE = 'RLS-Vorrichtung';
+
 function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not set. See packages/db/.env.example.`);
@@ -31,6 +42,65 @@ const admin = createClient<Database>(
   },
 );
 
+// --------------------------------------------------------------------
+// Katalogzeilen
+// --------------------------------------------------------------------
+//
+// `pnpm test:rls` legt Filme ueber den Service-Role-Key an und raeumt
+// sie am Ende wieder weg — ausser der Lauf bricht vorher ab. Am
+// 30.08.2026 sind so sechzehn Zeilen im Produktivkatalog liegen
+// geblieben und erst am 02.09.2026 aufgefallen, weil sie als Filme ohne
+// Kategorie in einer ganz anderen Auswertung auftauchten.
+const { data: fixtures } = await admin
+  .from('films')
+  .select('wikidata_id')
+  .eq('title_original', FIXTURE_TITLE_ORIGINAL)
+  .eq('title_de', FIXTURE_TITLE_DE);
+
+const fixtureIds = (fixtures ?? []).map((row) => row.wikidata_id);
+
+if (fixtureIds.length === 0) {
+  console.log('No leftover catalogue fixtures.');
+} else {
+  // Erst nachsehen, ob wirklich niemand daran haengt. Ein Testfilm, an
+  // dem ein echter Tagebucheintrag klebt, ist kein Testfilm mehr — dann
+  // ist etwas anderes schiefgelaufen, und Loeschen macht es schlimmer.
+  const [{ count: eintraege }, { count: vorgemerkt }, { count: gelistet }] = await Promise.all([
+    admin
+      .from('diary_entries')
+      .select('id', { count: 'exact', head: true })
+      .in('film_id', fixtureIds),
+    admin
+      .from('watchlist')
+      .select('film_id', { count: 'exact', head: true })
+      .in('film_id', fixtureIds),
+    admin
+      .from('list_items')
+      .select('film_id', { count: 'exact', head: true })
+      .in('film_id', fixtureIds),
+  ]);
+
+  const haengtDran = (eintraege ?? 0) + (vorgemerkt ?? 0) + (gelistet ?? 0);
+
+  if (haengtDran > 0) {
+    console.log(
+      `refused ${String(fixtureIds.length)} catalogue fixture(s): ` +
+        `${String(haengtDran)} user row(s) point at them. Look before removing.`,
+    );
+  } else {
+    const { error: filmError } = await admin.from('films').delete().in('wikidata_id', fixtureIds);
+    console.log(
+      filmError
+        ? `failed  ${String(fixtureIds.length)} catalogue fixture(s): ${filmError.message}`
+        : `removed ${String(fixtureIds.length)} catalogue fixture(s)`,
+    );
+  }
+}
+
+// --------------------------------------------------------------------
+// Konten
+// --------------------------------------------------------------------
+
 const { data, error } = await admin.auth.admin.listUsers();
 if (error) throw new Error(error.message);
 
@@ -38,7 +108,7 @@ const testAccounts = data.users.filter((user) => user.email?.endsWith(TEST_DOMAI
 const spared = data.users.length - testAccounts.length;
 
 if (testAccounts.length === 0) {
-  console.log(`Nothing to remove. ${String(spared)} account(s) left untouched.`);
+  console.log(`No test accounts. ${String(spared)} account(s) left untouched.`);
   process.exit(0);
 }
 
