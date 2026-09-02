@@ -128,6 +128,20 @@ final class SessionStore {
 
     func signOut() async {
         await auth.signOut()
+        forget()
+    }
+
+    /// Das eigene Konto löschen (Art. 17 DSGVO).
+    ///
+    /// Bei Erfolg dasselbe wie ein Abmelden — nur dass es nichts mehr
+    /// gibt, wohin man sich anmelden könnte.
+    func deleteAccount() async -> SaveOutcome {
+        let ergebnis = await auth.deleteAccount()
+        if case .saved = ergebnis { forget() }
+        return ergebnis
+    }
+
+    private func forget() {
         userID = nil
         username = nil
         awaitingConfirmation = false

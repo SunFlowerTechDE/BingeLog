@@ -12,9 +12,10 @@ Rechtstext merkt man das erst, wenn jemand fragt.
   `[…]` und müssen vor der Veröffentlichung eingesetzt werden.
 - **Eine juristische Prüfung.** Der Text beschreibt genau, was der Code
   tut — das ist die Grundlage, aber keine Rechtsberatung.
-- **Die Kontolöschung** gibt es im Produkt noch nicht. Der Text sagt
-  deshalb wahrheitsgemäß, dass sie auf Zuruf passiert. Sobald es einen
-  Knopf gibt, gehört der Absatz geändert.
+  ~~Die Kontolöschung gibt es im Produkt noch nicht.~~ **Erledigt am
+  03.09.2026.** Sie steht in Web und App unter Einstellungen → Konto und
+  läuft über die Edge Function `delete-account`. Der Absatz im Text ist
+  entsprechend geändert.
 
 ## Woher der Inhalt kommt
 

@@ -15,6 +15,8 @@ protocol AuthRepository: Sendable {
     func pendingUsername() async -> String?
     func sendPasswordReset(to email: String) async throws(BackendError)
     func signOut() async
+    /// Das eigene Konto löschen (Art. 17 DSGVO).
+    func deleteAccount() async -> SaveOutcome
 }
 
 struct LiveAuthRepository: AuthRepository {
@@ -83,6 +85,29 @@ struct LiveAuthRepository: AuthRepository {
             try await backend.client.auth.resetPasswordForEmail(email)
         } catch {
             throw BackendError.from(error)
+        }
+    }
+
+    /// Das eigene Konto löschen.
+    ///
+    /// Über die Edge Function `delete-account`: ein Konto lässt sich nur
+    /// mit dem Service-Role-Key entfernen, und der liegt weder in der
+    /// App noch im Web (M0 0.2).
+    ///
+    /// **Die Nutzer-ID geht nicht mit.** Die Function nimmt sie aus dem
+    /// Token — ein Feld dafür gibt es nicht, und genau deshalb kann
+    /// damit niemand ein fremdes Konto löschen.
+    func deleteAccount() async -> SaveOutcome {
+        do {
+            try await backend.client.functions.invoke(
+                "delete-account", options: .init(body: [String: String]()))
+            // Das Konto ist weg, die Sitzung liegt noch auf dem Gerät.
+            // Ohne das hier bliebe die App angemeldet und jede Anfrage
+            // liefe gegen ein Konto, das es nicht mehr gibt.
+            try? await backend.client.auth.signOut()
+            return .saved
+        } catch {
+            return .failed(BackendError.from(error).message)
         }
     }
 

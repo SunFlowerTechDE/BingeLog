@@ -24,7 +24,7 @@
     "test:schema": "node --experimental-strip-types --test tests/schema/*.test.ts",
     "cleanup:test": "node --env-file=.env --experimental-strip-types scripts/cleanup-test-data.ts",
     "functions:sync": "node scripts/sync-function-sources.mjs",
-    "functions:deploy": "pnpm functions:sync && set -a && . ./.env && set +a && supabase functions deploy lazy-film letterboxd-import --project-ref \"$SUPABASE_PROJECT_REF\" --use-api",
+    "functions:deploy": "pnpm functions:sync && set -a && . ./.env && set +a && supabase functions deploy lazy-film letterboxd-import delete-account --project-ref \"$SUPABASE_PROJECT_REF\" --use-api",
     "moderator:add": "node --env-file=.env --experimental-strip-types scripts/add-moderator.ts"
   },
   "devDependencies": {

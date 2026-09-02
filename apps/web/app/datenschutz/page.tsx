@@ -197,9 +197,18 @@ export default function DatenschutzPage() {
           und Widerspruch (Art. 15 bis 21 DSGVO).
         </p>
         <p>
-          <strong>Konto löschen:</strong> Einen Knopf dafür gibt es im Moment noch nicht. Schreib an
-          [E-Mail-Adresse], dann löschen wir das Konto samt Tagebuch, Listen, Bildern und Beiträgen.
-          Bestehen bleiben nur Meldungen und Moderationsentscheidungen, ohne deinen Namen daran.
+          <strong>Konto löschen:</strong> In den{' '}
+          <Link href="/einstellungen" className="text-foreground underline underline-offset-4">
+            Einstellungen
+          </Link>{' '}
+          unter „Konto", in der App ebenso. Damit verschwinden Tagebuch, Bewertungen, Rezensionen,
+          Listen, Watchlist, Favoriten, Empfehlungen, Diskussionsbeiträge, Profil- und Kopfbild und
+          hochgeladene Importdateien. Das lässt sich nicht rückgängig machen.
+        </p>
+        <p>
+          Bestehen bleiben <strong>Meldungen und Moderationsentscheidungen</strong>, beide ohne
+          deinen Namen daran. Der DSA verlangt, dass diese Spur nachvollziehbar bleibt — eine
+          Meldung, die mit dem gemeldeten Konto verschwindet, wäre keine.
         </p>
         <p>
           Bist du der Meinung, dass wir etwas falsch machen, kannst du dich bei einer

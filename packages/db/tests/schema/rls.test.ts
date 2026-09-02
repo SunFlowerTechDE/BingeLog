@@ -1651,6 +1651,35 @@ describe('diary and facet visibility', () => {
     }
   });
 
+  it('lets an account be deleted even after a moderation entry', async () => {
+    // Die Kontoloeschung faellt ueber jeden Fremdschluessel, der sie
+    // nicht durchlaesst. `account_actions.target_id` war `not null` und
+    // zugleich `on delete set null` — zwei Regeln, die sich
+    // widersprechen, und die zweite verliert.
+    const opfer = await seedUser(h, 'loeschbar');
+    const moderator = await seedUser(h, 'loeschmod');
+
+    await h.sql.query(
+      `insert into public.account_actions
+         (target_id, target_name, actor_id, actor_name, action, reason)
+       values ($1, 'loeschbar', $2, 'loeschmod', 'note', 'Testfall')`,
+      [opfer, moderator],
+    );
+
+    await h.sql.query(`delete from public.profiles where id = $1`, [opfer]);
+
+    // Der Eintrag bleibt stehen und bleibt lesbar: der Name steht als
+    // Text daneben, gerade fuer diesen Fall.
+    const danach = await h.sql.query<{ target_id: string | null; target_name: string }>(
+      `select target_id, target_name from public.account_actions where target_name = 'loeschbar'`,
+    );
+    assert.equal(danach.rows.length, 1, 'die Spur bleibt');
+    assert.equal(danach.rows[0]?.target_id, null);
+    assert.equal(danach.rows[0]?.target_name, 'loeschbar');
+
+    await h.sql.query(`delete from public.account_actions where target_name = 'loeschbar'`);
+  });
+
   it('keeps taste votes out of every rating', async () => {
     const ich = await seedUser(h, 'geschmackich');
     const fremd = await seedUser(h, 'geschmackfremd');

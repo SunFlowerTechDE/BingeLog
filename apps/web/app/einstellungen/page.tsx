@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { LetterboxdImport } from '@/components/letterboxd-import';
@@ -8,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { SettingsForm } from './settings-form';
 import { FavouriteEditor, type Favorit } from '@/components/favourite-editor';
+import { DeleteAccount } from '@/components/delete-account';
 import { BlockButton } from '@/components/block-button';
 import { myBlocks } from '@/lib/block-actions';
 import { Avatar } from '@/components/profile-parts';
@@ -123,6 +125,18 @@ export default async function SettingsPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold tracking-tight">Konto</h2>
+        <p className="text-muted-foreground text-sm">
+          Was wir über dich speichern, steht in der{' '}
+          <Link href="/datenschutz" className="text-foreground underline underline-offset-4">
+            Datenschutzerklärung
+          </Link>
+          .
+        </p>
+        <DeleteAccount username={profile.username} />
       </section>
     </main>
   );

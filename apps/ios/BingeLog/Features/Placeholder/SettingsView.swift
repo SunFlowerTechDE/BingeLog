@@ -11,6 +11,7 @@ struct SettingsView: View {
     @Environment(Repositories.self) private var repos
 
     @State private var unmatched = 0
+    @State private var showsDeletion = false
     @State private var readiness: TasteReadiness = .empty
 
     var body: some View {
@@ -23,6 +24,19 @@ struct SettingsView: View {
                 Button("Abmelden", role: .destructive) {
                     Task { await session.signOut() }
                 }
+            }
+
+            // Zwei Hürden, beide mit Absicht: erst der Knopf, dann der
+            // eigene Name. Das ist der einzige Schritt in der App, den
+            // niemand rückgängig machen kann.
+            Section {
+                Button("Konto löschen", role: .destructive) {
+                    showsDeletion = true
+                }
+            } footer: {
+                Text(
+                    "Tagebuch, Bewertungen, Listen und Bilder werden gelöscht und lassen "
+                        + "sich nicht wiederherstellen.")
             }
 
             Section {
@@ -120,6 +134,9 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Einstellungen")
+        .sheet(isPresented: $showsDeletion) {
+            DeleteAccountSheet()
+        }
         .task {
             unmatched = await repos.imports.unmatched(limit: 200).count
             readiness = await repos.taste.readiness()
@@ -137,4 +154,108 @@ struct SettingsView: View {
         Planned(title: "Nutzungsbedingungen", step: "M6"),
         Planned(title: "Impressum", step: "M6"),
     ]
+}
+
+/// Konto löschen — die zweite Hürde (Art. 17 DSGVO).
+///
+/// Der eigene Name muss abgetippt werden. Ein Knopf allein wäre zu
+/// wenig für den einzigen Schritt in der App, den niemand rückgängig
+/// machen kann.
+private struct DeleteAccountSheet: View {
+    @Environment(SessionStore.self) private var session
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var bestaetigung = ""
+    @State private var laeuft = false
+    @State private var problem: String?
+    @FocusState private var isTyping: Bool
+
+    private var name: String { session.username ?? "" }
+    private var passt: Bool {
+        bestaetigung.trimmingCharacters(in: .whitespaces) == name && !name.isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text(
+                        "Dein Tagebuch, deine Bewertungen, Rezensionen, Listen, Bilder und "
+                            + "Beiträge werden gelöscht und lassen sich nicht wiederherstellen."
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(Theme.foreground)
+
+                    Text(
+                        "Stehen bleiben nur Meldungen und Moderationsentscheidungen — ohne "
+                            + "deinen Namen daran."
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+                }
+
+                Section {
+                    TextField("Benutzername", text: $bestaetigung)
+                        .focused($isTyping)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                } header: {
+                    Text("Tipp zur Bestätigung \(name) ein")
+                }
+
+                if let problem {
+                    Section {
+                        Text(problem).font(.footnote).foregroundStyle(.red)
+                    }
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        loeschen()
+                    } label: {
+                        HStack {
+                            Text("Endgültig löschen")
+                            if laeuft {
+                                Spacer()
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(!passt || laeuft)
+                }
+            }
+            .navigationTitle("Konto löschen")
+            .navigationBarTitleDisplayMode(.inline)
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Fertig") { isTyping = false }
+                }
+            }
+        }
+    }
+
+    private func loeschen() {
+        laeuft = true
+        problem = nil
+
+        Task {
+            let ergebnis = await session.deleteAccount()
+            laeuft = false
+
+            switch ergebnis {
+            case .saved:
+                // Die Sitzung ist weg; `RootView` zeigt von selbst
+                // wieder das Anmelden. Das Blatt zu schliessen genuegt.
+                dismiss()
+            case .failed(let meldung):
+                problem = meldung
+            }
+        }
+    }
 }
