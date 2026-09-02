@@ -4,14 +4,26 @@ Beim Bauen der iOS-App (M5) sind Funktionen und Gestaltung entstanden,
 die es im Web noch nicht gibt. Diese Liste haelt fest, was fehlt, damit
 beide Plattformen dasselbe koennen und gleich aussehen.
 
-**Stand: 31.08.2026.** Alles hier ist offen, nichts davon ist begonnen.
+**Stand: 02.09.2026 — abgearbeitet.** Die Punkte 1 bis 6 und 8 bis 13
+sind umgesetzt und auf der Testumgebung ausgeliefert. Punkt 7 bleibt
+offen, weil er als Frage und nicht als Aufgabe hier steht.
 
-Die Reihenfolge ist die empfohlene: erst was ohne Datenbank auskommt,
+Was jeweils gebaut wurde, steht unter dem Punkt. Was **weiterhin
+offen** ist, steht am Ende der Datei — dort ist es kurz.
+
+Die Reihenfolge war die empfohlene: erst was ohne Datenbank auskommt,
 dann was auf einer Funktion sitzt, die schon steht.
 
 ---
 
 ## 1. Die Genre-Bilder
+
+**Erledigt.** Die sechzehn Dateien liegen unter `apps/web/public/genres/`
+und tragen **die Wikidata-ID als Dateinamen** (`Q200092.png`). Damit
+gibt es die Fehlerquelle nicht mehr, vor der dieser Punkt warnt: es gibt
+keinen Namen, der falsch geschrieben sein koennte. Die Zuordnung steht in
+`apps/web/src/lib/genres.ts`, ein Test prueft, dass zu jeder ID eine
+Datei existiert und umgekehrt.
 
 Sechzehn freigestellte Symbole in Gold, 300 × 300 px mit
 Alphakanal. Sie liegen unter
@@ -31,6 +43,11 @@ Der Katalog kennt vierzig Genres, Bilder gibt es fuer sechzehn. Die
 uebrigen brauchen eine Kachel ohne Bild, so wie auf dem iPhone.
 
 ## 2. Die kurzen Genre-Namen
+
+**Erledigt.** `genreLabel()` in `apps/web/src/lib/genres.ts`. Ein Test
+vergleicht die **ganze Tabelle** gegen die der App — weicht eine Seite
+ab, faellt es auf, statt dass dasselbe Genre auf zwei Geraeten
+verschieden heisst.
 
 Auf dem iPhone steht auf der Kachel `Horror`, im Browser noch
 `Horrorfilm`. Die Tabelle steht in derselben Datei (`GenreLabel`) und
@@ -66,6 +83,11 @@ der naechsten Liste dieser Art neu bewerten.
 
 ## 3. Die Kachel selbst
 
+**Erledigt.** `apps/web/src/components/genre-tile.tsx`. Beide Fallen aus
+diesem Punkt sind von Anfang an beruecksichtigt: die Beschriftung belegt
+zwei Zeilen, ob sie sie braucht oder nicht, und das Bild hat einen festen
+Platz, ob es eins gibt oder nicht.
+
 Im Browser ist die Genre-Kachel eine Textkarte mit Beschriftung und
 Anzahl (`apps/web/src/components/discover.tsx`). Auf dem iPhone ist es
 eine Kachel mit Symbol darueber, fester Groesse und goldenem Rand bei
@@ -82,6 +104,9 @@ iPhone erst nachtraeglich aufgefallen sind:
   Rahmen. Sie sind freigestellt.
 
 ## 4. Top 10 in dieser Woche
+
+**Erledigt.** `apps/web/src/components/weekly-top.tsx`, an zweiter
+Stelle auf Entdecken. Gold nur fuer die ersten drei.
 
 Gibt es im Web ueberhaupt nicht. Auf dem iPhone steht die Sektion an
 **zweiter Stelle**, zwischen den Genres und dem Feed.
@@ -117,6 +142,10 @@ Vorbild: `apps/ios/BingeLog/Features/Discover/DiscoverView.swift`,
 
 ## 5. Das Jahr in der Suche
 
+**Erledigt.** Das Feld steht neben dem Titel auf `/`, der Wert in der
+Adresse als `?j=`. Vier Ziffern oder nichts; darunter ein Hinweis. Findet
+die Suche mit Jahr nichts, steht "Ohne Jahr suchen" da.
+
 Die Funktion kann es schon, die Oberflaeche fragt nur nicht danach.
 
 `public.search_films(query text, max_results integer default 20,
@@ -139,6 +168,9 @@ Zwei Regeln aus der iOS-Umsetzung, die im Web genauso gelten:
   gibt es vielleicht Treffer."
 
 ## 6. Das Jahr beim Anlegen
+
+**Erledigt.** Das Jahr geht durch `previewMissingFilm(term, year)` an die
+Edge Function.
 
 Die Edge Function `lazy-film` nimmt jetzt ein optionales `year` und legt
 dann nur den Film aus diesem Jahr an. Eine Titelsuche bei Wikidata
@@ -165,6 +197,13 @@ Sichtbarkeiten sind auf beiden gleich** — das ist der Teil, der gleich
 bleiben muss.
 
 ## 8. Entdecken nach dem Konzept
+
+**Erledigt** bis auf die beiden Punkte, die Daten brauchen. Die
+Reihenfolge steht, "Neu im Katalog" heisst "Neu veroeffentlicht" und hat
+"Bald verfuegbar" neben sich, leere Bereiche verschwinden, `films_for_me`
+traegt "Fuer dich", und "Von Freunden empfohlen" gibt es als Sektion und
+als Knopf auf der Filmseite (`recommend-button.tsx`,
+`lib/recommend-actions.ts`).
 
 Das Entdecken-Konzept vom 31.08.2026 ist auf dem iPhone in seiner ersten
 Stufe umgesetzt. Das Web hat davon noch nichts:
@@ -203,6 +242,13 @@ intelligente Watchlist-Auswahl. Das Konzept ordnet sie selbst unter
 
 ## 9. Die Watchlist
 
+**Erledigt, und ueber diesen Punkt hinaus.** `watchlist-page.tsx` mit
+Raster, Suche, elf Sortierungen, Genre-, Laufzeit-, Prioritaets- und
+Gruppenfilter, sozialem Hinweis, "Ueberrasch mich", Entfernen und
+"gesehen" mit sofortiger Bewertung. Die Regeln stehen pruefbar in
+`lib/watchlist.ts`. Prioritaeten, Gruppen und der Match-Wert sind nach
+dem Schreiben dieser Datei dazugekommen und gleich mit umgesetzt.
+
 Das Watchlist-Konzept vom 31.08.2026, Prioritaet 1, ist auf dem iPhone
 umgesetzt: Plakatraster, Suche, neun Sortierungen, Genre- und
 Laufzeitfilter, „von Freunden empfohlen"-Kennzeichnung samt Filter,
@@ -216,6 +262,13 @@ Hunderttausend; sollte das je nicht mehr stimmen, ist das der Punkt zum
 Umdrehen.
 
 ## 10. Die Suche
+
+**Erledigt.** Vorschau statt sofortigem Schreiben, mehrere Treffer zur
+Auswahl, getrennte Fehlerzustaende, Suchverlauf (`lib/search-history.ts`,
+lokal und loeschbar), Originaltitel und die Marken "Gesehen" /
+"In Watchlist". **Die Quelle wird nirgends genannt**, wo ein Leser
+hinsieht; in den Moderationswerkzeugen steht sie weiter, dort ist sie der
+Punkt. Die Filmseite liest die Genres jetzt ueber `film_categories`.
 
 Das Such-Konzept vom 31.08.2026, Prioritaet 1, ist auf dem iPhone
 umgesetzt. Das Web hat davon noch nichts:
@@ -251,6 +304,11 @@ umgestellt werden — eine Zeile, dieselbe wie auf dem iPhone.
 
 ## 11. Das Tagebuch
 
+**Erledigt.** `diary-page.tsx` und `lib/diary.ts`: Monatsgruppen,
+Jahresauswahl, sieben Sortierungen, Schnellfilter, "3. Sichtung",
+Menue je Eintrag. Der Spoilerschutz gilt jetzt im Tagebuch, im Feed und
+unter dem Film, und beim Schreiben gibt es das Haekchen.
+
 Im Web ist das Tagebuch eine chronologische Liste ohne Suche, Filter
 oder Sortierung, und Eintraege lassen sich dort nicht bearbeiten. Auf
 dem iPhone ist es nach Monat gruppiert, hat drei Zahlen im Kopf, sucht
@@ -280,6 +338,10 @@ der Diskussion steht in der Policy, ADR-010), aber die Bitte des
 Verfassers gehoert respektiert.
 
 ## 12. Das Profil
+
+**Erledigt.** Die Lieblingskategorien tragen den kurzen Namen, und die
+Listenseite laeuft ueber `lists_of` — Zahl und drei Plakate in einer
+Antwort statt einer zweiten Abfrage je Liste.
 
 Auf dem iPhone gebaut: Kopfbild mit auslaufendem Verlauf, Profilbild,
 Name und Kennung, Beschreibung, Follower- und Folgt-Zahlen,
@@ -317,6 +379,9 @@ zweiten Abfrage je Liste holt.
 
 ## 13. Das Logo
 
+**Erledigt.** `apps/web/public/logo.png`, im Header und auf beiden
+Anmeldebildschirmen. Der Schriftzug bleibt gesetzt.
+
 Die Bildmarke liegt als Asset in der App
 (`apps/ios/BingeLog/Assets.xcassets/LogoMark.imageset`). Im Web wird der
 Schriftzug bisher gesetzt, nicht gezeigt. Die Marke gehoert in den
@@ -325,6 +390,27 @@ Header und auf den Anmeldebildschirm.
 Der Schriftzug selbst ist bislang **nirgends** eine Bilddatei — auch in
 der App wird er von SwiftUI gesetzt. Wenn es ihn als Datei geben soll,
 gilt das fuer beide Plattformen.
+
+---
+
+## Was weiterhin offen ist
+
+- **Punkt 7, die Filmseite.** Steht hier als Frage: am Schreibtisch ist
+  eine zweispaltige Seite nicht dasselbe wie auf einem Telefon. Popcorn,
+  FSK-Farben und die drei Sichtbarkeiten sind auf beiden gleich, und das
+  war der Teil, der gleich bleiben musste.
+- **"Neu in Deutschland" und der Countdown.** Beide brauchen ein
+  deutsches Erscheinungsdatum; der Katalog fuehrt nur `release_year`.
+  Wikidata hat P577 mit Landesqualifikator — eine Erweiterung der
+  Pipeline, keine der Oberflaeche.
+- **Aus den Konzepten der Block "Danach"**: "Weil dir dieser Film
+  gefallen hat", "Heute passend", Monatsstatistik, Bewertungsverlauf,
+  Share Cards, Kalenderansicht.
+- **Der Geschmackscheck** (`taste_deck`, `taste_readiness`,
+  `film_match`) gibt es bislang nur in der App. Im Web fehlt der Stapel;
+  den Match-Wert zeigt die Watchlist schon.
+- **Watchlist-Gruppen anlegen und zuordnen.** Das Web filtert nach ihnen,
+  verwalten lassen sie sich nur in der App.
 
 ---
 

@@ -8,10 +8,10 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import {
   adoptFilm,
   previewMissingFilm,
-  suggestsDroppingTheYear,
   type Candidate,
   type CreatedFilm,
 } from '@/lib/search-actions';
+import { suggestsDroppingTheYear } from '@/lib/search-reasons';
 import { ActionNote } from '@/components/action-note';
 import { CardBuild, type BuildPhase } from '@/components/card-build';
 import { FilmTile, type TileFilm, type TileMark } from '@/components/film-tile';

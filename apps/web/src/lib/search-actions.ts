@@ -55,11 +55,6 @@ const LAZY_MESSAGES: Record<string, string> = {
   not_found: NICHTS_GEFUNDEN,
 };
 
-/** Ob es sich lohnt, das Jahr wegzulassen. */
-export function suggestsDroppingTheYear(reason: string | undefined): boolean {
-  return reason === 'wrong_year';
-}
-
 /** Ein Fund, der noch nicht im Katalog steht — zum Ansehen, nicht zum Anlegen. */
 export interface Candidate {
   wikidataId: string;
