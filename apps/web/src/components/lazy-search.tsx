@@ -1,12 +1,20 @@
 'use client';
 
+import Link from 'next/link';
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
-import { fetchMissingFilm, type CreatedFilm } from '@/lib/search-actions';
+import {
+  adoptFilm,
+  previewMissingFilm,
+  suggestsDroppingTheYear,
+  type Candidate,
+  type CreatedFilm,
+} from '@/lib/search-actions';
 import { ActionNote } from '@/components/action-note';
 import { CardBuild, type BuildPhase } from '@/components/card-build';
-import { FilmTile, type TileFilm } from '@/components/film-tile';
+import { FilmTile, type TileFilm, type TileMark } from '@/components/film-tile';
 
 /**
  * Offered when a search finds nothing, and the small ceremony that
@@ -27,9 +35,22 @@ import { FilmTile, type TileFilm } from '@/components/film-tile';
  * so the moment the film existed this component was replaced by the
  * grid — and the overlay went with it, before it had shown anything.
  */
-export function LazySearch({ term, films }: { term: string; films: TileFilm[] }) {
+export function LazySearch({
+  term,
+  films,
+  year,
+  marks,
+}: {
+  term: string;
+  films: TileFilm[];
+  year: number | null;
+  marks: Record<string, TileMark>;
+}) {
   const router = useRouter();
   const [note, setNote] = useState<string | undefined>(undefined);
+  // Was die Vorschau gefunden hat, noch ungeschrieben.
+  const [gefunden, setGefunden] = useState<Candidate[] | null>(null);
+  const [ohneJahrHilft, setOhneJahrHilft] = useState(false);
   const [building, setBuilding] = useState<CreatedFilm | null>(null);
   // The backdrop is the first and last beat of the ceremony, so it is
   // driven by the same clock as the card rather than being simply on.
@@ -65,37 +86,129 @@ export function LazySearch({ term, films }: { term: string; films: TileFilm[] })
       {films.length > 0 ? (
         <div className="flex flex-wrap gap-x-4 gap-y-6">
           {films.map((film) => (
-            <FilmTile key={film.wikidata_id} film={film} />
+            <FilmTile key={film.wikidata_id} film={film} mark={marks[film.wikidata_id]} />
           ))}
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">
-          Nichts im Katalog. Wenn es den Film bei Wikidata gibt, kannst du ihn hier anlegen — danach
-          steht er für alle bereit.
+          Nichts im Katalog. Wir können nachsehen — gefundene Filme siehst du erst und entscheidest
+          dann.
         </p>
       )}
 
-      {films.length === 0 ? (
+      {films.length === 0 && gefunden === null ? (
         <button
           type="button"
           disabled={pending}
           onClick={() => {
             setNote(undefined);
+            setOhneJahrHilft(false);
             startTransition(async () => {
-              const result = await fetchMissingFilm(term);
-              if (result.error ?? !result.films?.length) {
+              const result = await previewMissingFilm(term, year ?? undefined);
+              if (!result.candidates?.length) {
                 setNote(result.error ?? 'Nichts gefunden.');
+                setOhneJahrHilft(year !== null && suggestsDroppingTheYear(result.reason));
                 return;
               }
-              // Only the first is built on screen; the rest are in the list
-              // once the overlay closes.
-              setBuilding(result.films[0] ?? null);
+              setGefunden(result.candidates);
             });
           }}
           className="border-border hover:bg-card rounded-md border px-3 py-1.5 text-sm disabled:opacity-60"
         >
-          {pending ? 'Sucht bei Wikidata' : 'Film anlegen'}
+          {pending ? 'Sucht' : 'Weiter suchen'}
         </button>
+      ) : null}
+
+      {/* Ohne Jahr suchen statt eines leeren Ergebnisses. Der Fall ist
+          der einzige, den der Suchende selbst beheben kann. */}
+      {ohneJahrHilft ? (
+        <Link
+          href={`/?${new URLSearchParams({ q: term }).toString()}` as Route}
+          className="text-foreground text-sm underline underline-offset-4"
+        >
+          Ohne Jahr suchen
+        </Link>
+      ) : null}
+
+      {/* Die Prüfkarten: mehrere Treffer zur Auswahl statt des ersten.
+          „Halloween" sind drei Filme, und den ersten stillschweigend
+          aufzunehmen ist ein Rateschluss, den danach alle mitlesen. */}
+      {gefunden !== null ? (
+        <div className="flex w-full flex-col gap-3">
+          <p className="text-muted-foreground text-sm">
+            {gefunden.length === 1
+              ? 'Ist das der Film?'
+              : `${String(gefunden.length)} Treffer. Welcher ist gemeint?`}
+          </p>
+
+          <ul className="flex flex-col gap-2">
+            {gefunden.map((kandidat) => (
+              <li key={kandidat.wikidataId}>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    setNote(undefined);
+                    setGefunden(null);
+                    startTransition(async () => {
+                      const result = await adoptFilm(kandidat.wikidataId);
+                      if (result.error ?? !result.films?.length) {
+                        setNote(result.error ?? 'Der Film konnte nicht gespeichert werden.');
+                        return;
+                      }
+                      setBuilding(result.films[0] ?? null);
+                    });
+                  }}
+                  className="border-border hover:bg-card flex w-full items-center gap-3 rounded-md border p-2 text-left disabled:opacity-60"
+                >
+                  <span className="bg-card h-[72px] w-12 shrink-0 overflow-hidden rounded">
+                    {kandidat.posterUrl ? (
+                      // Verlinkt, nicht gespiegelt (docs/legal/thetvdb-lizenz.md).
+                      <img
+                        src={kandidat.posterUrl}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
+                  </span>
+
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate text-sm font-medium">{kandidat.title}</span>
+                    {/* Der Originaltitel neben dem deutschen, aber nur
+                        wenn er etwas hinzufügt. */}
+                    {kandidat.titleOriginal !== kandidat.title ? (
+                      <span className="text-muted-foreground truncate text-xs">
+                        {kandidat.titleOriginal}
+                      </span>
+                    ) : null}
+                    <span className="text-muted-foreground text-xs tabular-nums">
+                      {[
+                        kandidat.releaseYear === null ? null : String(kandidat.releaseYear),
+                        kandidat.director,
+                        kandidat.runtimeMin === null
+                          ? null
+                          : `${String(kandidat.runtimeMin)} Minuten`,
+                      ]
+                        .filter((teil) => teil !== null)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <button
+            type="button"
+            onClick={() => {
+              setGefunden(null);
+            }}
+            className="text-muted-foreground hover:text-foreground self-start text-sm"
+          >
+            Keiner davon
+          </button>
+        </div>
       ) : null}
 
       <ActionNote message={note} />

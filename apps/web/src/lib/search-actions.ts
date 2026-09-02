@@ -34,24 +34,117 @@ export interface LazyResult {
  * Unterschied zwischen "such anders" und "das Jahr passt nicht" — und
  * der zweite Fall ist der einzige, den der Suchende selbst beheben kann.
  */
+/**
+ * Warum nichts gefunden wurde, auf Deutsch — dieselben Faelle wie in der
+ * App (`LazyFilmProblem`).
+ *
+ * **Die Datenquelle wird nirgends genannt.** Sie ist eine Entscheidung
+ * von uns und keine, die der Suchende getroffen hat; ihn mit ihrem Namen
+ * zu behelligen erklaert nichts und bindet uns an sie.
+ */
+const NICHT_ERREICHBAR =
+  'Die Filmsuche ist gerade nicht erreichbar. Versuch es gleich noch einmal.';
+const NICHTS_GEFUNDEN =
+  'Kein passender Film gefunden. Prüf die Schreibweise oder such nach dem Originaltitel.';
+
 const LAZY_MESSAGES: Record<string, string> = {
   rate_limited: 'Gerade zu viele Abfragen. Versuch es in einer Minute noch einmal.',
-  wrong_year:
-    'Bei Wikidata gibt es den Titel, aber nicht aus diesem Jahr. ' +
-    'Lass das Jahr weg oder prüf es.',
+  wrong_year: 'Den Titel gibt es, aber nicht aus diesem Jahr. Lass das Jahr weg oder prüf es.',
+  lookup_failed: NICHT_ERREICHBAR,
+  not_a_film: NICHTS_GEFUNDEN,
+  not_found: NICHTS_GEFUNDEN,
 };
 
-export async function fetchMissingFilm(term: string, year?: number): Promise<LazyResult> {
+/** Ob es sich lohnt, das Jahr wegzulassen. */
+export function suggestsDroppingTheYear(reason: string | undefined): boolean {
+  return reason === 'wrong_year';
+}
+
+/** Ein Fund, der noch nicht im Katalog steht — zum Ansehen, nicht zum Anlegen. */
+export interface Candidate {
+  wikidataId: string;
+  title: string;
+  titleOriginal: string;
+  releaseYear: number | null;
+  runtimeMin: number | null;
+  director: string | null;
+  posterUrl: string | null;
+}
+
+export interface PreviewResult {
+  candidates?: Candidate[];
+  error?: string;
+  /** Der Rohgrund, damit die Oberflaeche „Ohne Jahr suchen" anbieten kann. */
+  reason?: string;
+}
+
+/**
+ * Nachsehen, ohne zu schreiben (Suchkonzept, 19-web-nachziehen 10).
+ *
+ * Bisher schrieb der Knopf sofort — und bei „Halloween" wanderte der
+ * erste von drei Filmen in den Katalog, den alle anderen mitlesen. Jetzt
+ * wird erst gezeigt, was gefunden wurde, und der Suchende entscheidet.
+ */
+export async function previewMissingFilm(term: string, year?: number): Promise<PreviewResult> {
   const trimmed = term.trim();
   if (trimmed.length < 2) return { error: 'Gib mindestens zwei Zeichen ein.' };
 
   const supabase = await createClient();
 
+  const response = await supabase.functions.invoke<{ candidates?: Candidate[]; reason?: string }>(
+    'lazy-film',
+    {
+      body: {
+        term: trimmed,
+        mode: 'preview',
+        ...(year === undefined ? {} : { year }),
+      },
+    },
+  );
+
+  const failure: unknown = response.error;
+  if (failure !== null && failure !== undefined) {
+    console.error(
+      'lazy-film preview failed:',
+      failure instanceof Error ? failure.message : JSON.stringify(failure),
+    );
+    return { error: NICHT_ERREICHBAR, reason: 'lookup_failed' };
+  }
+
+  const treffer = response.data?.candidates ?? [];
+  if (treffer.length === 0) {
+    const reason = response.data?.reason ?? 'not_found';
+    return { error: LAZY_MESSAGES[reason] ?? NICHTS_GEFUNDEN, reason };
+  }
+
+  return { candidates: treffer };
+}
+
+/**
+ * Genau diesen einen aufnehmen — den, den der Suchende gewaehlt hat.
+ *
+ * Ohne Titelsuche: die ist beim Vorschauschritt schon gelaufen, und ein
+ * zweites Mal koennte sie etwas anderes finden.
+ */
+export async function adoptFilm(wikidataId: string): Promise<LazyResult> {
+  return await createFilm({ wikidataId });
+}
+
+export async function fetchMissingFilm(term: string, year?: number): Promise<LazyResult> {
+  const trimmed = term.trim();
+  if (trimmed.length < 2) return { error: 'Gib mindestens zwei Zeichen ein.' };
+
+  // Das Jahr grenzt ein, welcher der bis zu fuenf Treffer gemeint ist.
+  // Ohne Angabe bleibt es wie bisher.
+  return await createFilm(year === undefined ? { term: trimmed } : { term: trimmed, year });
+}
+
+async function createFilm(body: Record<string, unknown>): Promise<LazyResult> {
+  const supabase = await createClient();
+
   const response = await supabase.functions.invoke<{ created?: string[]; reason?: string }>(
     'lazy-film',
-    // Das Jahr grenzt ein, welcher der bis zu fuenf Wikidata-Treffer
-    // gemeint ist. Ohne Angabe bleibt es wie bisher.
-    { body: year === undefined ? { term: trimmed } : { term: trimmed, year } },
+    { body },
   );
 
   // invoke types its error loosely; narrow it rather than trust it.
@@ -61,19 +154,17 @@ export async function fetchMissingFilm(term: string, year?: number): Promise<Laz
       'lazy-film failed:',
       failure instanceof Error ? failure.message : JSON.stringify(failure),
     );
-    // Wikidata being slow or the limit being reached are both ordinary,
-    // and both leave the search exactly as it was.
-    return { error: 'Wikidata antwortet gerade nicht. Versuch es gleich noch einmal.' };
+    // Eine langsame Quelle und ein erreichtes Limit sind beide gewoehnlich
+    // und lassen die Suche, wie sie war. **Die Quelle wird nicht
+    // genannt** — sie ist unsere Entscheidung, nicht seine.
+    return { error: NICHT_ERREICHBAR };
   }
 
   const data = response.data;
 
   if ((data?.created?.length ?? 0) === 0) {
-    return {
-      error:
-        LAZY_MESSAGES[data?.reason ?? ''] ??
-        'Auch bei Wikidata nichts gefunden. Prüf die Schreibweise oder such nach dem Originaltitel.',
-    };
+    const reason = data?.reason ?? 'not_found';
+    return { error: LAZY_MESSAGES[reason] ?? NICHTS_GEFUNDEN };
   }
 
   // The client draws the card while it announces the find, so it needs

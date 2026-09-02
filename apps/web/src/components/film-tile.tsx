@@ -12,6 +12,17 @@ export interface TileFilm {
 }
 
 /**
+ * Was der Leser mit dem Film schon zu tun hatte.
+ *
+ * Auf der Trefferliste erspart das ein Aufschlagen, um zu sehen, ob man
+ * ihn laengst eingetragen hat (Suchkonzept, 19-web-nachziehen 10).
+ */
+export interface TileMark {
+  seen?: boolean;
+  onWatchlist?: boolean;
+}
+
+/**
  * One tile in the grid. Reference width is 120 to 150 px, which is the
  * size the whole visual system is designed around (02-product.md).
  *
@@ -19,7 +30,7 @@ export interface TileFilm {
  * standing in for the other (ADR-004), so they get the same frame and the
  * same treatment.
  */
-export function FilmTile({ film }: { film: TileFilm }) {
+export function FilmTile({ film, mark }: { film: TileFilm; mark?: TileMark | undefined }) {
   const title = film.title_de ?? film.title_original;
   const hasArtwork = film.poster_source === 'tvdb' && film.poster_url;
 
@@ -28,7 +39,7 @@ export function FilmTile({ film }: { film: TileFilm }) {
       href={`/film/${film.wikidata_id}` as Route}
       className="focus-visible:ring-ring group flex w-[120px] flex-col gap-1.5 rounded outline-none focus-visible:ring-2 sm:w-[140px]"
     >
-      <div className="bg-card aspect-[2/3] overflow-hidden rounded">
+      <div className="bg-card relative aspect-[2/3] overflow-hidden rounded">
         {hasArtwork ? (
           // A plain img on purpose: next/image would proxy and cache the
           // artwork on our origin, and the licence check settled on linking
@@ -47,6 +58,13 @@ export function FilmTile({ film }: { film: TileFilm }) {
             className="h-full w-full object-cover"
           />
         )}
+        {/* Nur eine Marke. "Gesehen" ist die staerkere Aussage: was man
+            gesehen hat, steht nicht mehr auf der Merkliste. */}
+        {mark?.seen === true || mark?.onWatchlist === true ? (
+          <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+            {mark.seen === true ? 'Gesehen' : 'In Watchlist'}
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-0.5">
