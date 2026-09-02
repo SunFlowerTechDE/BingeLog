@@ -31,6 +31,11 @@ SWIFT_VERSION = 5.0
 SUPABASE_URL = https:/$()/rbgofrgstnotgpnnvehb.supabase.co
 SUPABASE_ANON_KEY = sb_publishable_PfHdHB-vjXhNwAE7xTDgIw_ysnWn5Jm
 
+// Die Webseite. Rechtstexte stehen dort und nicht in der App: zwei
+// Fassungen eines Rechtstexts laufen auseinander, und man merkt es erst,
+// wenn jemand fragt.
+WEB_BASE_URL = https:/$()/bingelog.eu
+
 // Die beiden Werte gehen ueber BingeLog/Resources/Info.plist in die
 // App. `INFOPLIST_KEY_…` kann das nicht: es reicht nur Schluessel
 // durch, die Xcode kennt, und eigene fallen still unter den Tisch.

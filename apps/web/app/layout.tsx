@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 
 import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
 
 import './globals.css';
 
@@ -22,9 +23,14 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de">
-      <body className="min-h-dvh antialiased">
+      <body className="flex min-h-dvh flex-col antialiased">
         <Header />
-        {children}
+        <div className="flex-1">{children}</div>
+        {/* Die Fusszeile steht auf jeder Seite. Eine
+            Datenschutzerklaerung, die man nur ueber die Registrierung
+            findet, ist fuer alle unauffindbar, die schon ein Konto
+            haben. */}
+        <Footer />
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState } from 'react';
 
 import { signUp, type FormState } from '@/lib/auth-actions';
@@ -20,6 +21,19 @@ export function SignUpForm() {
       />
       <FormError message={state.error} />
       <Submit>Konto anlegen</Submit>
+
+      {/* Der Hinweis steht unter dem Knopf und nicht als Häkchen davor:
+          ein Häkchen, das man setzen muss, um weiterzukommen, ist keine
+          Einwilligung, sondern eine Hürde. Was wir verarbeiten, steht
+          im Text — und der ist jetzt ein Link und keine Behauptung
+          mehr. */}
+      <p className="text-muted-foreground text-xs leading-relaxed">
+        Mit dem Anlegen stimmst du unserer{' '}
+        <Link href="/datenschutz" className="text-foreground underline underline-offset-4">
+          Datenschutzerklärung
+        </Link>{' '}
+        zu.
+      </p>
     </form>
   );
 }

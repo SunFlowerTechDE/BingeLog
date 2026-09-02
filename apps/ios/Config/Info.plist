@@ -13,6 +13,8 @@
 	<string>$(SUPABASE_URL)</string>
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>WebBaseURL</key>
+	<string>$(WEB_BASE_URL)</string>
 
 	<!-- Der Startbildschirm des Systems, den iOS zeigt, bevor die App
 	     laeuft. Genau die Farbe von `Theme.background`: darauf blendet

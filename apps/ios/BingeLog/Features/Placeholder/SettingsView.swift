@@ -89,6 +89,24 @@ struct SettingsView: View {
                 }
             }
 
+            // Der Text steht auf der Webseite, nicht in der App. Zwei
+            // Fassungen eines Rechtstexts laufen auseinander, und man
+            // merkt es erst, wenn jemand fragt.
+            if let url = AppConfiguration.privacyPolicyURL {
+                Section("Rechtliches") {
+                    Link(destination: url) {
+                        HStack {
+                            Text("Datenschutzerklärung")
+                            Spacer()
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                        }
+                    }
+                    .listRowBackground(Theme.card)
+                }
+            }
+
             Section("Kommt noch") {
                 // Ausgegraut und benannt statt weggelassen: so ist
                 // sichtbar, was hier hingehört, ohne dass etwas
@@ -116,7 +134,6 @@ struct SettingsView: View {
     private static let planned: [Planned] = [
         Planned(title: "Konto und Passwort", step: "M5 5.6"),
         Planned(title: "Benachrichtigungen", step: "M6"),
-        Planned(title: "Datenschutz", step: "M6"),
         Planned(title: "Nutzungsbedingungen", step: "M6"),
         Planned(title: "Impressum", step: "M6"),
     ]

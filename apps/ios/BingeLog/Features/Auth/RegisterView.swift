@@ -182,12 +182,12 @@ struct RegisterView: View {
 
     /// Die Zustimmung.
     ///
-    /// Die beiden Begriffe sind **noch keine Links**: Datenschutz­erklärung
-    /// und Nutzungsbedingungen gibt es nicht, sie stehen in M6. Ein Link
-    /// ins Leere wäre schlimmer als keiner, und ein Häkchen unter
-    /// Dokumente zu setzen, die es nicht gibt, ist ohnehin nur so viel
-    /// wert wie die Dokumente. Sobald sie stehen, werden hier zwei
-    /// Links daraus.
+    /// **Die Datenschutzerklärung ist jetzt ein Link** und keine
+    /// Behauptung mehr — sie steht seit dem 03.09.2026 auf der
+    /// Webseite. Die Nutzungsbedingungen gibt es weiterhin nicht (M6),
+    /// deshalb sind sie hier auch nicht genannt: unter etwas ein
+    /// Häkchen zu setzen, das es nicht gibt, ist so viel wert wie das
+    /// Dokument.
     private var terms: some View {
         HStack(alignment: .top, spacing: 12) {
             Button {
@@ -197,16 +197,23 @@ struct RegisterView: View {
                     .font(.title3)
                     .foregroundStyle(acceptedTerms ? Theme.primary : Theme.muted)
             }
-            .accessibilityLabel("Datenschutzerklärung und Nutzungsbedingungen akzeptieren")
+            .accessibilityLabel("Datenschutzerklärung akzeptieren")
             .accessibilityAddTraits(acceptedTerms ? [.isSelected] : [])
 
-            (Text("Ich stimme der ")
-                .foregroundColor(Theme.muted)
-                + Text("Datenschutzerklärung").foregroundColor(Theme.primary)
-                + Text(" und den ").foregroundColor(Theme.muted)
-                + Text("Nutzungsbedingungen").foregroundColor(Theme.primary)
-                + Text(" zu.").foregroundColor(Theme.muted))
-                .font(.footnote)
+            Group {
+                if let url = AppConfiguration.privacyPolicyURL {
+                    Text("Ich stimme der ")
+                        .foregroundColor(Theme.muted)
+                        + Text("[Datenschutzerklärung](\(url.absoluteString))")
+                        .foregroundColor(Theme.primary)
+                        + Text(" zu.").foregroundColor(Theme.muted)
+                } else {
+                    Text("Ich stimme der Datenschutzerklärung zu.")
+                        .foregroundColor(Theme.muted)
+                }
+            }
+            .font(.footnote)
+            .tint(Theme.primary)
 
             Spacer(minLength: 0)
         }

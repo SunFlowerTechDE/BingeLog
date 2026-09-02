@@ -31,4 +31,24 @@ enum AppConfiguration {
         }
         return key
     }()
+
+    /// Die Webseite.
+    ///
+    /// **Rechtstexte stehen dort und nicht in der App.** Zwei Fassungen
+    /// eines Rechtstexts laufen auseinander, und man merkt es erst, wenn
+    /// jemand fragt. Ein Link kostet dafür einen Wechsel in den Browser
+    /// — das ist der Preis, und er ist kleiner.
+    ///
+    /// Anders als die beiden Werte darüber ist dies kein Grund zum
+    /// Abbruch: ohne Adresse fehlt ein Link, nicht die App.
+    static let webBaseURL: URL? = {
+        guard
+            let raw = Bundle.main.object(forInfoDictionaryKey: "WebBaseURL") as? String,
+            let url = URL(string: raw)
+        else { return nil }
+        return url
+    }()
+
+    /// Die Datenschutzerklärung.
+    static var privacyPolicyURL: URL? { webBaseURL?.appendingPathComponent("datenschutz") }
 }
