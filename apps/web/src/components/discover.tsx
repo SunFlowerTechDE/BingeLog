@@ -1,11 +1,10 @@
-import Link from 'next/link';
-import type { Route } from 'next';
-
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
 import { FilmTile, type TileFilm } from '@/components/film-tile';
 import { FeedList } from '@/components/feed-list';
 import { FEED_SEITE, type FeedEintrag } from '@/lib/feed';
+import { GenreTile, type GenreKachel } from '@/components/genre-tile';
+import { WeeklyTop, type TopFilm } from '@/components/weekly-top';
 
 /**
  * Entdecken — die Startseite fuer Angemeldete (M4 4.4).
@@ -22,8 +21,9 @@ export async function Discover() {
   const supabase = await createClient();
   const viewer = await getViewer();
 
-  const [{ data: kachelRows }, { data: neuRows }] = await Promise.all([
+  const [{ data: kachelRows }, { data: topRows }, { data: neuRows }] = await Promise.all([
     supabase.rpc('genre_tiles', { max_results: 16 }),
+    supabase.rpc('weekly_top_films', { max_results: 10 }),
     // Nach Erscheinungsjahr, bei Gleichstand die bekannteren zuerst.
     // `sitelink_count` ist die Zahl der Wikipedia-Sprachversionen und
     // damit das einzige Mass fuer Bekanntheit, das der Katalog kennt.
@@ -37,6 +37,7 @@ export async function Discover() {
   ]);
 
   const kacheln = kachelRows ?? [];
+  const top = (topRows ?? []) as TopFilm[];
   const neu = (neuRows ?? []).map((f) => ({ ...f, director: null })) as TileFilm[];
 
   let feed: FeedEintrag[] = [];
@@ -55,23 +56,19 @@ export async function Discover() {
           {/* Ein Schieber und kein Raster: die Genres sind ein Einstieg,
               kein Inhaltsverzeichnis. Sechzehn Kacheln untereinander
               waeren eine Wand vor dem, was darunter steht. */}
-          <ul className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
-            {kacheln.map((k) => (
+          <ul className="-mx-5 flex items-stretch gap-3 overflow-x-auto px-5 pb-2">
+            {(kacheln as GenreKachel[]).map((k) => (
               <li key={k.genre_id} className="shrink-0">
-                <Link
-                  href={`/genre/${k.genre_id}` as Route}
-                  className="border-border bg-card/60 hover:bg-card flex w-40 flex-col gap-1 rounded-lg border px-4 py-3"
-                >
-                  <span className="truncate text-sm font-medium">{k.label}</span>
-                  <span className="text-muted-foreground text-xs tabular-nums">
-                    {k.films} Filme
-                  </span>
-                </Link>
+                <GenreTile kachel={k} />
               </li>
             ))}
           </ul>
         </section>
       ) : null}
+
+      {/* An zweiter Stelle, zwischen den Genres und dem Feed — dieselbe
+          Ordnung wie auf dem iPhone. */}
+      <WeeklyTop filme={top} />
 
       {viewer?.username ? (
         <section className="flex flex-col gap-4">
