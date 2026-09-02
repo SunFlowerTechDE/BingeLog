@@ -1071,6 +1071,30 @@ struct WatchlistTests {
                 from: [fremd], maximumRuntime: nil, genre: nil, socialOnly: true) == nil)
     }
 
+    /// Ein Film ohne Übereinstimmung steht hinten, nicht unten.
+    ///
+    /// Dieselbe Regel wie bei Laufzeit und Bewertung: unbekannt ist
+    /// nicht schlecht.
+    @Test("Ohne Match-Wert sortiert ein Film nach hinten")
+    func matchSortsUnknownLast() {
+        let gut = entry(id: "Q1", title: "Gut", year: 2000, runtime: 90, average: nil)
+        let mittel = entry(id: "Q2", title: "Mittel", year: 2000, runtime: 90, average: nil)
+        let ohne = entry(id: "Q3", title: "Ohne", year: 2000, runtime: 90, average: nil)
+
+        let werte = ["Q1": 91, "Q2": 54]
+        let sortiert = [ohne, mittel, gut].sorted {
+            WatchlistOrder.bestMatch.sorts($0, $1, matches: werte)
+        }
+        #expect(sortiert.map(\.filmID) == ["Q1", "Q2", "Q3"])
+
+        // Ohne jeden Wert bleibt die Reihenfolge unverändert, statt sich
+        // zufällig zu drehen.
+        let leer = [gut, mittel, ohne].sorted {
+            WatchlistOrder.bestMatch.sorts($0, $1, matches: [:])
+        }
+        #expect(leer.map(\.filmID) == ["Q1", "Q2", "Q3"])
+    }
+
     /// Prioritaet und Gruppe filtern wie jeder andere Filter auch.
     @Test("Priorität und Gruppe grenzen die Liste ein")
     func priorityAndGroupNarrow() {

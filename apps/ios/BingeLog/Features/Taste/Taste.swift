@@ -117,10 +117,22 @@ nonisolated struct TasteReadiness: Decodable, Sendable, Equatable {
     }
 }
 
+/// Die Übereinstimmung eines Films in Prozent.
+nonisolated struct FilmMatch: Decodable, Sendable {
+    let filmID: String
+    let match: Int
+
+    enum CodingKeys: String, CodingKey {
+        case match
+        case filmID = "film_id"
+    }
+}
+
 protocol TasteRepository: Sendable {
     func deck(count: Int) async -> [TasteCard]
     func vote(_ verdict: TasteVerdict, on filmID: String) async -> SaveOutcome
     func readiness() async -> TasteReadiness
+    func matches(for filmIDs: [String]) async -> [String: Int]
 }
 
 struct LiveTasteRepository: TasteRepository {
@@ -164,5 +176,20 @@ struct LiveTasteRepository: TasteRepository {
             .execute()
             .value
         return rows?.first ?? .empty
+    }
+
+    /// Alle auf einmal. Eine Watchlist mit vierzig Einträgen darf keine
+    /// vierzig Anfragen kosten.
+    ///
+    /// Trägt das Profil noch nicht, kommt eine leere Antwort — die
+    /// Schwelle steht in der Datenbank, nicht hier.
+    func matches(for filmIDs: [String]) async -> [String: Int] {
+        guard !filmIDs.isEmpty else { return [:] }
+
+        let rows: [FilmMatch]? = try? await backend.client
+            .rpc("film_match", params: ["films": filmIDs])
+            .execute()
+            .value
+        return Dictionary(uniqueKeysWithValues: (rows ?? []).map { ($0.filmID, $0.match) })
     }
 }

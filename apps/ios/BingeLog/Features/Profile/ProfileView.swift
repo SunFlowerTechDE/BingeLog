@@ -222,7 +222,8 @@ struct ProfileView: View {
                         title: "Watchlist",
                         more: head.isMe ? "Alle" : nil,
                         destination: { AnyView(WatchlistView(
-                            entries: repos.entries, details: repos.details)) }
+                            entries: repos.entries, details: repos.details,
+                            taste: repos.taste)) }
                     ) {
                         if model.watchlist.isEmpty {
                             Text(head.isMe ? "Noch nichts vorgemerkt." : "Nichts zu sehen.")

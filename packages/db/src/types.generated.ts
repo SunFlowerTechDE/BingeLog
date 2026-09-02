@@ -1401,6 +1401,13 @@ export type Database = {
           this_year: number
         }[]
       }
+      film_match: {
+        Args: { films: string[] }
+        Returns: {
+          film_id: string
+          match: number
+        }[]
+      }
       film_rating_summary: {
         Args: { film: string }
         Returns: {
@@ -1637,6 +1644,15 @@ export type Database = {
           release_year: number
           title_de: string
           title_original: string
+        }[]
+      }
+      taste_profile: {
+        Args: never
+        Returns: {
+          category_id: string
+          label: string
+          observations: number
+          score: number
         }[]
       }
       taste_readiness: {

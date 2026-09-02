@@ -220,6 +220,7 @@ nonisolated enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
     case longest
     case alphabetical
     case byPriority
+    case bestMatch
 
     var id: String { rawValue }
 
@@ -235,6 +236,7 @@ nonisolated enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
         case .longest: return "Längste Laufzeit"
         case .alphabetical: return "Alphabetisch"
         case .byPriority: return "Priorität"
+        case .bestMatch: return "Beste Übereinstimmung"
         }
     }
 
@@ -247,6 +249,17 @@ nonisolated enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
     /// Film ohne Laufzeit ist nicht der kürzeste, und einer ohne
     /// Bewertung ist nicht der schlechteste.
     func sorts(_ a: WatchlistEntry, _ b: WatchlistEntry) -> Bool {
+        sorts(a, b, matches: [:])
+    }
+
+    /// Dieselbe Ordnung, aber mit den Übereinstimmungen zur Hand.
+    ///
+    /// Die Werte kommen aus einer eigenen Anfrage und stehen nicht am
+    /// Eintrag — sonst müsste jede Liste, die Einträge lädt, auch das
+    /// Geschmacksprofil mitladen.
+    func sorts(
+        _ a: WatchlistEntry, _ b: WatchlistEntry, matches: [String: Int]
+    ) -> Bool {
         switch self {
         case .newestAdded: return a.addedAt > b.addedAt
         case .oldestAdded: return a.addedAt < b.addedAt
@@ -268,6 +281,13 @@ nonisolated enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
                 ascending: false)
         case .alphabetical:
             return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+        case .bestMatch:
+            // Ohne Wert nach hinten, wie bei jeder anderen fehlenden
+            // Angabe auch. Ein Film ohne Übereinstimmung ist nicht der
+            // schlechteste, er ist unbekannt.
+            return WatchlistOrder.compare(
+                matches[a.filmID].map(Double.init), matches[b.filmID].map(Double.init),
+                ascending: false)
         case .byPriority:
             // Innerhalb einer Stufe bleibt das Zuletzt-Hinzugefuegte
             // oben. Sonst waere die Reihenfolge innerhalb von "Normal"

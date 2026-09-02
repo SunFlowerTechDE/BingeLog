@@ -56,7 +56,8 @@ struct BingeLogApp: App {
                     lazyFilms: repositories.lazyFilms,
                     details: repositories.details,
                     entries: repositories.entries,
-                    profilePages: repositories.profilePages
+                    profilePages: repositories.profilePages,
+                    taste: repositories.taste
                 )
                 .environment(session)
                 .environment(repositories)

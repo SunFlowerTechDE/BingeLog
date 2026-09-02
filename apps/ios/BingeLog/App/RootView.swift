@@ -20,6 +20,7 @@ struct RootView: View {
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
     let profilePages: ProfilePageRepository
+    let taste: TasteRepository
 
     var body: some View {
         if session.isLoading {
@@ -38,11 +39,11 @@ struct RootView: View {
             if sizeClass == .compact {
                 CompactShell(
                     films: films, discover: discover, lazyFilms: lazyFilms, details: details, entries: entries,
-                    profilePages: profilePages)
+                    profilePages: profilePages, taste: taste)
             } else {
                 RegularShell(
                     films: films, discover: discover, lazyFilms: lazyFilms, details: details, entries: entries,
-                    profilePages: profilePages)
+                    profilePages: profilePages, taste: taste)
             }
         } else {
             SignInView(films: films, profiles: profiles)
@@ -64,6 +65,7 @@ private struct CompactShell: View {
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
     let profilePages: ProfilePageRepository
+    let taste: TasteRepository
 
     var body: some View {
         TabView {
@@ -75,7 +77,7 @@ private struct CompactShell: View {
             }
             .tabItem { Label("Entdecken", systemImage: "house") }
 
-            NavigationStack { WatchlistView(entries: entries, details: details) }
+            NavigationStack { WatchlistView(entries: entries, details: details, taste: taste) }
                 .tabItem { Label("Watchlist", systemImage: "bookmark") }
 
             NavigationStack { DiaryView(entries: entries, details: details) }
@@ -115,6 +117,7 @@ private struct RegularShell: View {
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
     let profilePages: ProfilePageRepository
+    let taste: TasteRepository
     @State private var selection: Section? = .discover
 
     private enum Section: Hashable {
@@ -147,7 +150,7 @@ private struct RegularShell: View {
                         repository: films, lazyFilms: lazyFilms,
                         details: details, entries: entries)
                 case .watchlist:
-                    WatchlistView(entries: entries, details: details)
+                    WatchlistView(entries: entries, details: details, taste: taste)
                 case .diary:
                     DiaryView(entries: entries, details: details)
                 case .profile:

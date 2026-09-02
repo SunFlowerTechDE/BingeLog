@@ -8,10 +8,10 @@ import SwiftUI
 struct WatchlistView: View {
     @State private var model: WatchlistModel
 
-    init(entries: FilmEntryRepository, details: FilmDetailRepository) {
+    init(entries: FilmEntryRepository, details: FilmDetailRepository, taste: TasteRepository) {
         self.details = details
         self.entries = entries
-        _model = State(initialValue: WatchlistModel(entries: entries))
+        _model = State(initialValue: WatchlistModel(entries: entries, taste: taste))
     }
 
     private let details: FilmDetailRepository
@@ -125,7 +125,7 @@ struct WatchlistView: View {
                         ForEach(model.shown) { entry in
                             WatchlistCard(
                                 entry: entry, details: details, entries: entries,
-                                groups: model.groups,
+                                groups: model.groups, match: model.matches[entry.filmID],
                                 onRemove: { Task { await model.remove(entry) } },
                                 onSeen: { seenEntry = entry },
                                 onPriority: { level in
@@ -257,7 +257,12 @@ struct WatchlistView: View {
         return Menu {
             Picker("Sortieren", selection: $model.order) {
                 ForEach(WatchlistOrder.allCases) { option in
-                    Text(option.label).tag(option)
+                    // Ohne Geschmacksprofil steht die Übereinstimmung
+                    // nicht zur Wahl. Ein Menüpunkt, der nichts tut,
+                    // ist schlimmer als keiner.
+                    if option != .bestMatch || model.hasMatches {
+                        Text(option.label).tag(option)
+                    }
                 }
             }
         } label: {
@@ -312,6 +317,7 @@ private struct WatchlistCard: View {
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
     let groups: [WatchlistGroup]
+    let match: Int?
     let onRemove: () -> Void
     let onSeen: () -> Void
     let onPriority: (WatchlistPriority) -> Void
@@ -352,6 +358,13 @@ private struct WatchlistCard: View {
 
                 if let average = entry.average {
                     PopcornRating(rating: average, size: 11)
+                }
+
+                if let match {
+                    Text("\(match) % Match")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(match >= 65 ? Theme.primary : Theme.muted)
+                        .monospacedDigit()
                 }
 
                 // Der soziale Hinweis, aber nur einer. Die Karte darf

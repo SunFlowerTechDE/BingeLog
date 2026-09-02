@@ -1505,6 +1505,91 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.watchlist where user_id = $1`, [ich]);
   });
 
+  it('withholds the match value until the profile carries it', async () => {
+    const ich = await seedUser(h, 'matchich');
+    const meiner = h.as('authenticated', ich);
+
+    // Breite, nicht Menge: die Abdeckung wiegt am schwersten, also
+    // braucht der Fall acht Kategorien mit je sechs Filmen. Ein einziges
+    // Genre kaeme nie ueber die Schwelle, egal wie viele Filme darin
+    // liegen — und das ist der Sinn der Gewichtung.
+    const filme: string[] = [];
+    for (let k = 0; k < 8; k += 1) {
+      const kategorie = `Q9100${String(k).padStart(2, '0')}`;
+      await h.sql.query(
+        `insert into public.genres (wikidata_id, label_de, is_category, category_id)
+         values ($1, $2, true, $1) on conflict do nothing`,
+        [kategorie, `Matchgenre ${String(k)}`],
+      );
+      for (let i = 0; i < 6; i += 1) {
+        const id = `Q102${String(k)}${String(i).padStart(2, '0')}`;
+        await seedFilm(h, id);
+        await h.sql.query(
+          `insert into public.film_genres (film_id, genre_id) values ($1, $2)
+           on conflict do nothing`,
+          [id, kategorie],
+        );
+        filme.push(id);
+      }
+    }
+
+    // Drei Stimmen sind zu duenn. Eine Zahl darauf saehe aus wie Wissen.
+    for (const id of filme.slice(0, 3)) {
+      await meiner.query(
+        `insert into public.taste_votes (user_id, film_id, verdict) values ($1, $2, 'like')`,
+        [ich, id],
+      );
+    }
+    const zuFrueh = await meiner.query(`select film_id, match from public.film_match($1)`, [filme]);
+    assert.deepEqual(zuFrueh, [], 'unter der Schwelle kommt kein Wert');
+
+    // Mit echten Noten traegt es. Die Streuung muss stimmen, sonst
+    // drueckt sie das Ergebnis — wer alles mag, hat kein Profil.
+    for (const [n, id] of filme.slice(3).entries()) {
+      await meiner.query(
+        `insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, $3)`,
+        [ich, id, n % 2 === 0 ? 9 : 3],
+      );
+    }
+    const reife = await meiner.query<{ readiness: number }>(
+      `select readiness from public.taste_readiness()`,
+    );
+    assert.ok(
+      (reife[0]?.readiness ?? 0) >= 50,
+      `acht gedeckte Kategorien sollten tragen, waren ${String(reife[0]?.readiness)}`,
+    );
+
+    interface Treffer {
+      film_id: string;
+      match: number;
+    }
+    const jetzt = await meiner.query<Treffer>(`select film_id, match from public.film_match($1)`, [
+      filme,
+    ]);
+    assert.ok(jetzt.length > 0, 'ueber der Schwelle steht ein Wert');
+    for (const zeile of jetzt) {
+      assert.ok(
+        zeile.match >= 1 && zeile.match <= 99,
+        `${String(zeile.match)} liegt ausserhalb von 1 bis 99`,
+      );
+    }
+
+    // Eine einzelne Beobachtung darf keine Aussage werden: die
+    // Schrumpfung haelt den Wert nahe an der Mitte.
+    const profil = await meiner.query<{ score: string; observations: string }>(
+      `select score, observations from public.taste_profile()`,
+    );
+    for (const zeile of profil) {
+      assert.ok(
+        Math.abs(Number(zeile.score)) <= 1,
+        `Vorliebe ${zeile.score} liegt ausserhalb von -1 bis 1`,
+      );
+    }
+
+    await h.sql.query(`delete from public.diary_entries where user_id = $1`, [ich]);
+    await h.sql.query(`delete from public.taste_votes where user_id = $1`, [ich]);
+  });
+
   it('keeps taste votes out of every rating', async () => {
     const ich = await seedUser(h, 'geschmackich');
     const fremd = await seedUser(h, 'geschmackfremd');

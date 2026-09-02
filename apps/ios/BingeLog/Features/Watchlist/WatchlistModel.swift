@@ -26,10 +26,16 @@ final class WatchlistModel {
     /// Der Film, den „Überrasch mich" gezogen hat.
     var surprise: WatchlistEntry?
 
-    private let entries: FilmEntryRepository
+    /// Übereinstimmung je Film, oder leer, solange das Profil sie nicht
+    /// trägt. Die Schwelle setzt die Datenbank.
+    private(set) var matches: [String: Int] = [:]
 
-    init(entries: FilmEntryRepository) {
+    private let entries: FilmEntryRepository
+    private let taste: TasteRepository
+
+    init(entries: FilmEntryRepository, taste: TasteRepository) {
         self.entries = entries
+        self.taste = taste
     }
 
     func load() async {
@@ -40,8 +46,17 @@ final class WatchlistModel {
         // sonst zeigt die Liste dauerhaft nichts und niemand sieht,
         // warum.
         if let group, !groups.contains(where: { $0.id == group.id }) { self.group = nil }
+        matches = await taste.matches(for: all.map(\.filmID))
+
+        // Nach etwas zu sortieren, das es nicht gibt, ergibt eine Liste
+        // in beliebiger Reihenfolge. Dann lieber zurück auf die
+        // Voreinstellung.
+        if order == .bestMatch, matches.isEmpty { order = .newestAdded }
         isLoading = false
     }
+
+    /// Ob die Übereinstimmung überhaupt etwas anzuzeigen hat.
+    var hasMatches: Bool { !matches.isEmpty }
 
     /// Die Genres, die in dieser Watchlist wirklich vorkommen.
     ///
@@ -64,7 +79,7 @@ final class WatchlistModel {
             maximumRuntime: maximumRuntime, onlyRecommended: onlyRecommended,
             priority: priority, group: group?.id
         )
-        .sorted(by: order.sorts)
+        .sorted { order.sorts($0, $1, matches: matches) }
     }
 
     var hasFilters: Bool {
