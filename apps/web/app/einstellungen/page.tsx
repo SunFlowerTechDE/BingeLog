@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { LetterboxdImport } from '@/components/letterboxd-import';
+import { UnmatchedImports } from '@/components/unmatched-imports';
 import type { Metadata } from 'next';
 
 import { createClient } from '@/lib/supabase/server';
@@ -80,6 +81,8 @@ export default async function SettingsPage() {
       </div>
 
       <LetterboxdImport />
+
+      <UnmatchedImports />
 
       <section className="border-border flex flex-col gap-4 border-t pt-8">
         <div className="flex flex-col gap-1">

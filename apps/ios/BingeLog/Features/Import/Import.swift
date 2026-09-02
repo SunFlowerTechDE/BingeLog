@@ -134,6 +134,10 @@ protocol ImportRepository: Sendable {
     func step(batch: UUID) async -> Result<ImportStep, ImportProblem>
     func batch(_ id: UUID) async -> ImportBatch?
     func cancel(_ id: UUID) async
+
+    func unmatched(limit: Int) async -> [UnmatchedItem]
+    func resolve(item: UUID, film: String, batch: UUID) async -> Bool
+    func skip(item: UUID) async -> Bool
 }
 
 struct LiveImportRepository: ImportRepository {
@@ -229,5 +233,65 @@ struct LiveImportRepository: ImportRepository {
         // Der Stapel trägt den Grund, wenn die Function ihn dort
         // hinterlegt hat.
         await batch(id)?.error
+    }
+}
+
+/// Ein Eintrag, den der Import nicht zuordnen konnte.
+nonisolated struct UnmatchedItem: Decodable, Identifiable, Sendable {
+    let id: UUID
+    let batchID: UUID
+    let rawTitle: String
+    let rawYear: Int?
+
+    var label: String {
+        guard let rawYear else { return rawTitle }
+        return "\(rawTitle) (\(rawYear))"
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case batchID = "batch_id"
+        case rawTitle = "raw_title"
+        case rawYear = "raw_year"
+    }
+}
+
+extension LiveImportRepository {
+    nonisolated private struct Limit: Encodable { let max_results: Int }
+    nonisolated private struct Resolve: Encodable { let item: String; let film: String }
+    nonisolated private struct Item: Encodable { let item: String }
+
+    /// Was aus allen eigenen Importen offen ist.
+    func unmatched(limit: Int = 200) async -> [UnmatchedItem] {
+        let rows: [UnmatchedItem]? = try? await backend.client
+            .rpc("unmatched_imports", params: Limit(max_results: limit))
+            .execute()
+            .value
+        return rows ?? []
+    }
+
+    /// Von Hand zuweisen. Der nächste Durchlauf trägt den Eintrag dann
+    /// ein — angestoßen wird er gleich hier, damit der Nutzer nicht
+    /// raten muss, wann es passiert.
+    func resolve(item: UUID, film: String, batch: UUID) async -> Bool {
+        let ok: Bool? = try? await backend.client
+            .rpc(
+                "resolve_import_item",
+                params: Resolve(item: item.uuidString, film: film)
+            )
+            .execute()
+            .value
+
+        guard ok == true else { return false }
+        _ = await step(batch: batch)
+        return true
+    }
+
+    func skip(item: UUID) async -> Bool {
+        let ok: Bool? = try? await backend.client
+            .rpc("skip_import_item", params: Item(item: item.uuidString))
+            .execute()
+            .value
+        return ok == true
     }
 }

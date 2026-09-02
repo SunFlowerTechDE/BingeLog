@@ -8,6 +8,9 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(SessionStore.self) private var session
     @Environment(ImportRunner.self) private var runner
+    @Environment(Repositories.self) private var repos
+
+    @State private var unmatched = 0
 
     var body: some View {
         List {
@@ -40,6 +43,25 @@ struct SettingsView: View {
                     }
                 }
                 .listRowBackground(Theme.card)
+
+                // Nur wenn es etwas zu klären gibt. Ein Eintrag „Nicht
+                // erkannt", hinter dem nichts steht, ist eine Aufgabe,
+                // die es nicht gibt.
+                if unmatched > 0 {
+                    NavigationLink {
+                        UnmatchedView()
+                    } label: {
+                        HStack {
+                            Text("Nicht erkannt")
+                            Spacer()
+                            Text("\(unmatched)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.primary)
+                                .monospacedDigit()
+                        }
+                    }
+                    .listRowBackground(Theme.card)
+                }
             }
 
             Section("Kommt noch") {
@@ -55,6 +77,7 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Einstellungen")
+        .task { unmatched = await repos.imports.unmatched(limit: 200).count }
     }
 
     private struct Planned {

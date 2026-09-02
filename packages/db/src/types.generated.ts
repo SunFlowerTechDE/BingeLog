@@ -1502,6 +1502,10 @@ export type Database = {
       }
       refresh_film_facet_averages: { Args: never; Returns: undefined }
       report_accepts_uploads: { Args: { report: string }; Returns: boolean }
+      resolve_import_item: {
+        Args: { film: string; item: string }
+        Returns: boolean
+      }
       search_films: {
         Args: { in_year?: number; max_results?: number; query: string }
         Returns: {
@@ -1520,7 +1524,21 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      skip_import_item: { Args: { item: string }; Returns: boolean }
       swap_favourites: { Args: { a: number; b: number }; Returns: undefined }
+      unmatched_imports: {
+        Args: { max_results?: number }
+        Returns: {
+          batch_id: string
+          id: string
+          kind: Database["public"]["Enums"]["import_item_kind"]
+          rating: number
+          raw_title: string
+          raw_year: number
+          status: Database["public"]["Enums"]["import_item_status"]
+          watched_on: string
+        }[]
+      }
       username_available: { Args: { candidate: string }; Returns: boolean }
       watchlist_for_me: {
         Args: never

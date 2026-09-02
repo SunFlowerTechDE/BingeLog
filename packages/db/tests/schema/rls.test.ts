@@ -1731,6 +1731,84 @@ describe('diary and facet visibility', () => {
     ]);
   });
 
+  it("lets you resolve your own unmatched rows and nobody else's", async () => {
+    const ich = await seedUser(h, 'klaerich');
+    const fremd = await seedUser(h, 'klaerfremd');
+
+    const { rows: staepel } = await h.sql.query<{ id: string }>(
+      `insert into public.import_batches (user_id, status) values ($1, 'completed_with_errors')
+       returning id`,
+      [ich],
+    );
+    const stapel = staepel[0];
+
+    const { rows: zeilen } = await h.sql.query<{ id: string }>(
+      `insert into public.import_items (batch_id, kind, status, raw_title, raw_year)
+       values ($1, 'watched', 'failed', 'Ein Film', 1999) returning id`,
+      [stapel?.id],
+    );
+    const zeile = zeilen[0];
+
+    const alsIch = h.as('authenticated', ich);
+
+    // Was offen ist, steht in der Liste.
+    const offen = await alsIch.query<{ raw_title: string }>(
+      `select raw_title from public.unmatched_imports(100)`,
+    );
+    assert.deepEqual(
+      offen.map((r) => r.raw_title),
+      ['Ein Film'],
+    );
+
+    // Ein Fremder sieht davon nichts.
+    const beimFremden = await h
+      .as('authenticated', fremd)
+      .query(`select raw_title from public.unmatched_imports(100)`);
+    assert.deepEqual(beimFremden, [], 'ein fremder Import geht niemanden an');
+
+    // Und kann auch nichts daran aendern.
+    const abgewiesen = await h
+      .as('authenticated', fremd)
+      .query<{ resolve_import_item: boolean }>(`select public.resolve_import_item($1, $2)`, [
+        zeile?.id,
+        FILM,
+      ]);
+    assert.equal(abgewiesen[0]?.resolve_import_item, false, 'nicht am fremden Import');
+
+    // Ein Bezeichner, den es nicht gibt, wird abgewiesen — sonst saehe
+    // die Zeile geklaert aus, ohne es zu sein.
+    const erfunden = await alsIch.query<{ resolve_import_item: boolean }>(
+      `select public.resolve_import_item($1, 'Q999999999')`,
+      [zeile?.id],
+    );
+    assert.equal(erfunden[0]?.resolve_import_item, false, 'den Film gibt es nicht');
+
+    // Von Hand zugewiesen: der naechste Durchlauf traegt ihn ein.
+    const geklaert = await alsIch.query<{ resolve_import_item: boolean }>(
+      `select public.resolve_import_item($1, $2)`,
+      [zeile?.id, FILM],
+    );
+    assert.equal(geklaert[0]?.resolve_import_item, true);
+
+    const danach = await alsIch.query(`select raw_title from public.unmatched_imports(100)`);
+    assert.deepEqual(danach, [], 'geklaert heisst weg aus der Liste');
+
+    // Beiseitelegen laesst die Zeile stehen — sonst taucht sie beim
+    // naechsten Import derselben Datei wieder auf.
+    await h.sql.query(`update public.import_items set status = 'failed' where id = $1`, [
+      zeile?.id,
+    ]);
+    await alsIch.query(`select public.skip_import_item($1)`, [zeile?.id]);
+
+    const { rows: bleibt } = await h.sql.query(
+      `select status from public.import_items where id = $1`,
+      [zeile?.id],
+    );
+    assert.equal(bleibt.length, 1, 'die Zeile bleibt stehen');
+
+    await h.sql.query(`delete from public.import_batches where user_id = $1`, [ich]);
+  });
+
   it('refuses a second identical row in the same import', async () => {
     // Die Zusicherung, an der die Idempotenz haengt: derselbe Eintrag
     // aus derselben Datei nur einmal.
