@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { Route } from 'next';
 
@@ -49,8 +50,19 @@ export async function Header() {
   return (
     <header className="border-border border-b">
       <nav className="relative mx-auto flex max-w-7xl items-center gap-4 px-5 py-3">
-        <Link href="/" className="text-primary text-base font-semibold tracking-tight">
-          BingeLog
+        {/* Die Bildmarke, dieselbe Datei wie in der App. Der Schriftzug
+            bleibt gesetzt und ist nirgends eine Bilddatei — auch in der
+            App setzt ihn SwiftUI. */}
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <Image
+            src="/logo.png"
+            alt=""
+            width={26}
+            height={26}
+            priority
+            className="h-[26px] w-[26px]"
+          />
+          <span className="text-primary text-base font-semibold tracking-tight">BingeLog</span>
         </Link>
 
         {/* Die Mitte gehoert den Zielen. Auf schmalen Schirmen bleiben

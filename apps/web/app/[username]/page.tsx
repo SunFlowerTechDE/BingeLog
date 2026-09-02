@@ -4,6 +4,7 @@ import type { Metadata, Route } from 'next';
 
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/session';
+import { genreLabel } from '@/lib/genres';
 import { FollowButton } from '@/components/follow-button';
 import { PopcornRating, formatRating } from '@/components/popcorn';
 import { formatWatchedOn } from '@/lib/dates';
@@ -434,7 +435,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             ) : (
               <div className="flex flex-wrap gap-2">
                 {genres.map((g) => (
-                  <Chip key={g.label}>{g.label}</Chip>
+                  // Derselbe kurze Name wie auf den Kacheln: "Krimi",
+                  // nicht "Kriminalfilm". `profile_genres` rechnet
+                  // inzwischen ueber Kategorien und gibt die ID dazu.
+                  <Chip key={g.genre_id}>{genreLabel(g.genre_id, g.label)}</Chip>
                 ))}
               </div>
             )}

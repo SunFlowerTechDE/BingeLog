@@ -47,19 +47,38 @@ export default async function ListsPage({ params }: { params: Promise<{ username
   const viewer = await getViewer();
   const eigenes = viewer?.id === profile.id;
 
-  const { data: rows } = await supabase
-    .from('lists')
-    .select('id, title, description, is_public, updated_at, list_items(count)')
-    .eq('user_id', profile.id)
-    .order('updated_at', { ascending: false });
+  // `lists_of` liefert Zahl **und** drei Plakate in einer Antwort. Vorher
+  // holte die Seite die Anzahl ueber eine eingebettete Zaehlung und die
+  // Plakate gar nicht — eine Liste ohne Bild sieht aus wie eine leere.
+  const { data: rows } = await supabase.rpc('lists_of', { profile: profile.id });
 
   const listen = (rows ?? []) as unknown as {
     id: string;
     title: string;
     description: string | null;
     is_public: boolean;
-    list_items: { count: number }[];
+    films: number;
+    posters: string[];
   }[];
+
+  // `/poster/…` liefert **immer** die prozedurale Karte. Wo es ein
+  // echtes Plakat gibt, gehoert das dorthin — also einmal nachsehen,
+  // fuer alle Vorschauen zusammen und nicht je Liste.
+  const vorschauIDs = [...new Set(listen.flatMap((l) => l.posters.slice(0, 3)))];
+  const plakate = new Map<string, string>();
+
+  if (vorschauIDs.length > 0) {
+    const { data: filme } = await supabase
+      .from('films')
+      .select('wikidata_id, poster_source, poster_url')
+      .in('wikidata_id', vorschauIDs);
+
+    for (const film of filme ?? []) {
+      if (film.poster_source === 'tvdb' && film.poster_url !== null) {
+        plakate.set(film.wikidata_id, film.poster_url);
+      }
+    }
+  }
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-8">
@@ -111,8 +130,34 @@ export default async function ListsPage({ params }: { params: Promise<{ username
                     {liste.description}
                   </p>
                 ) : null}
-                <span className="text-muted-foreground mt-auto pt-2 text-xs tabular-nums">
-                  {liste.list_items[0]?.count ?? 0} Filme
+                {/* Drei Plakate als Vorschau. Eine Liste, die man nur
+                    am Namen erkennt, sieht aus wie eine leere. */}
+                {liste.posters.length > 0 ? (
+                  <span className="mt-auto flex gap-1.5 pt-2">
+                    {liste.posters.slice(0, 3).map((filmId) => (
+                      <span
+                        key={filmId}
+                        className="bg-card h-16 w-11 shrink-0 overflow-hidden rounded"
+                      >
+                        {/* Verlinkt, nie gespiegelt
+                            (docs/legal/thetvdb-lizenz.md). */}
+                        <img
+                          src={plakate.get(filmId) ?? `/poster/${filmId}`}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+
+                <span
+                  className={`text-muted-foreground text-xs tabular-nums ${
+                    liste.posters.length > 0 ? 'pt-1' : 'mt-auto pt-2'
+                  }`}
+                >
+                  {liste.films === 1 ? '1 Film' : `${String(liste.films)} Filme`}
                 </span>
               </Link>
             </li>
