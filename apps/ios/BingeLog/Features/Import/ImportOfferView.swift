@@ -14,6 +14,9 @@ struct ImportOfferView: View {
     let onDone: () -> Void
 
     @State private var isImporting = false
+    @State private var isChecking = false
+
+    @Environment(Repositories.self) private var repos
 
     var body: some View {
         NavigationStack {
@@ -51,11 +54,23 @@ struct ImportOfferView: View {
                 }
                 .buttonStyle(.plain)
 
+                // Für alle, die nichts mitbringen. Ohne diesen Weg
+                // wäre der Bildschirm für sie eine Sackgasse mit einem
+                // "Später" darunter.
+                Button {
+                    isChecking = true
+                } label: {
+                    Text("Stattdessen Geschmackscheck")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.primary)
+                }
+                .buttonStyle(.plain)
+
                 Button("Später", action: onDone)
                     .font(.subheadline)
                     .foregroundStyle(Theme.muted)
 
-                Text("Du findest das jederzeit wieder unter Einstellungen, Daten und Import.")
+                Text("Du findest beides jederzeit wieder in den Einstellungen.")
                     .font(.caption2)
                     .foregroundStyle(Theme.quiet)
                     .multilineTextAlignment(.center)
@@ -69,6 +84,14 @@ struct ImportOfferView: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             // Der Import läuft im Hintergrund weiter —
                             // hier festzuhängen wäre unnötig.
+                            Button("Fertig", action: onDone)
+                        }
+                    }
+            }
+            .navigationDestination(isPresented: $isChecking) {
+                TasteView(taste: repos.taste, entries: repos.entries)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button("Fertig", action: onDone)
                         }
                     }

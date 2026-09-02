@@ -922,6 +922,65 @@ struct DiaryConceptTests {
     }
 }
 
+/// Der Geschmackscheck.
+@Suite("Geschmackscheck")
+struct TasteTests {
+    private func readiness(_ json: String) -> TasteReadiness {
+        // swiftlint:disable:next force_try
+        try! JSONDecoder().decode(TasteReadiness.self, from: Data(json.utf8))
+    }
+
+    /// `numeric` kommt als Zeichenkette an, wie überall sonst auch.
+    @Test("Die gewichteten Beobachtungen lesen sich als Zahl")
+    func observationsDecode() {
+        let wert = readiness(
+            """
+            {"votes":3,"rated":2,"observations":"3.2","categories_covered":1,
+             "readiness":18,"label":"Noch zu wenig"}
+            """)
+        #expect(wert.observations == 3.2)
+        #expect(wert.votes == 3)
+        #expect(wert.rated == 2)
+    }
+
+    /// Die Grenze für „reicht das" steht bei 50.
+    ///
+    /// Darunter ist es eine Richtung, keine Aussage. Die Zahl bleibt
+    /// trotzdem sichtbar — sonst wüsste niemand, wie weit er noch ist.
+    @Test("Unter 50 trägt das Profil nicht")
+    func fiftyIsTheLine() {
+        let knappDarunter = readiness(
+            """
+            {"votes":20,"rated":0,"observations":"8.0","categories_covered":4,
+             "readiness":49,"label":"Grobe Richtung"}
+            """)
+        #expect(knappDarunter.isUsable == false)
+
+        let genau = readiness(
+            """
+            {"votes":40,"rated":10,"observations":"26.0","categories_covered":8,
+             "readiness":50,"label":"Belastbar"}
+            """)
+        #expect(genau.isUsable)
+
+        #expect(TasteReadiness.empty.isUsable == false)
+        #expect(TasteReadiness.empty.readiness == 0)
+    }
+
+    /// Eine Stimme ist kein Urteil, und die Beschriftung sagt das auch.
+    @Test("Die drei Knöpfe heißen nicht nach Bewertung")
+    func verdictsAreNotRatings() {
+        #expect(TasteVerdict.allCases.count == 3)
+        #expect(TasteVerdict.unsure.label == "Weiß nicht")
+        for verdict in TasteVerdict.allCases {
+            #expect(
+                !verdict.label.localizedCaseInsensitiveContains("bewert"),
+                "\(verdict.rawValue) klingt nach Bewertung")
+            #expect(!verdict.symbol.isEmpty)
+        }
+    }
+}
+
 /// Die Watchlist.
 @Suite("Watchlist")
 struct WatchlistTests {

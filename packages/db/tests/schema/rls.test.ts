@@ -1505,6 +1505,155 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.watchlist where user_id = $1`, [ich]);
   });
 
+  it('keeps taste votes out of every rating', async () => {
+    const ich = await seedUser(h, 'geschmackich');
+    const fremd = await seedUser(h, 'geschmackfremd');
+    const meiner = h.as('authenticated', ich);
+
+    const vorher = await meiner.query<{ votes: number }>(
+      `select votes from public.film_rating_summary($1)`,
+      [FILM],
+    );
+
+    await meiner.query(
+      `insert into public.taste_votes (user_id, film_id, verdict) values ($1, $2, 'like')`,
+      [ich, FILM],
+    );
+
+    // Eine Stimme ist keine Bewertung. Kein Tagebucheintrag, kein
+    // Beitrag zum Durchschnitt des Films — sonst waere der Stapel eine
+    // Bewertungsmaschine mit anderem Namen.
+    const tagebuch = await meiner.query(`select id from public.diary_entries where user_id = $1`, [
+      ich,
+    ]);
+    assert.deepEqual(tagebuch, [], 'die Stimme legt keinen Eintrag an');
+
+    const nachher = await meiner.query<{ votes: number }>(
+      `select votes from public.film_rating_summary($1)`,
+      [FILM],
+    );
+    assert.equal(
+      nachher[0]?.votes,
+      vorher[0]?.votes,
+      'und bewegt den Durchschnitt des Films nicht',
+    );
+
+    // Und niemand sonst sieht sie. Auch kein Freund: das ist nichts,
+    // was jemand veroeffentlicht hat.
+    await h.sql.query(
+      `insert into public.follows (follower_id, followee_id) values ($1, $2), ($2, $1)`,
+      [ich, fremd],
+    );
+    const fremde = await h
+      .as('authenticated', fremd)
+      .query(`select film_id from public.taste_votes`);
+    assert.deepEqual(fremde, [], 'auch Freunde sehen die Stimmen nicht');
+
+    await h.sql.query(`delete from public.follows where follower_id = any($1)`, [[ich, fremd]]);
+    await h.sql.query(`delete from public.taste_votes where user_id = $1`, [ich]);
+  });
+
+  it('deals the deck from the thinnest category and skips what is known', async () => {
+    const ich = await seedUser(h, 'stapelich');
+    const meiner = h.as('authenticated', ich);
+
+    // Ohne Kategorie kein Stapel, also bekommt der Fixture-Film eine.
+    await h.sql.query(
+      `insert into public.genres (wikidata_id, label_de, is_category, category_id)
+       values ('Q900001', 'Probegenre', true, 'Q900001')
+       on conflict do nothing`,
+    );
+    await h.sql.query(
+      `insert into public.film_genres (film_id, genre_id) values ($1, 'Q900001')
+       on conflict do nothing`,
+      [FILM],
+    );
+
+    interface Karte {
+      film_id: string;
+    }
+    const vorher = await meiner.query<Karte>(`select film_id from public.taste_deck(50)`);
+    const drin = vorher.some((k) => k.film_id === FILM);
+    assert.ok(drin, 'ein Film mit Kategorie steht im Stapel');
+
+    // Worueber schon eine Aussage vorliegt, kommt nicht noch einmal.
+    await meiner.query(
+      `insert into public.taste_votes (user_id, film_id, verdict) values ($1, $2, 'unsure')`,
+      [ich, FILM],
+    );
+    const nachher = await meiner.query<Karte>(`select film_id from public.taste_deck(50)`);
+    assert.ok(
+      !nachher.some((k) => k.film_id === FILM),
+      'ein beantworteter Film kommt nicht wieder',
+    );
+
+    // Und ein Film ohne Kategorie lehrt nichts, also steht er nie drin.
+    const ohne = 'Q100777';
+    await seedFilm(h, ohne);
+    await h.sql.query(`delete from public.film_genres where film_id = $1`, [ohne]);
+    const jetzt = await meiner.query<Karte>(`select film_id from public.taste_deck(100)`);
+    assert.ok(!jetzt.some((k) => k.film_id === ohne), 'ohne Kategorie kein Platz im Stapel');
+
+    await h.sql.query(`delete from public.taste_votes where user_id = $1`, [ich]);
+  });
+
+  it('scores the taste profile as weak until it covers something', async () => {
+    const ich = await seedUser(h, 'reifeich');
+    const meiner = h.as('authenticated', ich);
+
+    // Gezaehlt wird je Kategorie, also brauchen beide Filme eine.
+    await h.sql.query(
+      `insert into public.genres (wikidata_id, label_de, is_category, category_id)
+       values ('Q900001', 'Probegenre', true, 'Q900001')
+       on conflict do nothing`,
+    );
+    await h.sql.query(
+      `insert into public.film_genres (film_id, genre_id)
+       values ($1, 'Q900001'), ($2, 'Q900001')
+       on conflict do nothing`,
+      [FILM, QUIET_FILM],
+    );
+
+    interface Reife {
+      votes: number;
+      rated: number;
+      observations: string;
+      categories_covered: number;
+      readiness: number;
+      label: string;
+    }
+
+    const leer = await meiner.query<Reife>(`select * from public.taste_readiness()`);
+    assert.equal(leer[0]?.votes, 0);
+    assert.equal(leer[0]?.categories_covered, 0);
+    assert.equal(leer[0]?.label, 'Noch zu wenig', 'ohne Beobachtungen traegt nichts');
+
+    // Eine Stimme zaehlt 0,4, eine echte Note 1,0. Genau das ist der
+    // Unterschied zwischen "reizt mich" und "hat mich ueberzeugt".
+    await meiner.query(
+      `insert into public.taste_votes (user_id, film_id, verdict) values ($1, $2, 'like')`,
+      [ich, FILM],
+    );
+    const nachStimme = await meiner.query<Reife>(`select * from public.taste_readiness()`);
+    assert.equal(nachStimme[0]?.votes, 1);
+    assert.equal(Number(nachStimme[0]?.observations), 0.4);
+
+    await meiner.query(
+      `insert into public.diary_entries (user_id, film_id, rating) values ($1, $2, 8)`,
+      [ich, QUIET_FILM],
+    );
+    const nachNote = await meiner.query<Reife>(`select * from public.taste_readiness()`);
+    assert.equal(nachNote[0]?.rated, 1);
+    assert.equal(
+      Number(nachNote[0]?.observations),
+      1.4,
+      'die echte Note wiegt mehr als die Stimme',
+    );
+
+    await h.sql.query(`delete from public.diary_entries where user_id = $1`, [ich]);
+    await h.sql.query(`delete from public.taste_votes where user_id = $1`, [ich]);
+  });
+
   it('counts only the friend viewings it is allowed to see', async () => {
     const ich = await seedUser(h, 'wlfreundeich');
     const freund = await seedUser(h, 'wlfreundefreund');

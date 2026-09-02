@@ -1068,6 +1068,42 @@ export type Database = {
         }
         Relationships: []
       }
+      taste_votes: {
+        Row: {
+          created_at: string
+          film_id: string
+          user_id: string
+          verdict: Database["public"]["Enums"]["taste_verdict"]
+        }
+        Insert: {
+          created_at?: string
+          film_id: string
+          user_id: string
+          verdict: Database["public"]["Enums"]["taste_verdict"]
+        }
+        Update: {
+          created_at?: string
+          film_id?: string
+          user_id?: string
+          verdict?: Database["public"]["Enums"]["taste_verdict"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taste_votes_film_id_fkey"
+            columns: ["film_id"]
+            isOneToOne: false
+            referencedRelation: "films"
+            referencedColumns: ["wikidata_id"]
+          },
+          {
+            foreignKeyName: "taste_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thread_messages: {
         Row: {
           body: string
@@ -1591,6 +1627,29 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
       skip_import_item: { Args: { item: string }; Returns: boolean }
       swap_favourites: { Args: { a: number; b: number }; Returns: undefined }
+      taste_deck: {
+        Args: { wanted?: number }
+        Returns: {
+          category_label: string
+          film_id: string
+          poster_source: string
+          poster_url: string
+          release_year: number
+          title_de: string
+          title_original: string
+        }[]
+      }
+      taste_readiness: {
+        Args: never
+        Returns: {
+          categories_covered: number
+          label: string
+          observations: number
+          rated: number
+          readiness: number
+          votes: number
+        }[]
+      }
       unmatched_imports: {
         Args: { max_results?: number }
         Returns: {
@@ -1702,6 +1761,7 @@ export type Database = {
         | "other"
       report_status: "open" | "in_progress" | "resolved" | "rejected"
       report_target: "message" | "review" | "profile" | "list" | "other"
+      taste_verdict: "like" | "dislike" | "unsure"
       watchlist_priority: "next" | "normal" | "someday"
     }
     CompositeTypes: {
@@ -1882,6 +1942,7 @@ export const Constants = {
       ],
       report_status: ["open", "in_progress", "resolved", "rejected"],
       report_target: ["message", "review", "profile", "list", "other"],
+      taste_verdict: ["like", "dislike", "unsure"],
       watchlist_priority: ["next", "normal", "someday"],
     },
   },

@@ -26,12 +26,14 @@ final class Repositories {
     let reports: ReportRepository
     let lists: ListRepository
     let imports: ImportRepository
+    let taste: TasteRepository
 
     init(
         films: FilmRepository, discover: DiscoverRepository, lazyFilms: LazyFilmRepository,
         details: FilmDetailRepository, entries: FilmEntryRepository,
         profilePages: ProfilePageRepository, profileEdits: ProfileEditRepository,
-        reports: ReportRepository, lists: ListRepository, imports: ImportRepository
+        reports: ReportRepository, lists: ListRepository, imports: ImportRepository,
+        taste: TasteRepository
     ) {
         self.films = films
         self.discover = discover
@@ -43,6 +45,7 @@ final class Repositories {
         self.reports = reports
         self.lists = lists
         self.imports = imports
+        self.taste = taste
     }
 
     static func live(backend: Backend) -> Repositories {
@@ -56,7 +59,8 @@ final class Repositories {
             profileEdits: LiveProfileEditRepository(backend: backend),
             reports: LiveReportRepository(backend: backend),
             lists: LiveListRepository(backend: backend),
-            imports: LiveImportRepository(backend: backend)
+            imports: LiveImportRepository(backend: backend),
+            taste: LiveTasteRepository(backend: backend)
         )
     }
 }

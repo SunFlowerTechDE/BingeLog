@@ -11,6 +11,7 @@ struct SettingsView: View {
     @Environment(Repositories.self) private var repos
 
     @State private var unmatched = 0
+    @State private var readiness: TasteReadiness = .empty
 
     var body: some View {
         List {
@@ -22,6 +23,30 @@ struct SettingsView: View {
                 Button("Abmelden", role: .destructive) {
                     Task { await session.signOut() }
                 }
+            }
+
+            Section {
+                NavigationLink {
+                    TasteView(taste: repos.taste, entries: repos.entries)
+                } label: {
+                    HStack {
+                        Text("Geschmackscheck")
+                        Spacer()
+                        // Der Stand gleich hier: wer nicht sieht, wie
+                        // weit er ist, macht auch nicht weiter.
+                        Text("\(readiness.readiness) von 100")
+                            .font(.caption2)
+                            .foregroundStyle(readiness.isUsable ? Theme.primary : Theme.muted)
+                            .monospacedDigit()
+                    }
+                }
+                .listRowBackground(Theme.card)
+            } header: {
+                Text("Vorschläge")
+            } footer: {
+                Text(
+                    "Plakate durchblättern und sagen, was dich reizt. Das ist keine "
+                        + "Bewertung — es macht nur die Vorschläge besser.")
             }
 
             Section("Daten und Import") {
@@ -77,7 +102,10 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Einstellungen")
-        .task { unmatched = await repos.imports.unmatched(limit: 200).count }
+        .task {
+            unmatched = await repos.imports.unmatched(limit: 200).count
+            readiness = await repos.taste.readiness()
+        }
     }
 
     private struct Planned {
