@@ -53,7 +53,10 @@ enum PosterArtwork: Equatable, Sendable {
                 of: "\(attribute)=\"#[0-9a-fA-F]{6}\"", options: .regularExpression)
         else { return nil }
 
-        let hex = svg[range].suffix(7).dropFirst()
+        // Hinten das Anfuehrungszeichen weg, dann die sechs Stellen.
+        // `suffix(7).dropFirst()` liess das Zeichen stehen, womit jede
+        // Farbe still auf die Ersatzfarbe fiel.
+        let hex = svg[range].dropLast().suffix(6)
         guard let value = UInt32(hex, radix: 16) else { return nil }
         return Color(hex: value)
     }

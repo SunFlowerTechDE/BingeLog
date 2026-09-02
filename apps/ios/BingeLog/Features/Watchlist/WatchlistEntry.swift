@@ -19,6 +19,11 @@ nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
     /// Wie viele Freunde ihn empfohlen haben.
     let recommenders: Int
     let firstFriend: String?
+    /// Veraenderlich, weil beides sich am Eintrag umstellen laesst,
+    /// ohne dass die ganze Liste neu geholt werden muesste.
+    var priority: WatchlistPriority
+    /// In welchen eigenen Gruppen er steht.
+    var groupIDs: [UUID]
 
     var id: String { filmID }
     var title: String { titleDE ?? titleOriginal }
@@ -44,6 +49,24 @@ nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
         return "Von \(recommenders) Freunden empfohlen"
     }
 
+    func with(priority level: WatchlistPriority) -> WatchlistEntry {
+        var copy = self
+        copy.priority = level
+        return copy
+    }
+
+    func with(group id: UUID) -> WatchlistEntry {
+        var copy = self
+        if !copy.groupIDs.contains(id) { copy.groupIDs.append(id) }
+        return copy
+    }
+
+    func without(group id: UUID) -> WatchlistEntry {
+        var copy = self
+        copy.groupIDs.removeAll { $0 == id }
+        return copy
+    }
+
     /// Genres als Paare, für den Filter.
     var genres: [FilmGenre] {
         zip(genreIDs, genreLabels).map { FilmGenre(id: $0, label: $1) }
@@ -62,6 +85,8 @@ nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
         case genreIDs = "genre_ids"
         case genreLabels = "genre_labels"
         case firstFriend = "first_friend"
+        case priority
+        case groupIDs = "group_ids"
     }
 
     init(from decoder: Decoder) throws {
@@ -85,6 +110,60 @@ nonisolated struct WatchlistEntry: Decodable, Identifiable, Sendable {
         genreLabels = (try? c.decode([String].self, forKey: .genreLabels)) ?? []
         recommenders = (try? c.decode(Int.self, forKey: .recommenders)) ?? 0
         firstFriend = try c.decodeIfPresent(String.self, forKey: .firstFriend)
+        // Faellt die Angabe aus, ist der Film normal. Eine Prioritaet,
+        // die beim Decodieren scheitert, soll keinen Eintrag verlieren.
+        priority =
+            (try? c.decode(WatchlistPriority.self, forKey: .priority)) ?? .normal
+        groupIDs = (try? c.decode([UUID].self, forKey: .groupIDs)) ?? []
+    }
+}
+
+/// Wie dringend ein vorgemerkter Film ist (Watchlist-Konzept).
+///
+/// Drei Stufen und nicht mehr. Wer fuenf hat, sortiert statt zu
+/// entscheiden — und die Prioritaet ist die grobe Antwort, die feine
+/// sind die Gruppen.
+nonisolated enum WatchlistPriority: String, Codable, CaseIterable, Identifiable, Sendable {
+    case next
+    case normal
+    case someday
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .next: return "Als Nächstes"
+        case .normal: return "Normal"
+        case .someday: return "Irgendwann"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .next: return "flame"
+        case .normal: return "circle"
+        case .someday: return "clock"
+        }
+    }
+
+    /// Die Reihenfolge auf der Seite, dieselbe wie im Enum der Datenbank.
+    var rank: Int {
+        switch self {
+        case .next: return 0
+        case .normal: return 1
+        case .someday: return 2
+        }
+    }
+}
+
+/// Eine eigene Gruppe, mit der Anzahl ihrer Filme.
+nonisolated struct WatchlistGroup: Decodable, Identifiable, Hashable, Sendable {
+    let id: UUID
+    let name: String
+    let films: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, films
     }
 }
 
@@ -99,6 +178,7 @@ nonisolated enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
     case shortest
     case longest
     case alphabetical
+    case byPriority
 
     var id: String { rawValue }
 
@@ -113,6 +193,7 @@ nonisolated enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
         case .shortest: return "Kürzeste Laufzeit"
         case .longest: return "Längste Laufzeit"
         case .alphabetical: return "Alphabetisch"
+        case .byPriority: return "Priorität"
         }
     }
 
@@ -146,6 +227,12 @@ nonisolated enum WatchlistOrder: String, CaseIterable, Identifiable, Sendable {
                 ascending: false)
         case .alphabetical:
             return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+        case .byPriority:
+            // Innerhalb einer Stufe bleibt das Zuletzt-Hinzugefuegte
+            // oben. Sonst waere die Reihenfolge innerhalb von "Normal"
+            // beliebig, und beliebig sieht kaputt aus.
+            if a.priority == b.priority { return a.addedAt > b.addedAt }
+            return a.priority.rank < b.priority.rank
         }
     }
 
@@ -167,5 +254,98 @@ extension LiveFilmEntryRepository {
             .execute()
             .value
         return rows ?? []
+    }
+
+    func watchlistGroups() async -> [WatchlistGroup] {
+        let rows: [WatchlistGroup]? = try? await backend.client
+            .rpc("watchlist_groups_for_me")
+            .execute()
+            .value
+        return rows ?? []
+    }
+
+    /// Die Prioritaet eines vorgemerkten Films setzen.
+    ///
+    /// Die Policy laesst nur die eigene Zeile zu, deshalb steht hier
+    /// kein `user_id`-Vergleich: er waere eine zweite Fassung derselben
+    /// Regel, und zwei Fassungen laufen irgendwann auseinander.
+    func setPriority(_ priority: WatchlistPriority, for filmID: String) async -> SaveOutcome {
+        do {
+            try await backend.client
+                .from("watchlist")
+                .update(["priority": priority.rawValue])
+                .eq("film_id", value: filmID)
+                .execute()
+            return .saved
+        } catch {
+            return .failed(BackendError.from(error).message)
+        }
+    }
+
+    func createWatchlistGroup(named name: String) async -> SaveOutcome {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .failed("Die Gruppe braucht einen Namen.") }
+        guard trimmed.count <= 40 else { return .failed("Höchstens 40 Zeichen.") }
+
+        guard let mine = backend.client.auth.currentUser?.id else {
+            return .failed("Du bist nicht angemeldet.")
+        }
+        do {
+            try await backend.client
+                .from("watchlist_groups")
+                .insert(["user_id": mine.uuidString, "name": trimmed])
+                .execute()
+            return .saved
+        } catch {
+            // Der eindeutige Index faengt denselben Namen ab, auch
+            // anders geschrieben. Die Meldung sagt, was los ist, statt
+            // den Datenbankfehler durchzureichen.
+            let backendError = BackendError.from(error)
+            if backendError.message.localizedCaseInsensitiveContains("duplicate") {
+                return .failed("Diese Gruppe gibt es schon.")
+            }
+            return .failed(backendError.message)
+        }
+    }
+
+    func deleteWatchlistGroup(_ groupID: UUID) async -> SaveOutcome {
+        do {
+            try await backend.client
+                .from("watchlist_groups")
+                .delete()
+                .eq("id", value: groupID.uuidString)
+                .execute()
+            return .saved
+        } catch {
+            return .failed(BackendError.from(error).message)
+        }
+    }
+
+    func setGroup(_ groupID: UUID, for filmID: String, on: Bool) async -> SaveOutcome {
+        guard let mine = backend.client.auth.currentUser?.id else {
+            return .failed("Du bist nicht angemeldet.")
+        }
+        do {
+            if on {
+                try await backend.client
+                    .from("watchlist_group_films")
+                    .insert([
+                        "group_id": groupID.uuidString,
+                        "user_id": mine.uuidString,
+                        "film_id": filmID,
+                    ])
+                    .execute()
+            } else {
+                try await backend.client
+                    .from("watchlist_group_films")
+                    .delete()
+                    .eq("group_id", value: groupID.uuidString)
+                    .eq("film_id", value: filmID)
+                    .execute()
+            }
+            return .saved
+        } catch {
+            return .failed(BackendError.from(error).message)
+        }
     }
 }

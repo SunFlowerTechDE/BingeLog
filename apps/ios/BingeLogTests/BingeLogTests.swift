@@ -253,6 +253,13 @@ private struct SilentEntryRepository: FilmEntryRepository {
     func recommendationsForMe(limit: Int) async -> [Recommendation] { [] }
     func dismissRecommendation(film: String) async {}
     func watchlist() async -> [WatchlistEntry] { [] }
+    func watchlistGroups() async -> [WatchlistGroup] { [] }
+    func setPriority(_ priority: WatchlistPriority, for filmID: String) async -> SaveOutcome {
+        .saved
+    }
+    func createWatchlistGroup(named name: String) async -> SaveOutcome { .saved }
+    func deleteWatchlistGroup(_ groupID: UUID) async -> SaveOutcome { .saved }
+    func setGroup(_ groupID: UUID, for filmID: String, on: Bool) async -> SaveOutcome { .saved }
     func statuses(for filmIDs: [String]) async -> FilmStatuses { .none }
     func diary() async -> [DiaryEntry] { [] }
     func diarySummary() async -> DiarySummary { .none }
@@ -920,21 +927,88 @@ struct DiaryConceptTests {
 struct WatchlistTests {
     private func entry(
         id: String, title: String, year: Int?, runtime: Int?, average: Double?,
-        genres: [String] = [], recommenders: Int = 0
+        genres: [String] = [], recommenders: Int = 0,
+        priority: WatchlistPriority = .normal, groups: [UUID] = [],
+        addedAt: String = "2026-08-01T10:00:00+00:00"
     ) -> WatchlistEntry {
         let ids = genres.map { "\"\($0)\"" }.joined(separator: ",")
+        let gruppen = groups.map { "\"\($0.uuidString)\"" }.joined(separator: ",")
         let json = """
             {"film_id":"\(id)","title_de":"\(title)","title_original":"\(title)",
              "release_year":\(year.map(String.init) ?? "null"),
              "runtime_min":\(runtime.map(String.init) ?? "null"),
              "poster_source":null,"poster_url":null,
-             "added_at":"2026-08-01T10:00:00+00:00",
+             "added_at":"\(addedAt)",
              "average":\(average.map { "\"\($0)\"" } ?? "null"),"votes":1,
              "genre_ids":[\(ids)],"genre_labels":[\(ids)],
-             "recommenders":\(recommenders),"first_friend":null}
+             "recommenders":\(recommenders),"first_friend":null,
+             "priority":"\(priority.rawValue)","group_ids":[\(gruppen)]}
             """
         // swiftlint:disable:next force_try
         return try! JSONDecoder().decode(WatchlistEntry.self, from: Data(json.utf8))
+    }
+
+    /// Prioritaet und Gruppe filtern wie jeder andere Filter auch.
+    @Test("Priorität und Gruppe grenzen die Liste ein")
+    func priorityAndGroupNarrow() {
+        let halloween = UUID()
+        let klassiker = UUID()
+
+        let a = entry(
+            id: "Q1", title: "Eins", year: 2000, runtime: 90, average: nil,
+            priority: .next, groups: [halloween])
+        let b = entry(
+            id: "Q2", title: "Zwei", year: 2000, runtime: 90, average: nil,
+            priority: .someday, groups: [halloween, klassiker])
+        let c = entry(id: "Q3", title: "Drei", year: 2000, runtime: 90, average: nil)
+        let alle = [a, b, c]
+
+        #expect(
+            WatchlistModel.select(
+                from: alle, term: "", genre: nil, maximumRuntime: nil, onlyRecommended: false,
+                priority: .next
+            ).map(\.filmID) == ["Q1"])
+
+        #expect(
+            WatchlistModel.select(
+                from: alle, term: "", genre: nil, maximumRuntime: nil, onlyRecommended: false,
+                group: halloween
+            ).map(\.filmID) == ["Q1", "Q2"], "ein Film darf in mehreren Gruppen stehen")
+
+        // Beide zusammen, nicht nacheinander: "Irgendwann" **und** in
+        // dieser Gruppe.
+        #expect(
+            WatchlistModel.select(
+                from: alle, term: "", genre: nil, maximumRuntime: nil, onlyRecommended: false,
+                priority: .someday, group: klassiker
+            ).map(\.filmID) == ["Q2"])
+
+        // Ohne Zutun steht ein Film auf normal und in keiner Gruppe.
+        #expect(c.priority == .normal)
+        #expect(c.groupIDs.isEmpty)
+    }
+
+    /// Innerhalb einer Stufe bleibt die Reihenfolge nachvollziehbar.
+    ///
+    /// Sonst waere sie beliebig, und beliebig sieht aus wie kaputt.
+    @Test("Gleiche Priorität sortiert nach zuletzt hinzugefügt")
+    func priorityKeepsAStableOrder() {
+        let alt = entry(
+            id: "Q1", title: "Alt", year: 2000, runtime: 90, average: nil,
+            priority: .normal, addedAt: "2026-07-01T10:00:00+00:00")
+        let neu = entry(
+            id: "Q2", title: "Neu", year: 2000, runtime: 90, average: nil,
+            priority: .normal, addedAt: "2026-08-20T10:00:00+00:00")
+        let dringend = entry(
+            id: "Q3", title: "Dringend", year: 2000, runtime: 90, average: nil,
+            priority: .next, addedAt: "2026-01-01T10:00:00+00:00")
+        let irgendwann = entry(
+            id: "Q4", title: "Irgendwann", year: 2000, runtime: 90, average: nil,
+            priority: .someday, addedAt: "2026-08-30T10:00:00+00:00")
+
+        #expect(
+            [alt, neu, dringend, irgendwann].sorted(by: WatchlistOrder.byPriority.sorts)
+                .map(\.filmID) == ["Q3", "Q2", "Q1", "Q4"])
     }
 
     /// Fehlende Angaben stehen in **jeder** Richtung hinten.

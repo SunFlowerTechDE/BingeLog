@@ -90,6 +90,11 @@ protocol FilmEntryRepository: Sendable {
     func dismissRecommendation(film: String) async
 
     func watchlist() async -> [WatchlistEntry]
+    func watchlistGroups() async -> [WatchlistGroup]
+    func setPriority(_ priority: WatchlistPriority, for filmID: String) async -> SaveOutcome
+    func createWatchlistGroup(named name: String) async -> SaveOutcome
+    func deleteWatchlistGroup(_ groupID: UUID) async -> SaveOutcome
+    func setGroup(_ groupID: UUID, for filmID: String, on: Bool) async -> SaveOutcome
     func statuses(for filmIDs: [String]) async -> FilmStatuses
 
     func diary() async -> [DiaryEntry]

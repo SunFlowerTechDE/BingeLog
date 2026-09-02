@@ -1128,18 +1128,21 @@ export type Database = {
           added_at: string
           film_id: string
           is_hidden: boolean
+          priority: Database["public"]["Enums"]["watchlist_priority"]
           user_id: string
         }
         Insert: {
           added_at?: string
           film_id: string
           is_hidden?: boolean
+          priority?: Database["public"]["Enums"]["watchlist_priority"]
           user_id: string
         }
         Update: {
           added_at?: string
           film_id?: string
           is_hidden?: boolean
+          priority?: Database["public"]["Enums"]["watchlist_priority"]
           user_id?: string
         }
         Relationships: [
@@ -1152,6 +1155,68 @@ export type Database = {
           },
           {
             foreignKeyName: "watchlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlist_group_films: {
+        Row: {
+          film_id: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          film_id: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          film_id?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_group_film_is_on_the_list"
+            columns: ["user_id", "film_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist"
+            referencedColumns: ["user_id", "film_id"]
+          },
+          {
+            foreignKeyName: "watchlist_group_film_same_owner"
+            columns: ["group_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_groups"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      watchlist_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_groups_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1549,14 +1614,24 @@ export type Database = {
           first_friend: string
           genre_ids: string[]
           genre_labels: string[]
+          group_ids: string[]
           poster_source: string
           poster_url: string
+          priority: Database["public"]["Enums"]["watchlist_priority"]
           recommenders: number
           release_year: number
           runtime_min: number
           title_de: string
           title_original: string
           votes: number
+        }[]
+      }
+      watchlist_groups_for_me: {
+        Args: never
+        Returns: {
+          films: number
+          id: string
+          name: string
         }[]
       }
       watchlist_is_public: { Args: { profile: string }; Returns: boolean }
@@ -1624,6 +1699,7 @@ export type Database = {
         | "other"
       report_status: "open" | "in_progress" | "resolved" | "rejected"
       report_target: "message" | "review" | "profile" | "list" | "other"
+      watchlist_priority: "next" | "normal" | "someday"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1803,6 +1879,7 @@ export const Constants = {
       ],
       report_status: ["open", "in_progress", "resolved", "rejected"],
       report_target: ["message", "review", "profile", "list", "other"],
+      watchlist_priority: ["next", "normal", "someday"],
     },
   },
 } as const

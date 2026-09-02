@@ -22,6 +22,7 @@ struct WatchlistView: View {
     private let columns = [GridItem(.adaptive(minimum: 104, maximum: 160), spacing: 12)]
 
     @State private var seenEntry: WatchlistEntry?
+    @State private var showsGroups = false
 
     var body: some View {
         @Bindable var model = model
@@ -45,6 +46,14 @@ struct WatchlistView: View {
         .toolbar {
             if !model.all.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) { sortMenu }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showsGroups = true
+                    } label: {
+                        Image(systemName: "folder")
+                    }
+                    .accessibilityLabel("Gruppen")
+                }
             }
         }
         .sheet(item: $seenEntry) { entry in
@@ -54,6 +63,9 @@ struct WatchlistView: View {
         }
         .sheet(item: $model.surprise) { entry in
             SurpriseSheet(entry: entry, details: details, entries: entries)
+        }
+        .sheet(isPresented: $showsGroups) {
+            GroupsSheet(model: model)
         }
         .task { await model.load() }
         .refreshable { await model.load() }
@@ -109,8 +121,15 @@ struct WatchlistView: View {
                         ForEach(model.shown) { entry in
                             WatchlistCard(
                                 entry: entry, details: details, entries: entries,
+                                groups: model.groups,
                                 onRemove: { Task { await model.remove(entry) } },
-                                onSeen: { seenEntry = entry }
+                                onSeen: { seenEntry = entry },
+                                onPriority: { level in
+                                    Task { await model.setPriority(level, for: entry) }
+                                },
+                                onGroup: { group, on in
+                                    Task { await model.setGroup(group, for: entry, on: on) }
+                                }
                             )
                         }
                     }
@@ -169,6 +188,28 @@ struct WatchlistView: View {
                         symbol: "person.2"
                     ) {
                         model.onlyRecommended.toggle()
+                    }
+
+                    // Die grobe Antwort zuerst: Prioritaet steht vor
+                    // Gruppe, Gruppe vor Laufzeit und Genre.
+                    ForEach(WatchlistPriority.allCases) { level in
+                        Chip(
+                            label: level.label,
+                            isOn: model.priority == level,
+                            symbol: level.symbol
+                        ) {
+                            model.priority = model.priority == level ? nil : level
+                        }
+                    }
+
+                    ForEach(model.groups) { group in
+                        Chip(
+                            label: group.name,
+                            isOn: model.group?.id == group.id,
+                            symbol: "folder"
+                        ) {
+                            model.group = model.group?.id == group.id ? nil : group
+                        }
                     }
 
                     ForEach([90, 120, 150], id: \.self) { minutes in
@@ -256,8 +297,11 @@ private struct WatchlistCard: View {
     let entry: WatchlistEntry
     let details: FilmDetailRepository
     let entries: FilmEntryRepository
+    let groups: [WatchlistGroup]
     let onRemove: () -> Void
     let onSeen: () -> Void
+    let onPriority: (WatchlistPriority) -> Void
+    let onGroup: (WatchlistGroup, Bool) -> Void
 
     var body: some View {
         NavigationLink {
@@ -265,6 +309,20 @@ private struct WatchlistCard: View {
         } label: {
             VStack(alignment: .leading, spacing: 5) {
                 PosterThumbnail(film: entry.film, width: 104)
+                    .overlay(alignment: .topLeading) {
+                        // Nur die Stufen, die etwas aussagen. Ein
+                        // Abzeichen "Normal" auf jedem zweiten Plakat
+                        // waere Rauschen.
+                        if entry.priority != .normal {
+                            Image(systemName: entry.priority.symbol)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Theme.onPrimary)
+                                .padding(5)
+                                .background(Theme.primary, in: Circle())
+                                .padding(5)
+                                .accessibilityLabel(entry.priority.label)
+                        }
+                    }
 
                 Text(entry.title)
                     .font(.caption)
@@ -294,11 +352,41 @@ private struct WatchlistCard: View {
             .frame(width: 104, alignment: .leading)
         }
         .buttonStyle(.plain)
-        .contextMenu {
-            Button("Als gesehen markieren", systemImage: "checkmark.circle", action: onSeen)
-            Button("Aus der Watchlist", systemImage: "bookmark.slash", role: .destructive,
-                action: onRemove)
+        .contextMenu { menu }
+    }
+
+    @ViewBuilder private var menu: some View {
+        Button("Als gesehen markieren", systemImage: "checkmark.circle", action: onSeen)
+
+        Menu("Priorität", systemImage: entry.priority.symbol) {
+            ForEach(WatchlistPriority.allCases) { level in
+                Button {
+                    onPriority(level)
+                } label: {
+                    Label(
+                        level.label,
+                        systemImage: entry.priority == level ? "checkmark" : level.symbol)
+                }
+            }
         }
+
+        // Ohne Gruppen kein Menü. Ein leeres Untermenü sagt nichts —
+        // angelegt werden sie oben über das Ordnersymbol.
+        if !groups.isEmpty {
+            Menu("Gruppe", systemImage: "folder") {
+                ForEach(groups) { group in
+                    let drin = entry.groupIDs.contains(group.id)
+                    Button {
+                        onGroup(group, !drin)
+                    } label: {
+                        Label(group.name, systemImage: drin ? "checkmark" : "folder")
+                    }
+                }
+            }
+        }
+
+        Button("Aus der Watchlist", systemImage: "bookmark.slash", role: .destructive,
+            action: onRemove)
     }
 }
 
@@ -425,5 +513,85 @@ private struct SurpriseSheet: View {
                 }
             }
         }
+    }
+}
+
+/// Gruppen anlegen und wieder loswerden.
+///
+/// **Zugeordnet wird woanders** — am Film, im Kontextmenü der Karte.
+/// Hier steht nur, welche Gruppen es gibt. Beides in einem Blatt hiesse,
+/// bei jeder neuen Gruppe durch eine Filmliste zu scrollen.
+private struct GroupsSheet: View {
+    let model: WatchlistModel
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @FocusState private var isTyping: Bool
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack(spacing: 10) {
+                        TextField("Neue Gruppe", text: $name)
+                            .focused($isTyping)
+                            .submitLabel(.done)
+                            .onSubmit { add() }
+
+                        Button("Anlegen", action: add)
+                            .font(.subheadline.weight(.medium))
+                            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                } footer: {
+                    Text("Zum Beispiel Halloween, Klassiker nachholen oder Mit Freunden anschauen.")
+                }
+
+                if model.groups.isEmpty {
+                    Section {
+                        Text("Noch keine Gruppen.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.muted)
+                    }
+                } else {
+                    Section("Deine Gruppen") {
+                        ForEach(model.groups) { group in
+                            HStack {
+                                Text(group.name)
+                                Spacer()
+                                Text(group.films == 1 ? "1 Film" : "\(group.films) Filme")
+                                    .font(.footnote)
+                                    .foregroundStyle(Theme.muted)
+                                    .monospacedDigit()
+                            }
+                            .swipeActions {
+                                Button("Löschen", role: .destructive) {
+                                    Task { await model.deleteGroup(group) }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let note = model.note {
+                    Section {
+                        Text(note).font(.footnote).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Gruppen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func add() {
+        let wanted = name
+        name = ""
+        isTyping = false
+        Task { await model.createGroup(named: wanted) }
     }
 }

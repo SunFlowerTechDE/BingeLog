@@ -10,6 +10,7 @@ import SwiftUI
 @MainActor
 final class WatchlistModel {
     private(set) var all: [WatchlistEntry] = []
+    private(set) var groups: [WatchlistGroup] = []
     private(set) var isLoading = true
     private(set) var note: String?
 
@@ -19,6 +20,8 @@ final class WatchlistModel {
     /// Höchstlaufzeit in Minuten, oder `nil` für alle.
     var maximumRuntime: Int?
     var onlyRecommended = false
+    var priority: WatchlistPriority?
+    var group: WatchlistGroup?
 
     /// Der Film, den „Überrasch mich" gezogen hat.
     var surprise: WatchlistEntry?
@@ -31,6 +34,12 @@ final class WatchlistModel {
 
     func load() async {
         all = await entries.watchlist()
+        groups = await entries.watchlistGroups()
+
+        // Eine geloeschte Gruppe darf nicht als Filter stehen bleiben,
+        // sonst zeigt die Liste dauerhaft nichts und niemand sieht,
+        // warum.
+        if let group, !groups.contains(where: { $0.id == group.id }) { self.group = nil }
         isLoading = false
     }
 
@@ -52,19 +61,23 @@ final class WatchlistModel {
     var shown: [WatchlistEntry] {
         WatchlistModel.select(
             from: all, term: term, genre: genre?.id,
-            maximumRuntime: maximumRuntime, onlyRecommended: onlyRecommended
+            maximumRuntime: maximumRuntime, onlyRecommended: onlyRecommended,
+            priority: priority, group: group?.id
         )
         .sorted(by: order.sorts)
     }
 
     var hasFilters: Bool {
-        genre != nil || maximumRuntime != nil || onlyRecommended
+        genre != nil || maximumRuntime != nil || onlyRecommended || priority != nil
+            || group != nil
     }
 
     func clearFilters() {
         genre = nil
         maximumRuntime = nil
         onlyRecommended = false
+        priority = nil
+        group = nil
     }
 
     /// Die Auswahl als eigene Funktion, damit sie prüfbar ist.
@@ -74,7 +87,8 @@ final class WatchlistModel {
     /// wie beim Jahr in der Suche.
     nonisolated static func select(
         from entries: [WatchlistEntry], term: String, genre: String?,
-        maximumRuntime: Int?, onlyRecommended: Bool
+        maximumRuntime: Int?, onlyRecommended: Bool,
+        priority: WatchlistPriority? = nil, group: UUID? = nil
     ) -> [WatchlistEntry] {
         let needle = term.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -92,6 +106,8 @@ final class WatchlistModel {
                 }
             }
             if onlyRecommended, entry.recommenders == 0 { return false }
+            if let priority, entry.priority != priority { return false }
+            if let group, !entry.groupIDs.contains(group) { return false }
             return true
         }
     }
@@ -107,9 +123,65 @@ final class WatchlistModel {
 
     // ----------------------------------------------------------------
 
+    /// Die Prioritaet umstellen.
+    ///
+    /// Erst hier, dann beim Server: die Liste soll sich unter dem Finger
+    /// bewegen. Geht es schief, wird zurueckgedreht — eine Stufe, die
+    /// dasteht und nicht gespeichert ist, waere schlimmer als gar keine.
+    func setPriority(_ level: WatchlistPriority, for entry: WatchlistEntry) async {
+        let vorher = entry.priority
+        apply(level, to: entry.filmID)
+
+        if case .failed(let message) = await entries.setPriority(level, for: entry.filmID) {
+            apply(vorher, to: entry.filmID)
+            note = message
+        }
+    }
+
+    private func apply(_ level: WatchlistPriority, to filmID: String) {
+        guard let index = all.firstIndex(where: { $0.filmID == filmID }) else { return }
+        all[index] = all[index].with(priority: level)
+    }
+
+    func createGroup(named name: String) async {
+        switch await entries.createWatchlistGroup(named: name) {
+        case .saved: groups = await entries.watchlistGroups()
+        case .failed(let message): note = message
+        }
+    }
+
+    func deleteGroup(_ group: WatchlistGroup) async {
+        switch await entries.deleteWatchlistGroup(group.id) {
+        case .saved:
+            groups.removeAll { $0.id == group.id }
+            if self.group?.id == group.id { self.group = nil }
+            // Die Zuordnungen sind mit weg, also stimmt jede Karte, die
+            // noch auf diese Gruppe zeigt, nicht mehr.
+            all = all.map { $0.without(group: group.id) }
+        case .failed(let message):
+            note = message
+        }
+    }
+
+    func setGroup(_ group: WatchlistGroup, for entry: WatchlistEntry, on: Bool) async {
+        switch await entries.setGroup(group.id, for: entry.filmID, on: on) {
+        case .saved:
+            guard let index = all.firstIndex(where: { $0.filmID == entry.filmID }) else { return }
+            all[index] = on
+                ? all[index].with(group: group.id)
+                : all[index].without(group: group.id)
+            groups = await entries.watchlistGroups()
+        case .failed(let message):
+            note = message
+        }
+    }
+
     func remove(_ entry: WatchlistEntry) async {
         all.removeAll { $0.filmID == entry.filmID }
         _ = await entries.setWatchlist(entry.filmID, on: false)
+        // Der Fremdschluessel raeumt die Gruppenzuordnung mit, also
+        // stimmen die Anzahlen sonst nicht mehr.
+        if !entry.groupIDs.isEmpty { groups = await entries.watchlistGroups() }
     }
 
     /// Als gesehen eintragen — mit Bewertung, wie überall sonst.
@@ -124,6 +196,7 @@ final class WatchlistModel {
         case .saved:
             all.removeAll { $0.filmID == entry.filmID }
             _ = await entries.setWatchlist(entry.filmID, on: false)
+            if !entry.groupIDs.isEmpty { groups = await entries.watchlistGroups() }
         case .failed(let message):
             note = message
         }

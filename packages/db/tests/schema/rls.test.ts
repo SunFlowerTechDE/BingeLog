@@ -1505,6 +1505,116 @@ describe('diary and facet visibility', () => {
     await h.sql.query(`delete from public.watchlist where user_id = $1`, [ich]);
   });
 
+  it('carries priority and group membership into the watchlist', async () => {
+    const ich = await seedUser(h, 'wlprio');
+    const fremd = await seedUser(h, 'wlpriofremd');
+    const meiner = h.as('authenticated', ich);
+
+    await meiner.query(`insert into public.watchlist (user_id, film_id) values ($1, $2)`, [
+      ich,
+      FILM,
+    ]);
+
+    interface Zeile {
+      priority: string;
+      group_ids: string[];
+    }
+    const vorher = await meiner.query<Zeile>(
+      `select priority, group_ids from public.watchlist_for_me()`,
+    );
+    assert.equal(vorher[0]?.priority, 'normal', 'ohne Zutun steht ein Film auf normal');
+    assert.deepEqual(vorher[0]?.group_ids, [], 'und in keiner Gruppe');
+
+    await meiner.query(`update public.watchlist set priority = 'next' where user_id = $1`, [ich]);
+
+    const gruppe = await meiner.query<{ id: string }>(
+      `insert into public.watchlist_groups (user_id, name) values ($1, 'Halloween') returning id`,
+      [ich],
+    );
+    const gruppenID = gruppe[0]?.id ?? '';
+    await meiner.query(
+      `insert into public.watchlist_group_films (group_id, user_id, film_id) values ($1, $2, $3)`,
+      [gruppenID, ich, FILM],
+    );
+
+    const nachher = await meiner.query<Zeile>(
+      `select priority, group_ids from public.watchlist_for_me()`,
+    );
+    assert.equal(nachher[0]?.priority, 'next');
+    assert.deepEqual(nachher[0]?.group_ids, [gruppenID]);
+
+    const uebersicht = await meiner.query<{ name: string; films: number }>(
+      `select name, films from public.watchlist_groups_for_me()`,
+    );
+    assert.deepEqual(uebersicht, [{ name: 'Halloween', films: 1 }]);
+
+    // Gruppen sind privat, auch wenn die Watchlist selbst offen steht.
+    // Sie sagen, wie jemand seine Liste ordnet, und das gehoert nicht
+    // zum Inhalt der Liste.
+    await h.sql.query(`update public.profiles set watchlist_public = true where id = $1`, [ich]);
+    const fremde = await h
+      .as('authenticated', fremd)
+      .query(`select id from public.watchlist_groups`);
+    assert.deepEqual(fremde, [], 'fremde Gruppen bleiben unsichtbar');
+
+    // Den Film von der Watchlist zu nehmen raeumt die Zuordnung mit.
+    // Sonst zeigte die Gruppe auf etwas, das nicht mehr vorgemerkt ist.
+    await meiner.query(`delete from public.watchlist where user_id = $1`, [ich]);
+    const leer = await meiner.query<{ films: number }>(
+      `select films from public.watchlist_groups_for_me()`,
+    );
+    assert.equal(leer[0]?.films, 0, 'die Gruppe ist leer, die Gruppe bleibt');
+
+    await h.sql.query(`update public.profiles set watchlist_public = false where id = $1`, [ich]);
+    await h.sql.query(`delete from public.watchlist_groups where user_id = $1`, [ich]);
+  });
+
+  it('keeps a watchlist group with the account that owns it', async () => {
+    const ich = await seedUser(h, 'wlgruppeich');
+    const fremd = await seedUser(h, 'wlgruppefremd');
+
+    const angelegt = await h
+      .as('authenticated', fremd)
+      .query<{ id: string }>(
+        `insert into public.watchlist_groups (user_id, name) values ($1, 'Klassiker') returning id`,
+        [fremd],
+      );
+    const fremdeGruppe = angelegt[0]?.id ?? '';
+
+    await h
+      .as('authenticated', ich)
+      .query(`insert into public.watchlist (user_id, film_id) values ($1, $2)`, [ich, FILM]);
+
+    // Der Fremdschluessel prueft, dass Gruppe und Eintrag demselben
+    // Konto gehoeren. Die Policy allein prueft nur, wer schreibt.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', ich)
+          .query(
+            `insert into public.watchlist_group_films (group_id, user_id, film_id) values ($1, $2, $3)`,
+            [fremdeGruppe, ich, FILM],
+          ),
+      /violates foreign key constraint/i,
+      'kein Film in einer fremden Gruppe',
+    );
+
+    // Derselbe Name zweimal, nur anders geschrieben, ist derselbe Name.
+    await assert.rejects(
+      () =>
+        h
+          .as('authenticated', fremd)
+          .query(`insert into public.watchlist_groups (user_id, name) values ($1, 'klassiker')`, [
+            fremd,
+          ]),
+      /duplicate key/i,
+      'Gross- und Kleinschreibung macht keine zweite Gruppe',
+    );
+
+    await h.sql.query(`delete from public.watchlist where user_id = $1`, [ich]);
+    await h.sql.query(`delete from public.watchlist_groups where user_id = $1`, [fremd]);
+  });
+
   it('refuses films_for_me to an anonymous caller', async () => {
     // Ein Grant fuegt hinzu, er nimmt nicht weg. Ohne den Entzug war die
     // Funktion fuer `anon` ausfuehrbar — harmlos, weil `auth.uid()`
