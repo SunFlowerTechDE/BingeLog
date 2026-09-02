@@ -10,6 +10,7 @@ export interface FeedEintrag {
   created_at: string;
   rating: number | null;
   review: string | null;
+  has_spoilers: boolean;
   watched_on: string | null;
   is_rewatch: boolean;
   username: string;

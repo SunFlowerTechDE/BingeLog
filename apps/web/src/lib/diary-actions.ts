@@ -163,6 +163,11 @@ export async function saveEntry(_previous: EntryResult, formData: FormData): Pro
     watched_on: watchedOn === '' ? null : watchedOn,
     review: review === '' ? null : review,
     visibility,
+    // Die Bitte des Verfassers, nicht mehr. Kein Zugriffsschutz — der
+    // Text kommt ueber dieselbe Antwort wie jeder andere (ADR-010 gilt
+    // fuer die Diskussion, nicht hierfuer). Ohne Rezension ist die Marke
+    // gegenstandslos.
+    has_spoilers: review !== '' && formData.get('hasSpoilers') !== null,
   };
 
   const { data: saved, error } = entryId

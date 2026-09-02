@@ -9,6 +9,7 @@ import { FEED_SEITE, type FeedEintrag } from '@/lib/feed';
 import { PopcornRating, formatRating } from '@/components/popcorn';
 import { Avatar } from '@/components/profile-parts';
 import { formatWatchedOn } from '@/lib/dates';
+import { SpoilerText } from '@/components/spoiler-text';
 
 /**
  * Was die Leute eingetragen haben, denen du folgst.
@@ -101,11 +102,20 @@ export function FeedList({
                   {gesehen ? <span className="text-muted-foreground">{gesehen}</span> : null}
                 </div>
 
-                {e.review ? (
+                {/* Spoiler bleiben verdeckt, bis jemand klickt. Kein
+                    Zugriffsschutz — der Text kommt über dieselbe
+                    Antwort wie jeder andere; aber die Bitte des
+                    Verfassers gehört respektiert. */}
+                {e.review === null ? null : e.has_spoilers ? (
+                  <SpoilerText
+                    text={e.review}
+                    className="text-muted-foreground text-sm leading-relaxed"
+                  />
+                ) : (
                   <p className="text-muted-foreground line-clamp-4 text-sm leading-relaxed">
                     {e.review}
                   </p>
-                ) : null}
+                )}
               </div>
             </li>
           );

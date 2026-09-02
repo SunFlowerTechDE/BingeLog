@@ -12,6 +12,7 @@ import { Discussion, type Beitrag } from '@/components/discussion';
 import { ReportButton } from '@/components/report-button';
 import { FskLabel, fskStufe } from '@/components/fsk';
 import { genreLabel } from '@/lib/genres';
+import { SpoilerText } from '@/components/spoiler-text';
 import { RewatchButton } from '@/components/rewatch-button';
 import { formatAge, formatWatchedOn } from '@/lib/dates';
 import { PopcornRating, formatRating } from '@/components/popcorn';
@@ -141,7 +142,7 @@ export default async function FilmPage({
   if (viewer) {
     const { data: entry } = await supabase
       .from('diary_entries')
-      .select('id, rating, watched_on, review, is_rewatch, visibility')
+      .select('id, rating, watched_on, review, has_spoilers, is_rewatch, visibility')
       .eq('user_id', viewer.id)
       .eq('film_id', wikidataId)
       .order('created_at', { ascending: false })
@@ -402,7 +403,9 @@ async function Reviews({
   const from = (page - 1) * REVIEWS_PER_PAGE;
   let query = supabase
     .from('diary_entries')
-    .select('id, rating, review, watched_on, is_rewatch, created_at, profiles(username)')
+    .select(
+      'id, rating, review, has_spoilers, watched_on, is_rewatch, created_at, profiles(username)',
+    )
     .eq('film_id', wikidataId)
     .not('review', 'is', null);
 
@@ -416,6 +419,7 @@ async function Reviews({
     id: string;
     rating: number | null;
     review: string;
+    has_spoilers: boolean;
     watched_on: string | null;
     is_rewatch: boolean;
     created_at: string;
@@ -505,7 +509,18 @@ async function Reviews({
                     Abend, das andere die Frische der Meinung. */}
                 <span className="text-muted-foreground ml-auto">{formatAge(entry.created_at)}</span>
               </div>
-              <p className="whitespace-pre-line text-sm leading-relaxed">{entry.review}</p>
+              {/* Spoiler bleiben verdeckt, bis jemand klickt. Kein
+                  Zugriffsschutz — der Text kommt über dieselbe Antwort
+                  wie jeder andere (ADR-010 gilt für die Diskussion,
+                  nicht hierfür); aber die Bitte gehört respektiert. */}
+              {entry.has_spoilers ? (
+                <SpoilerText
+                  text={entry.review}
+                  className="whitespace-pre-line text-sm leading-relaxed"
+                />
+              ) : (
+                <p className="whitespace-pre-line text-sm leading-relaxed">{entry.review}</p>
+              )}
               <div className="flex flex-wrap items-center gap-3">
                 {watched ? (
                   <span className="text-muted-foreground text-xs">gesehen am {watched}</span>

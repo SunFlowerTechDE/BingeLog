@@ -48,6 +48,7 @@ export interface OwnEntry {
   rating: number | null;
   watched_on: string | null;
   review: string | null;
+  has_spoilers: boolean;
   is_rewatch: boolean;
   visibility: Visibility;
 }
@@ -135,6 +136,16 @@ export function LogPanel({
               defaultValue={entry?.review ?? ''}
               className="border-border bg-card focus:ring-ring rounded-md border px-3 py-2 text-base outline-none focus:ring-2"
             />
+            {/* Die Bitte des Verfassers, kein Zugriffsschutz: der Text
+                kommt über dieselbe Antwort wie jeder andere. */}
+            <span className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="hasSpoilers"
+                defaultChecked={entry?.has_spoilers ?? false}
+              />
+              Enthält Spoiler
+            </span>
           </label>
         </div>
 
