@@ -182,12 +182,10 @@ struct RegisterView: View {
 
     /// Die Zustimmung.
     ///
-    /// **Die Datenschutzerklärung ist jetzt ein Link** und keine
-    /// Behauptung mehr — sie steht seit dem 03.09.2026 auf der
-    /// Webseite. Die Nutzungsbedingungen gibt es weiterhin nicht (M6),
-    /// deshalb sind sie hier auch nicht genannt: unter etwas ein
-    /// Häkchen zu setzen, das es nicht gibt, ist so viel wert wie das
-    /// Dokument.
+    /// **Beide Begriffe sind jetzt Links** und keine Behauptungen mehr:
+    /// Datenschutzerklärung und Nutzungsbedingungen stehen seit dem
+    /// 03.09.2026 auf der Webseite. Ein Häkchen unter Dokumenten, die es
+    /// nicht gibt, war so viel wert wie die Dokumente.
     private var terms: some View {
         HStack(alignment: .top, spacing: 12) {
             Button {
@@ -197,20 +195,31 @@ struct RegisterView: View {
                     .font(.title3)
                     .foregroundStyle(acceptedTerms ? Theme.primary : Theme.muted)
             }
-            .accessibilityLabel("Datenschutzerklärung akzeptieren")
+            .accessibilityLabel("Nutzungsbedingungen und Datenschutzerklärung akzeptieren")
             .accessibilityAddTraits(acceptedTerms ? [.isSelected] : [])
 
-            Group {
-                if let url = AppConfiguration.privacyPolicyURL {
-                    Text("Ich stimme der ")
+            VStack(alignment: .leading, spacing: 2) {
+                if let datenschutz = AppConfiguration.privacyPolicyURL,
+                    let bedingungen = AppConfiguration.termsURL
+                {
+                    Text("Ich stimme den ")
                         .foregroundColor(Theme.muted)
-                        + Text("[Datenschutzerklärung](\(url.absoluteString))")
+                        + Text("[Nutzungsbedingungen](\(bedingungen.absoluteString))")
+                        .foregroundColor(Theme.primary)
+                        + Text(" und der ").foregroundColor(Theme.muted)
+                        + Text("[Datenschutzerklärung](\(datenschutz.absoluteString))")
                         .foregroundColor(Theme.primary)
                         + Text(" zu.").foregroundColor(Theme.muted)
                 } else {
-                    Text("Ich stimme der Datenschutzerklärung zu.")
+                    Text("Ich stimme den Nutzungsbedingungen und der Datenschutzerklärung zu.")
                         .foregroundColor(Theme.muted)
                 }
+
+                // Steht dabei und nicht im Kleingedruckten: wer zu jung
+                // ist, soll es hier erfahren und nicht nach der
+                // Registrierung.
+                Text("Mindestalter 16 Jahre.")
+                    .foregroundColor(Theme.quiet)
             }
             .font(.footnote)
             .tint(Theme.primary)

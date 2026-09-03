@@ -107,6 +107,9 @@ struct SettingsView: View {
             // Fassungen eines Rechtstexts laufen auseinander, und man
             // merkt es erst, wenn jemand fragt.
             Section("Rechtliches") {
+                if let url = AppConfiguration.termsURL {
+                    LegalLink(title: "Nutzungsbedingungen", url: url)
+                }
                 if let url = AppConfiguration.privacyPolicyURL {
                     LegalLink(title: "Datenschutzerklärung", url: url)
                 }
@@ -145,7 +148,6 @@ struct SettingsView: View {
     private static let planned: [Planned] = [
         Planned(title: "Konto und Passwort", step: "M5 5.6"),
         Planned(title: "Benachrichtigungen", step: "M6"),
-        Planned(title: "Nutzungsbedingungen", step: "M6"),
     ]
 }
 

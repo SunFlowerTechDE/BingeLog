@@ -54,4 +54,7 @@ enum AppConfiguration {
 
     /// Das Impressum (§ 5 DDG).
     static var imprintURL: URL? { webBaseURL?.appendingPathComponent("impressum") }
+
+    /// Die Nutzungsbedingungen.
+    static var termsURL: URL? { webBaseURL?.appendingPathComponent("nutzungsbedingungen") }
 }

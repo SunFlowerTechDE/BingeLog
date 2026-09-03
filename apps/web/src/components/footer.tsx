@@ -4,9 +4,7 @@ import Link from 'next/link';
  * Die Fußzeile.
  *
  * Sie trägt genau das, was auf jede Seite gehört und sonst nirgends
- * steht. Die Nutzungsbedingungen fehlen noch (M6) und werden deshalb
- * auch nicht als Link behauptet — ein Link ins Leere ist schlechter als
- * keiner.
+ * steht: die drei Rechtstexte.
  */
 export function Footer() {
   return (
@@ -15,6 +13,12 @@ export function Footer() {
         <span>BingeLog</span>
         <Link href="/datenschutz" className="hover:text-foreground underline underline-offset-4">
           Datenschutz
+        </Link>
+        <Link
+          href="/nutzungsbedingungen"
+          className="hover:text-foreground underline underline-offset-4"
+        >
+          Nutzungsbedingungen
         </Link>
         <Link href="/impressum" className="hover:text-foreground underline underline-offset-4">
           Impressum

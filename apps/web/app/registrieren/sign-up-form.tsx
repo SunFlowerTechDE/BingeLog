@@ -28,11 +28,15 @@ export function SignUpForm() {
           im Text — und der ist jetzt ein Link und keine Behauptung
           mehr. */}
       <p className="text-muted-foreground text-xs leading-relaxed">
-        Mit dem Anlegen stimmst du unserer{' '}
+        Mit dem Anlegen stimmst du den{' '}
+        <Link href="/nutzungsbedingungen" className="text-foreground underline underline-offset-4">
+          Nutzungsbedingungen
+        </Link>{' '}
+        und der{' '}
         <Link href="/datenschutz" className="text-foreground underline underline-offset-4">
           Datenschutzerklärung
         </Link>{' '}
-        zu.
+        zu. Mindestalter 16 Jahre.
       </p>
     </form>
   );
