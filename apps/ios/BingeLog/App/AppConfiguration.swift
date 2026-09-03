@@ -51,4 +51,7 @@ enum AppConfiguration {
 
     /// Die Datenschutzerklärung.
     static var privacyPolicyURL: URL? { webBaseURL?.appendingPathComponent("datenschutz") }
+
+    /// Das Impressum (§ 5 DDG).
+    static var imprintURL: URL? { webBaseURL?.appendingPathComponent("impressum") }
 }

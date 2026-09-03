@@ -35,17 +35,31 @@ export default function DatenschutzPage() {
 
       <Abschnitt titel="Verantwortlich">
         <p>
-          {/* Ohne diese Angaben darf die Seite nicht online gehen. Sie
-              stehen bewusst als Lücke da, statt erfunden zu werden. */}
-          SunFlower Tech
+          {/* Einzelunternehmen: verantwortlich ist die natürliche
+              Person, „SunFlower Tech" ist die Geschäftsbezeichnung. */}
+          Kevin Moutin, handelnd unter <strong>SunFlower Tech</strong>
           <br />
-          [Rechtsform, Anschrift]
+          Konrad-Adenauer-Str. 21
           <br />
-          [E-Mail-Adresse]
+          42651 Solingen
+          <br />
+          <a
+            href="mailto:datenschutz@bingelog.eu"
+            className="text-foreground underline underline-offset-4"
+          >
+            datenschutz@bingelog.eu
+          </a>
         </p>
         <p>
-          Bei Fragen zum Datenschutz schreib an [E-Mail-Adresse]. Einen Datenschutzbeauftragten
-          haben wir nicht — dafür ist der Betrieb zu klein.
+          Bei Fragen zum Datenschutz schreib an{' '}
+          <a
+            href="mailto:datenschutz@bingelog.eu"
+            className="text-foreground underline underline-offset-4"
+          >
+            datenschutz@bingelog.eu
+          </a>
+          . Einen Datenschutzbeauftragten gibt es nicht — dafür ist der Betrieb zu klein (Art. 37
+          DSGVO, § 38 BDSG).
         </p>
       </Abschnitt>
 
@@ -218,8 +232,14 @@ export default function DatenschutzPage() {
         </p>
         <p>
           Willst du <strong>einzelne</strong> Einträge oder Beiträge nicht stehen lassen, lösch sie
-          vor dem Konto — dann sind sie weg. Oder schreib an [E-Mail-Adresse], und wir entfernen
-          sie.
+          vor dem Konto — dann sind sie weg. Oder schreib an{' '}
+          <a
+            href="mailto:datenschutz@bingelog.eu"
+            className="text-foreground underline underline-offset-4"
+          >
+            datenschutz@bingelog.eu
+          </a>
+          , und wir entfernen sie.
         </p>
         <p>
           Bestehen bleiben außerdem <strong>Meldungen und Moderationsentscheidungen</strong>, beide

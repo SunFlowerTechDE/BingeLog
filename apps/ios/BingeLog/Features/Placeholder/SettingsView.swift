@@ -106,18 +106,12 @@ struct SettingsView: View {
             // Der Text steht auf der Webseite, nicht in der App. Zwei
             // Fassungen eines Rechtstexts laufen auseinander, und man
             // merkt es erst, wenn jemand fragt.
-            if let url = AppConfiguration.privacyPolicyURL {
-                Section("Rechtliches") {
-                    Link(destination: url) {
-                        HStack {
-                            Text("Datenschutzerklärung")
-                            Spacer()
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.caption)
-                                .foregroundStyle(Theme.muted)
-                        }
-                    }
-                    .listRowBackground(Theme.card)
+            Section("Rechtliches") {
+                if let url = AppConfiguration.privacyPolicyURL {
+                    LegalLink(title: "Datenschutzerklärung", url: url)
+                }
+                if let url = AppConfiguration.imprintURL {
+                    LegalLink(title: "Impressum", url: url)
                 }
             }
 
@@ -152,7 +146,6 @@ struct SettingsView: View {
         Planned(title: "Konto und Passwort", step: "M5 5.6"),
         Planned(title: "Benachrichtigungen", step: "M6"),
         Planned(title: "Nutzungsbedingungen", step: "M6"),
-        Planned(title: "Impressum", step: "M6"),
     ]
 }
 
@@ -257,5 +250,28 @@ private struct DeleteAccountSheet: View {
                 problem = meldung
             }
         }
+    }
+}
+
+/// Ein Rechtstext, der im Browser aufgeht.
+///
+/// Die Texte stehen auf der Webseite und nicht in der App: zwei
+/// Fassungen eines Rechtstexts laufen auseinander, und man merkt es
+/// erst, wenn jemand fragt.
+private struct LegalLink: View {
+    let title: String
+    let url: URL
+
+    var body: some View {
+        Link(destination: url) {
+            HStack {
+                Text(title)
+                Spacer()
+                Image(systemName: "arrow.up.right.square")
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+            }
+        }
+        .listRowBackground(Theme.card)
     }
 }

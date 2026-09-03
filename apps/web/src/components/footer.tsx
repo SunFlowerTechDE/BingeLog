@@ -16,6 +16,9 @@ export function Footer() {
         <Link href="/datenschutz" className="hover:text-foreground underline underline-offset-4">
           Datenschutz
         </Link>
+        <Link href="/impressum" className="hover:text-foreground underline underline-offset-4">
+          Impressum
+        </Link>
       </div>
     </footer>
   );

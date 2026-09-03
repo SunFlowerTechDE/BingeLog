@@ -7,9 +7,23 @@ Rechtstext merkt man das erst, wenn jemand fragt.
 
 ## Was noch fehlt
 
-- **Die Angaben zum Verantwortlichen.** Name, Rechtsform, Anschrift und
-  eine Kontaktadresse kann ich nicht erfinden; sie stehen im Text als
-  `[…]` und müssen vor der Veröffentlichung eingesetzt werden.
+- ~~Die Angaben zum Verantwortlichen.~~ **Eingesetzt am 03.09.2026:**
+  Kevin Moutin, handelnd unter SunFlower Tech, Konrad-Adenauer-Str. 21,
+  42651 Solingen, `datenschutz@bingelog.eu`. Einzelunternehmen und
+  Kleinunternehmer nach § 19 UStG — deshalb kein Registergericht, keine
+  Registernummer und keine USt-IdNr. Das ist kein Versäumnis; es gibt
+  sie nicht.
+
+  Zwei offene Punkte dazu:
+
+  - **Das Gewerbe ist noch nicht angemeldet** (Stand 03.09.2026). Ein
+    öffentlich betriebener Dienst mit Konten und Meldeverfahren ist eine
+    gewerbliche Tätigkeit; die Anmeldung gehört vor den Start.
+  - **`datenschutz@bingelog.eu` muss Post annehmen.** Die Domain hat
+    MX-Einträge bei mailbox.org, ob dieses Postfach existiert, ist damit
+    nicht gesagt. Art. 12 Abs. 3 DSGVO setzt einen Monat zum Antworten,
+    und die Frist läuft auch dann, wenn niemand hinsieht.
+
 - **Eine juristische Prüfung.** Der Text beschreibt genau, was der Code
   tut — das ist die Grundlage, aber keine Rechtsberatung.
 - **Ein Punkt gehört dabei ausdrücklich angesehen:** seit dem 03.09.2026
@@ -23,6 +37,11 @@ Rechtstext merkt man das erst, wenn jemand fragt.
   03.09.2026.** Sie steht in Web und App unter Einstellungen → Konto und
   läuft über die Edge Function `delete-account`. Der Absatz im Text ist
   entsprechend geändert.
+
+Ein **Impressum** gibt es seit dem 03.09.2026 ebenfalls
+(`apps/web/app/impressum/`), mit denselben Angaben und dem Zusatz nach
+Art. 11/12 DSA. Beide Seiten stehen in der Fusszeile und in den
+App-Einstellungen unter „Rechtliches".
 
 ## Woher der Inhalt kommt
 
